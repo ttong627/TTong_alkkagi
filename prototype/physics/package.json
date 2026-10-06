@@ -1,0 +1,12 @@
+{
+  "name": "alkkagi-physics-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "description": "알까기 물리 모델 시험대 — 설계서 v2 §3·§9 숫자를 재는 코드",
+  "scripts": {
+    "measure": "node measure.js"
+  },
+  "dependencies": {
+    "planck": "^1.4.2"
+  }
+}
