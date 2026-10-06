@@ -93,6 +93,19 @@ jobs:
           cp build/app/outputs/flutter-apk/app-release.apk "$RUNNER_TEMP/out/tanji-murim-$BUILD_NUMBER.apk"
           cp build/app/outputs/bundle/release/app-release.aab "$RUNNER_TEMP/out/tanji-murim-$BUILD_NUMBER.aab"
           ls -la "$RUNNER_TEMP/out"
+      - name: APK 점검(권한·물리 엔진 포함 여부)
+        run: |
+          APK="$RUNNER_TEMP/out/tanji-murim-$BUILD_NUMBER.apk"
+          AAPT2=$(ls -d "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
+          "$AAPT2" dump badging "$APK" | grep -E "^package:|^application-label|^sdkVersion|^targetSdkVersion"
+          echo "--- 권한 ---"
+          "$AAPT2" dump permissions "$APK"
+          echo "--- 네이티브 라이브러리 ---"
+          unzip -l "$APK" | grep '\.so$'
+          if "$AAPT2" dump permissions "$APK" | grep -q 'android.permission.INTERNET'; then
+            echo "::error::출시 빌드에 인터넷 권한이 들어 있습니다(데이터 보안 답변과 다름)"; exit 1
+          fi
+          unzip -l "$APK" | grep -q 'arm64-v8a/libbox2d' || { echo "::error::arm64 물리 엔진 라이브러리가 없습니다"; exit 1; }
       - uses: actions/upload-artifact@v4
         with:
           name: android-${{ env.BUILD_NUMBER }}
