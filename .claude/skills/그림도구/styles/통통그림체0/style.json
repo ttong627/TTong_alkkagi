@@ -1,0 +1,28 @@
+{
+  "name": "통통그림체0",
+  "title": "통통 그림체 0 — 이야기꾼 통통 정본 (손으로 그린 극장 애니메이션 화풍 C)",
+  "made": "2026-09-15",
+  "status": "정본 — 형 확정 2026-08-18(시안 A/B/C/D 중 C). 문구는 여기 적지 않는다",
+  "prompt_module": "folk_style",
+  "prompt_note": "문구 정본 = D:/Gemma4/tongtong_studio/folk_style.py 의 STYLE·build(). tt_draw 가 그 모듈을 직접 부른다. ⛔이 파일에 문구를 복사하지 말 것(두 벌이 되면 어긋난다)",
+  "engine_default": "codex",
+  "ref_note": "손으로 그린 극장 애니메이션 채색·입체 조명·표정 연기·깊은 공기원근",
+  "refs": [
+    "D:/Gemma4/tongtong_studio/Projects/channel_story/test01/image/c02_two.png",
+    "D:/Gemma4/tongtong_studio/Projects/channel_story/test01/image/c04b_light.png",
+    "D:/Gemma4/tongtong_studio/Projects/channel_story/test01/image/c10c_grasp.png",
+    "D:/Gemma4/tongtong_studio/Projects/channel_story/myeonuri/_화풍C시험/p1c14_pour.png",
+    "D:/Gemma4/tongtong_studio/Projects/channel_story/myeonuri/_화풍C시험/p2c02_monk.png",
+    "D:/Gemma4/tongtong_studio/Projects/channel_story/myeonuri/_화풍C시험/p1c07_sweet.png",
+    "D:/Gemma4/tongtong_studio/Projects/channel_story/myeonuri/_화풍C시험/p3c25_pond.png"
+  ],
+  "refs_note": "⛔test01/image/c04c_hands.png 은 기준이 아니다(3D 오판의 원인). 기준 7장 = memory reference-folk-art-style-ssot",
+  "ranges": {
+    "paper": [0.0, 0.06],
+    "sat": [0.15, 0.60],
+    "ink": [0.12, 1.0],
+    "color": [12.0, 50.0]
+  },
+  "ranges_note": "2026-09-15 실측 — 기준 7장 paper 0.000~0.027 · sat 0.22~0.52 · ink 0.17~0.94 · color 17~42 / 대조군 통통그림체1 기준 3장 paper 0.10~0.53 · ink 0.03~0.08. 가르는 숫자 = paper·ink. ★화풍 C 의 두 극단(게임 CG·납작한 셀)은 이 네 숫자로 못 가른다 — 눈으로 본다(memory reference-folk-art-style-ssot)",
+  "used_by": "민담 본편 전부 (folk_gen·folk_prompts·thumbnail_maker 가 folk_style 을 직접 import)"
+}

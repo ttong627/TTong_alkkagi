@@ -1,0 +1,4 @@
+interface:
+  display_name: "SRT 화이트보드 애니메이션"
+  short_description: "SRT 자막을 미리보기·조정 가능한 스트림 필적 화이트보드 애니메이션으로 제작"
+  default_prompt: "$srt-whiteboard-animation 을 사용해 이 SRT 자막으로 화이트보드 손그림 애니메이션을 생성해줘."

@@ -1,0 +1,52 @@
+{
+  "sceneId": "scene-01-seollal",
+  "canvas": { "width": 1600, "height": 900 },
+  "storyBasis": "설날 아침, 초가집 굴뚝에 연기가 피어오르고, 소나무에 까치가 날아와 앉으며, 한복 입은 아이가 연을 날리고, 붉은 해가 떠오른다.",
+  "sceneDurationMs": 28000,
+  "elements": [
+    {
+      "id": "thatched-house",
+      "label": "초가집과 굴뚝 연기",
+      "sequence": 1,
+      "narrativeRole": "이야기의 장면 깔기 — 설날 아침의 마을 풍경",
+      "subtitle": "설날 아침, 마을 초가집 굴뚝에서 하얀 연기가 피어오릅니다.",
+      "type": "structure",
+      "region": { "x": 80, "y": 415, "width": 630, "height": 465 },
+      "reveal": { "direction": "top_to_bottom", "startMs": 500, "durationMs": 6000, "maskPaddingPx": 22, "protectedRegions": [] },
+      "handPath": { "start": [330, 500], "end": [330, 860], "easing": "easeInOut" }
+    },
+    {
+      "id": "pine-magpie",
+      "label": "소나무와 까치",
+      "sequence": 2,
+      "narrativeRole": "핵심 소재 등장 — 새해 소식을 전하는 까치",
+      "subtitle": "마당 옆 소나무에는 까치 한 마리가 날아와 앉았어요.",
+      "type": "object",
+      "region": { "x": 1030, "y": 130, "width": 540, "height": 755 },
+      "reveal": { "direction": "top_to_bottom", "startMs": 7000, "durationMs": 6300, "maskPaddingPx": 22, "protectedRegions": [] },
+      "handPath": { "start": [1300, 160], "end": [1300, 870], "easing": "easeInOut" }
+    },
+    {
+      "id": "child-kite",
+      "label": "한복 입은 아이와 방패연",
+      "sequence": 3,
+      "narrativeRole": "행동 — 아이가 마당에서 연을 하늘로 날림",
+      "subtitle": "한복을 입은 아이가 마당에서 연을 하늘 높이 날립니다.",
+      "type": "object",
+      "region": { "x": 715, "y": 100, "width": 245, "height": 785 },
+      "reveal": { "direction": "top_to_bottom", "startMs": 14000, "durationMs": 6500, "maskPaddingPx": 22, "protectedRegions": [] },
+      "handPath": { "start": [850, 130], "end": [810, 860], "easing": "easeInOut" }
+    },
+    {
+      "id": "rising-sun",
+      "label": "떠오르는 붉은 해",
+      "sequence": 4,
+      "narrativeRole": "결말/정서 — 새해의 해가 떠오르며 마무리",
+      "subtitle": "붉은 해가 떠오르고, 까치가 새해 소식을 전하며 노래합니다.",
+      "type": "object",
+      "region": { "x": 110, "y": 55, "width": 260, "height": 265 },
+      "reveal": { "direction": "top_to_bottom", "startMs": 21500, "durationMs": 5000, "maskPaddingPx": 22, "protectedRegions": [] },
+      "handPath": { "start": [235, 90], "end": [235, 300], "easing": "easeInOut" }
+    }
+  ]
+}

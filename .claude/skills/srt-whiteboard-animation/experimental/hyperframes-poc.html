@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>화이트보드 SVG 필기 PoC (HyperFrames 호환 메커니즘)</title>
+<!--
+  이 파일은 프레임워크 없이 브라우저에서 바로 열리는 개념 증명(PoC)이다.
+
+  시연하는 것:
+    1) SVG stroke-dashoffset 애니메이션 = "선을 따라 그리는" 필기 효과
+    2) CSS Motion Path(offset-path) = 펜이 같은 경로를 따라 이동
+    3) 자막이 장면 타이밍에 맞춰 표시
+  모든 애니메이션은 CSS 기반(프레임 시킹 가능)이므로 HyperFrames의
+  결정론적 렌더링(헤드리스 Chrome 프레임 캡처)과 호환된다.
+
+  HyperFrames 통합 시:
+    - 각 .clip 요소의 data-start / data-duration 속성을 타임라인이 읽는다
+    - npx hyperframes init → 이 구조를 컴포지션으로 이동 → npx hyperframes render
+-->
+<style>
+  body { margin: 0; background: #2b2e33; display: flex; align-items: center; justify-content: center; height: 100vh; }
+  #stage { width: 960px; height: 540px; background: #F5EBD7; border-radius: 8px; position: relative; overflow: hidden; }
+  svg { position: absolute; inset: 0; }
+
+  /* ── 1) 필기 리빌: stroke-dashoffset ─────────────────────── */
+  .stroke { fill: none; stroke: #3E3832; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+  .draw   { stroke-dasharray: var(--len); stroke-dashoffset: var(--len);
+            animation: draw var(--dur) linear var(--delay) forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+
+  /* 채색(2단계): 그리기 완료 후 면이 서서히 나타남 */
+  .paint { opacity: 0; animation: paint 1.2s ease var(--pdelay) forwards; }
+  @keyframes paint { to { opacity: 1; } }
+
+  /* ── 2) 펜 추적: CSS Motion Path ─────────────────────────── */
+  #pen { position: absolute; width: 46px; height: 46px; font-size: 40px; line-height: 46px;
+         offset-rotate: 0deg; opacity: 0; }
+  .pen-run { animation-fill-mode: forwards; }
+
+  /* ── 3) 자막 타이밍 ─────────────────────────────────────── */
+  .subtitle { position: absolute; left: 0; right: 0; bottom: 22px; text-align: center;
+              font: 700 24px "Malgun Gothic", sans-serif; color: #262320;
+              text-shadow: -2px 0 #F5EBD7, 2px 0 #F5EBD7, 0 -2px #F5EBD7, 0 2px #F5EBD7;
+              opacity: 0; }
+  .sub-show { animation: sub var(--sdur) step-end var(--sdelay) forwards; }
+  @keyframes sub { 0% { opacity: 1; } 99% { opacity: 1; } 100% { opacity: 0; } }
+</style>
+</head>
+<body>
+<div id="stage" data-composition-id="whiteboard-poc" data-width="960" data-height="540">
+
+  <svg viewBox="0 0 960 540">
+    <!-- 장면 1: 집 (0~3초에 그려짐) / data-start="0" data-duration="3" -->
+    <g class="clip" data-start="0" data-duration="3">
+      <path id="p-house" class="stroke draw" style="--len:900; --dur:3s; --delay:0.2s"
+            d="M140 420 L140 300 L260 220 L380 300 L380 420 Z M230 420 L230 340 L290 340 L290 420"/>
+      <path class="paint" style="--pdelay:3.4s" fill="#D9A96A" fill-opacity="0.55"
+            d="M140 300 L260 220 L380 300 L140 300"/>
+    </g>
+
+    <!-- 장면 2: 나무 (3.5~6.5초) / data-start="3.5" data-duration="3" -->
+    <g class="clip" data-start="3.5" data-duration="3">
+      <path id="p-tree" class="stroke draw" style="--len:700; --dur:3s; --delay:3.7s"
+            d="M660 430 C650 340 668 300 660 250 M660 250 C600 240 590 170 650 150 C640 90 740 80 750 140 C810 130 820 210 755 225 C760 260 700 265 660 250"/>
+      <path class="paint" style="--pdelay:6.9s" fill="#4E7A46" fill-opacity="0.5"
+            d="M650 150 C640 90 740 80 750 140 C810 130 820 210 755 225 C760 260 700 265 650 250 C595 240 590 170 650 150"/>
+    </g>
+
+    <!-- 장면 3: 해 (7~9초) / data-start="7" data-duration="2" -->
+    <g class="clip" data-start="7" data-duration="2">
+      <path id="p-sun" class="stroke draw" style="--len:300; --dur:2s; --delay:7.2s"
+            stroke="#C44E3E" d="M210 120 a46 46 0 1 1 -0.1 0 Z"/>
+      <path class="paint" style="--pdelay:9.3s" fill="#E2543F" fill-opacity="0.6"
+            d="M210 120 a46 46 0 1 1 -0.1 0 Z"/>
+    </g>
+  </svg>
+
+  <!-- 펜: 각 구간에서 해당 경로를 offset-path 로 따라감 -->
+  <div id="pen">✍️</div>
+
+  <!-- 자막: data-start / data-duration 을 CSS 변수로 병기 -->
+  <div class="subtitle sub-show" style="--sdelay:0.2s; --sdur:3.2s" data-start="0" data-duration="3.2">마을에 작은 집 한 채가 있습니다.</div>
+  <div class="subtitle sub-show" style="--sdelay:3.7s; --sdur:3.2s" data-start="3.7" data-duration="3.2">집 옆에는 큰 나무가 자랍니다.</div>
+  <div class="subtitle sub-show" style="--sdelay:7.2s; --sdur:2.6s" data-start="7.2" data-duration="2.6">해가 떠오르며 하루가 시작됩니다.</div>
+</div>
+
+<script>
+  // 펜이 각 경로를 순서대로 따라가도록 offset-path 를 구간별로 지정한다.
+  // (CSS Motion Path 도 시킹 가능하므로 HyperFrames 프레임 캡처와 호환)
+  const pen = document.getElementById("pen");
+  const runs = [
+    { sel: "#p-house", start: 0.2, dur: 3.0 },
+    { sel: "#p-tree",  start: 3.7, dur: 3.0 },
+    { sel: "#p-sun",   start: 7.2, dur: 2.0 },
+  ];
+  for (const r of runs) {
+    const d = document.querySelector(r.sel).getAttribute("d");
+    pen.animate(
+      [ { offsetDistance: "0%", opacity: 1 }, { offsetDistance: "100%", opacity: 1 } ],
+      { delay: r.start * 1000, duration: r.dur * 1000, fill: "none", easing: "linear",
+        pseudoElement: null }
+    ).onfinish = () => { pen.style.opacity = 0; };
+    // 구간 시작 시 해당 경로로 전환
+    pen.animate([{ offsetPath: `path("${d}")` }, { offsetPath: `path("${d}")` }],
+                { delay: r.start * 1000, duration: r.dur * 1000, fill: "none" });
+    setTimeout(() => { pen.style.offsetPath = `path("${d}")`; pen.style.opacity = 1; }, r.start * 1000);
+  }
+</script>
+</body>
+</html>

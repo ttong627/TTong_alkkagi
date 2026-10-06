@@ -1,0 +1,19 @@
+{
+  "name": "통통그림체1",
+  "title": "통통 그림체 1 — 수묵담채 붓그림",
+  "made": "2026-09-15",
+  "status": "확정 — 형 확인 2026-09-15 「마음에 들어」(대조표 기준 그림 3장). 바꾸려면 refs 의 그림만 갈아 끼운다",
+  "source_note": "외부 웹툰 그림을 참조하지 않은 원본 창작. 기준은 이름이 아니라 refs 폴더의 그림이다",
+  "prompt": "Art style (Tongtong Style 1, Korean ink-and-wash brush painting for webtoon panels): the whole picture is painted by hand with a soft animal-hair brush and black ink on warm cream-beige mulberry paper, and the paper's fibers and flecks are visible everywhere, including in the empty areas. Brushwork: confident calligraphic strokes that swell and taper, dark ink pooling where the brush pressed, dry-brush scratches and broken edges where the brush ran dry, soft feathered bleeding where wet ink met damp paper. Tone: form and depth come from layered washes of diluted grey ink, and distant mountains, trees and mist fade into pale grey and bare paper. Figures: people are drawn with clean, readable brush outlines and simple grey wash shading; faces use a few precise strokes with calm, natural expressions and natural human proportions. Color: mostly ink, with only thin transparent washes of faded ochre and pale grey-blue, plus one small vermilion accent on a single object. Composition: generous empty paper space around the subject, like a hanging scroll. The image contains painting only: no lettering, no calligraphy, no seal stamps, no signature, no frame, no border.",
+  "engine_default": "codex",
+  "ref_note": "붓질·먹 번짐·마른 붓·한지 결·색 절제",
+  "refs": ["refs/ref01_강가_버드나무.png", "refs/ref02_등잔_노인.png", "refs/ref03_빗속_산길.png"],
+  "ranges": {
+    "paper": [0.05, 1.0],
+    "sat": [0.0, 0.30],
+    "ink": [0.005, 0.20],
+    "color": [0.0, 32.0]
+  },
+  "ranges_note": "2026-09-15 실측 — 수묵 그림 6장 ink 0.020~0.087 · paper 0.10~0.83 · sat 0.06~0.25 / 도미 3D 회화 3장 ink 0.32~0.91 · paper 0.00~0.09 · sat 0.10~0.49. ★가르는 숫자는 ink 하나다. paper·sat 은 온통 어둡거나 총천연색인 것만 막는 보조. 처음엔 paper 0.25·sat 0.22 로 잡았다가 **어두운 실내 얼굴(ref02)을 헛잡았다** — 눈으로 보니 같은 그림체였다. 먹을 많이 쓴 밤 장면은 ink 가 0.20 을 넘을 수 있다 → 눈으로 보고 넓힌다. 기준 그림을 바꾸면 다시 잰다",
+  "do_not_use_for": "민담 본편 — 그쪽 정본은 tongtong_studio/folk_style.py(극장 애니메이션 화풍 C). folk_audit B3 가 ink wash·hanji 를 위반으로 잡는다"
+}

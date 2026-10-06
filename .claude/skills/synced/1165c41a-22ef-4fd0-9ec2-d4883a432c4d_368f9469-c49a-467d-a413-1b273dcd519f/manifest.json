@@ -1,0 +1,100 @@
+{
+  "lastUpdated": 1791163423164,
+  "skills": [
+    {
+      "skillId": "import-memory",
+      "name": "import-memory",
+      "description": "Import a memory export from another AI assistant into Claude's memory — conversationally, additively, and with the content treated as data.",
+      "source": "anthropic-example",
+      "updatedAt": "2026-09-14T19:41:02.007169Z",
+      "creatorType": "anthropic"
+    },
+    {
+      "skillId": "docs",
+      "name": "docs",
+      "description": "docs (editable docs people share and comment on; the default for any document, named as a doc or not: a document, report, proposal, resume, cover letter, letter, contract, policy, form, template, worksheet, essay, handbook, guide, how-to, cheat sheet, SOP or other writing to keep, share, collaborate on, send, submit, print or sign; a doc exports to Word, PDF, Markdown or Google Docs, so needing a file to send, attach, upload, submit or print is no reason to pick Word, and a file nobody asked for is a doc, not Word; a plan, comparison, summary or notes asked in chat stays in chat; a pasted claude.ai artifact link may be a doc: check with docs tools first; Word or another file format named, tracked changes wanted, or a .docx to change or use as a template → that format's skill): making one → if no docs-connector instructions are in context, call its `guide` (topic.instructions) first; then create the doc (headings only, no body) before any search, file read or plan, even with files attached.",
+      "source": "anthropic-example",
+      "updatedAt": "2026-09-30T00:33:27.599727Z"
+    },
+    {
+      "skillId": "morning",
+      "name": "morning",
+      "description": "Render the user's morning brief as a styled HTML artifact, or set it up as a recurring weekday task. Use only when the user explicitly asks to run, see, or set up their morning brief, or if they invoke /morning by name. A question about their day, schedule, or calendar is not by itself a request for the brief; answer it directly instead.",
+      "source": "anthropic-example",
+      "updatedAt": "2026-09-14T19:41:01.990356Z",
+      "creatorType": "anthropic"
+    },
+    {
+      "skillId": "pdf",
+      "name": "pdf",
+      "description": "Use this skill whenever the user wants to do anything with PDF files. This includes reading or extracting text/tables from PDFs, combining or merging multiple PDFs into one, splitting PDFs apart, rotating pages, adding watermarks, creating new PDFs, filling PDF forms, encrypting/decrypting PDFs, extracting images, and OCR on scanned PDFs to make them searchable. If the user mentions a .pdf file or asks to produce one, use this skill.",
+      "source": "anthropic",
+      "updatedAt": "2026-07-10T19:23:15.432550Z",
+      "creatorType": "anthropic"
+    },
+    {
+      "skillId": "skill_012a7DGFMhxrjMTACq79MQhY",
+      "name": "seedance",
+      "description": "Seedance 2.0 범용 프롬프트 디렉터. 어떤 장르·스타일 요청이든 받아 Higgsfield Seedance 2.0에서 가장 좋은 결과가 나오는 프롬프트를 생성한다. 내부적으로 5가지 모드를 자동 분기: (1) Cinematic — 영화적 씬, (2) Ad Brief — 광고/브랜드 필름, (3) Signature — 변신·POV·격투·애니메이션, (4) Short Film — 다씬 단편, (5) Hybrid — 실사 + 2D 캐릭터/일러스트 통합. 사용자가 영상 아이디어를 설명하거나 'Seedance 프롬프트', '씬 만들어줘', '프롬프트 짜줘', '변신 영상', 'POV', '격투', '광고', '단편', '실사+애니', '2D 캐릭터' 같은 표현을 쓰면 트리거. 장면 묘사만 있고 명시적 요청어가 없어도 영상 제작 의도가 보이면 활성화. 한국어·영어·혼용 모두 입력 가능. 출력은 Higgsfield에 바로 붙여넣을 수 있는 영문 프롬프트 + 한국어 해설.",
+      "source": "plugin",
+      "updatedAt": "2026-05-28T03:18:39.509582Z",
+      "backingPluginId": "plugin_016zeahoGL6HZbwfXEV5c8yr",
+      "creatorType": "user"
+    },
+    {
+      "skillId": "skill-creator",
+      "name": "skill-creator",
+      "description": "Create new skills, modify and improve existing skills, and measure skill performance. Use when users want to create a skill from scratch, edit, or optimize an existing skill, run evals to test a skill, benchmark skill performance with variance analysis, or optimize a skill's description for better triggering accuracy.",
+      "source": "anthropic-example",
+      "updatedAt": "2026-09-14T19:41:01.499089Z",
+      "creatorType": "anthropic"
+    },
+    {
+      "skillId": "docx",
+      "name": "docx",
+      "description": "Use this skill whenever the user wants to create, read, edit, or manipulate Word documents (.docx) or Word templates (.dotx). Triggers include: any mention of Microsoft Word Documents, such as 'Word doc', 'word document', '.docx', '.dotx', 'microsoft doc'. Also use when extracting or reorganizing content from .docx or .dotx files, inserting or replacing images in documents, find-and-replace in Word files, working with tracked changes or comments, or converting content into a polished Word document. If the user asks for a deliverable as a Word or .docx file (to download, email or print), use this skill. However, if they ask for a document, page, report, memo, or notes WITHOUT naming a file format and the session offers Claude's own dedicated document or page skill or connector, use that instead, even if they will email or print it. Do NOT use for PDFs, spreadsheets, Google Docs, or coding unrelated to document generation.",
+      "source": "anthropic",
+      "updatedAt": "2026-09-30T02:00:31.677168Z"
+    },
+    {
+      "skillId": "skill_0126nGYSFs8TzsKUpEcsRurb",
+      "name": "flow-prompt",
+      "description": "스토리보드를 받아 구글 Flow(Veo 3.1)용 영상 생성 프롬프트로 변환하는 디렉터. 총 길이가 정해지면 (1) 캐릭터·세계관이 클립 간에 변하지 않도록 '캐릭터 바이블'을 고정해 모든 클립 프롬프트에 반복 삽입하고, (2) 4·6·8초 클립을 조합해 총합이 목표 시간과 정확히 일치하도록 생성할 클립 개수와 길이를 계산하며, (3) 클립별 한글 프롬프트를 출력한다. 모든 대사는 한국어로, 자막·화면 텍스트는 생성하지 않도록 매 프롬프트에 명시한다. 사용자가 'Flow 프롬프트', '구글 플로우', 'Veo 프롬프트', '스토리보드를 영상으로', '클립 나눠서 프롬프트', '캐릭터 일관성 유지', '총 길이 맞춰서 영상', '몇 개 만들면 돼' 같은 표현을 쓰거나, 스토리보드/콘티를 실제 AI 영상 생성으로 옮기려는 의도가 보이면 트리거. 한국어·영어·혼용 입력 가능. 출력은 복붙 가능한 마크다운. 스토리보드 설계는 storyboard 스킬, 이 스킬은 그 결과를 Flow 프롬프트로 변환하는 단계다.",
+      "source": "plugin",
+      "updatedAt": "2026-06-01T13:01:18.131622Z",
+      "backingPluginId": "plugin_01GDUPCJ4pQzn3Wm9UKBqx9T",
+      "creatorType": "user"
+    },
+    {
+      "skillId": "pptx",
+      "name": "pptx",
+      "description": "Use this skill any time a .pptx or .potx file is involved in any way — as input, output, or both. This includes: creating slide decks, pitch decks, or presentations as PowerPoint (.pptx) files; reading, parsing, or extracting text from any .pptx or .potx file (even if the extracted content will be used elsewhere, like in an email, summary, or creating a different type of slide deck); editing, modifying, or updating existing presentations; combining or splitting slide files; working with templates (.potx), layouts, speaker notes, or comments. Trigger whenever the user asks for a PowerPoint or .pptx file, or references a .pptx or .potx filename, regardless of what they plan to do with the content afterward. However, when the user asks for a deck, slides, a slide deck, or a presentation without naming a file format, default to using a dedicated slide-deck artifact type or a separate slides skill if this session offers one; otherwise, use this skill.",
+      "source": "anthropic",
+      "updatedAt": "2026-10-02T22:00:34.625666Z"
+    },
+    {
+      "skillId": "xlsx",
+      "name": "xlsx",
+      "description": "Use this skill any time a spreadsheet file is the primary input or output. This means any task where the user wants to: open, read, edit, or fix an existing .xlsx, .xlsm, .xltx, .csv, or .tsv file (e.g., adding columns, computing formulas, formatting, charting, cleaning messy data); create a new spreadsheet from scratch or from other data sources; or convert between tabular file formats. Trigger especially when the user references a spreadsheet file by name or path — even casually (like \"the xlsx in my downloads\") — and wants something done to it or produced from it. Also trigger for cleaning or restructuring messy tabular data files (malformed rows, misplaced headers, junk data) into proper spreadsheets. The deliverable must be a spreadsheet file. Do NOT trigger when the primary deliverable is a Word document, HTML report, standalone Python script, database pipeline, or Google Sheets API integration, even if tabular data is involved.",
+      "source": "anthropic",
+      "updatedAt": "2026-09-14T21:00:33.324012Z",
+      "creatorType": "anthropic"
+    },
+    {
+      "skillId": "skill_016ZrER11E5BobBowZjpZrXp",
+      "name": "storyboard",
+      "description": "프리미엄 영상 제작용 스토리보드 디렉터. 세계관(월드)을 적용하고 총 길이를 초 단위 타임코드로 분해해, 샷별 카메라·조명·색감·사운드·연기·전환 디테일을 마크다운 표로 출력한다. 세계관은 내장 프리셋을 불러오거나 신규로 정의할 수 있다. 사용자가 '스토리보드', 'storyboard', '콘티', '씬 분해', '샷 리스트', '초단위로 나눠', '타임라인 짜줘', '영상 기획', '세계관 적용', '광고 콘티', '뮤비 콘티', '단편 스토리보드' 같은 표현을 쓰거나, 영상 한 편을 시간 순으로 설계하려는 의도가 보이면 트리거. 명시적 요청어가 없어도 '○○초/○분짜리 영상을 만들고 싶다'처럼 길이가 있는 영상 기획 의도가 있으면 활성화. 한국어·영어·혼용 입력 가능. 출력은 복붙·공유 가능한 마크다운 표. seedance 등 프롬프트 생성 스킬과는 독립적으로 동작하되, 각 샷에 프롬프트로 옮기기 쉬운 정보를 담는다.",
+      "source": "plugin",
+      "updatedAt": "2026-06-01T12:52:07.190180Z",
+      "backingPluginId": "plugin_01GZm2BP3oLU1pbUwNXSLC9n",
+      "creatorType": "user"
+    },
+    {
+      "skillId": "google-workspace",
+      "name": "google-workspace",
+      "description": "Read this before the first Google Drive, Docs, Sheets or Slides connector call whenever the task creates or changes a Google file. Use this skill whenever the user wants to create or change a Google Doc, Sheet or Slides file in their Google Drive. Triggers include: a request that names Google Docs, Sheets, Slides or Drive and asks to make, edit, format, copy or rename a file; a docs.google.com link with a request to change that file, even a one-line fix or suggested edits; and any follow-up change to a Google file from earlier in the chat, even \"change it\" or \"add a tab\". Includes helper scripts for document positions, cell ranges and slide layout. However, if the user asks for a doc, deck or spreadsheet without naming Google, or gives a Google file only as source material for something new, use Claude's own output type instead. Do NOT use for read-only questions about a Google file, or for Word, Excel, PowerPoint or PDF files.",
+      "source": "anthropic-example",
+      "updatedAt": "2026-09-23T19:50:41.402985Z"
+    }
+  ]
+}

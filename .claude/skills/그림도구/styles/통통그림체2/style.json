@@ -1,0 +1,20 @@
+{
+  "name": "통통그림체2",
+  "title": "통통 그림체 2 — 이야기꾼 통통 인물 강화 + 민화 배경",
+  "made": "2026-09-15",
+  "status": "확정 — 형 확인 2026-09-15 「마음에 들어」(대조표 기준 그림 2장)",
+  "base": "통통그림체0 = tongtong_studio/folk_style.py STYLE (손으로 그린 극장 애니메이션 화풍 C)",
+  "prompt": "Art style (Tongtong Style 2 — Storyteller Tongtong feature animation with Korean folk-painting backgrounds). CHARACTERS: Korean animated feature characters in a hand-painted animation style with solid three-dimensional volume and soft painted shading; faces are clearly readable, with expressive eyes, eyebrows and mouths and natural, emotive acting; hands are natural with five fingers; hanbok fabric shows detailed folds, seams and woven texture; a warm rim light separates every figure from the background; appealing stylized proportions of real people. BACKGROUNDS: painted in the manner of Joseon-era Korean minhwa folk painting, such as magpie-and-tiger paintings and the Ten Symbols of Longevity: flat decorative shapes with fine brown contour lines, rounded stylized mountains, pine trees with clustered fan-shaped needles, curling ribbon clouds, patterned waves, and peonies or lotus when they suit the scene, in mineral pigment colors of cinnabar red, malachite green, azurite blue, ochre yellow and soft ink black on a warm paper-toned ground, with a cheerful, naive Korean folk charm. UNITY: the characters and the minhwa background share one warm light and one color grade so the picture reads as a single artwork, with the figure as the one clear focal point. The look is distinctly Korean, not Japanese ukiyo-e and not Chinese gongbi. The image fills the entire frame edge to edge and contains painting only: no lettering, no calligraphy, no seal stamps, no signature, no frame, no border, no black bars.",
+  "engine_default": "codex",
+  "ref_note": "인물의 입체 회화 채색·표정 연기·옷감 결 + 민화 배경(부채꼴 솔잎·청록 산·리본 구름·물결 무늬·광물 안료 색)",
+  "refs": ["refs/ref01_달보는_어머니.png", "refs/ref02_호랑이와_나무꾼.png"],
+  "refs_note": "첫 시안은 화풍 C 그림 2장(test01/c02_two·myeonuri/p1c14_pour)을 첨부해 뽑았다. 안티그라비티 시안은 인물이 아이 같은 만화체로 흘러 탈락(참고 그림 첨부 불가)",
+  "ranges": {
+    "paper": [0.0, 0.05],
+    "sat": [0.30, 0.65],
+    "ink": [0.05, 0.50],
+    "color": [40.0, 80.0]
+  },
+  "ranges_note": "2026-09-15 실측 — 시안 3장 paper 0.00~0.01 · sat 0.36~0.48 · ink 0.14~0.32 · color 44~59 / 대조군 그림체1 sat ≤0.25·color ≤29 (확실히 갈림) / 그림체0 color 17~42·ink 0.17~0.94 (★color 간격이 좁다 — 41.6 vs 44.4). 숫자는 보조, 인물 강화·민화 배경은 눈으로 본다",
+  "do_not_use_for": "민담 본편에 바로 쓰지 않는다 — folk_audit B3 가 minhwa 를 위반으로 잡고, 민화 낱말이 일본풍으로 흐른 사고가 있었다(folk_style.py 머리말). 본편에 쓰려면 형 결정 후 audit 을 함께 고친다"
+}

@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 로컬 산출물 (완성 영상은 용량이 커서 저장소에 넣지 않음; 설날 예제 영상은 유지)
+*.mp4
+!examples/scene-01-seollal-whiteboard.mp4
+
+# OS
+Thumbs.db
+.DS_Store
+
+# 로컬 도구 상태
+.omc/

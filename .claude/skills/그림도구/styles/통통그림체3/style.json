@@ -1,0 +1,27 @@
+{
+  "name": "통통그림체3",
+  "title": "통통 그림체 3 — 3D 애니메이션 · 통통 미니보스",
+  "made": "2026-09-15",
+  "status": "기본 화풍 — 형 확정 2026-09-15 「퉁퉁 자활이야기는 3번 그림체가 기본」. 숫자 기준은 시안을 잰 뒤 확정",
+  "prompt_module": "_jahwal_char",
+  "prompt_attr": "LOOK",
+  "prompt_note": "렌더링 문구 정본 = D:/Gemma4/tongtong_studio/_jahwal_char.py 의 LOOK. 캐릭터 얼굴·머리·선글라스·체형은 같은 파일의 char(의상) 문구를 장면 설명에 넣는다(IDENTITY 는 한 글자도 바꾸지 않는다). ⛔이 파일에 문구를 복사하지 말 것",
+  "engine_default": "codex",
+  "ratio_default": "9:16",
+  "ref_note": "3D 애니메이션 렌더링 — 광택 있는 은회색 곱슬머리 결·작고 둥근 불투명 검은 선글라스·피부 질감·부드러운 조명·볼륨감",
+  "refs": [
+    "D:/Gemma4/tongtong_studio/00_Assets/character/refs/tt_head_front.png",
+    "D:/Gemma4/tongtong_studio/00_Assets/character/refs/tt_head_34.png",
+    "D:/Gemma4/tongtong_studio/00_Assets/character/refs/tt_body_front.png",
+    "D:/Gemma4/tongtong_studio/00_Assets/character/refs/tt_body_34.png"
+  ],
+  "refs_note": "공식 3D 시트(00_Assets/character/3D/tongrong.png)에서 잘라 둔 턴어라운드·헤드 조각 — memory feedback-official-character-sheet-first. ⛔미니보스 원화(emoticon_boss/rework_v2/artwork)는 글자가 박혀 있어 기준 그림으로 쓰지 않는다. ⛔우리가 AI 로 뽑은 그림을 기준 그림으로 다시 쓰지 않는다(딴사람이 된다)",
+  "ranges": {
+    "paper": [0.0, 0.7],
+    "sat": [0.08, 0.6],
+    "ink": [0.0, 0.5],
+    "color": [33.0, 90.0]
+  },
+  "ranges_note": "2026-09-15 실측 — 시안 2장(사무실 니트·창고 작업복) paper 0.14~0.42 · sat 0.16~0.34 · ink 0.08~0.17 · color 38~64. ★장면마다 크게 달라 숫자로는 그림체 3 을 못 붙잡는다. color ≥33 은 수묵·흑백으로 흐르는 것만 막는 보조(그림체1 최대 29). 그림체 3 을 지키는 것 = 공식 시트 기준 그림 + _jahwal_char IDENTITY + 눈검사(얼굴·머리·선글라스·체형)",
+  "used_by": "퉁퉁 자활이야기 전부(기본) · 미니보스 이모티콘. 자활 지침 시리즈 제작 규칙(통통이 니트 고정·4인 체제)은 _지침시리즈_제작규칙.md 를 따른다"
+}
