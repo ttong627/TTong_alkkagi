@@ -1,0 +1,15 @@
+name: alkkagi_physics
+description: 탄지 무림(알까기) 물리 모델 — 앱과 서버가 같이 쓴다 (설계서 v2 §3).
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  forge2d: 0.15.2
+  vector_math: ^2.1.4
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.0

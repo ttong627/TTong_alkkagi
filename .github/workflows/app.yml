@@ -1,0 +1,122 @@
+# 탄지 무림 — 검사 + 안드로이드 빌드 (+ 원할 때 구글 플레이 올리기)
+#
+# 비밀값(저장소 Settings → Secrets and variables → Actions)
+#   ANDROID_KEYSTORE_BASE64   업로드 키(.jks)를 base64 로 바꾼 값
+#   ANDROID_KEYSTORE_PASSWORD 키 저장소 비밀번호
+#   ANDROID_KEY_ALIAS         키 별칭
+#   ANDROID_KEY_PASSWORD      키 비밀번호
+#   PLAY_SERVICE_ACCOUNT_JSON 구글 플레이 올리기용 서비스 계정 JSON (올리기를 쓸 때만)
+# 업로드 키가 없으면 디버그 키로 서명한 시험용 APK 만 만든다(플레이에는 못 올림).
+name: app
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      play_track:
+        description: '구글 플레이 트랙(비우면 올리지 않음): internal / alpha / beta / production'
+        required: false
+        default: ''
+      play_status:
+        description: '출시 상태: completed(바로 출시) / draft(초안으로만)'
+        required: false
+        default: draft
+
+env:
+  FLUTTER_VERSION: 3.47.6
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: 물리 패키지 검사·시험
+        working-directory: packages/physics
+        run: |
+          dart pub get
+          dart format --output=none --set-exit-if-changed .
+          dart analyze --fatal-infos
+          dart test
+      - name: 앱 검사·시험
+        working-directory: app
+        run: |
+          flutter pub get
+          dart format --output=none --set-exit-if-changed lib test
+          flutter analyze --fatal-infos
+          flutter test
+
+  android:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: 업로드 키 준비
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+            echo "ALKKAGI_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+            echo "업로드 키로 서명합니다."
+          else
+            echo "::warning::업로드 키 비밀값이 없어 디버그 키로 서명합니다(플레이에 올릴 수 없음)."
+          fi
+      - name: 빌드 번호 = 실행 번호
+        run: echo "BUILD_NUMBER=$((100 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+      - name: APK·AAB 빌드
+        working-directory: app
+        env:
+          ALKKAGI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ALKKAGI_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ALKKAGI_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          flutter pub get
+          flutter build apk --release --build-number "$BUILD_NUMBER"
+          flutter build appbundle --release --build-number "$BUILD_NUMBER"
+          mkdir -p "$RUNNER_TEMP/out"
+          cp build/app/outputs/flutter-apk/app-release.apk "$RUNNER_TEMP/out/tanji-murim-$BUILD_NUMBER.apk"
+          cp build/app/outputs/bundle/release/app-release.aab "$RUNNER_TEMP/out/tanji-murim-$BUILD_NUMBER.aab"
+          ls -la "$RUNNER_TEMP/out"
+      - name: APK 점검(권한·물리 엔진 포함 여부)
+        run: |
+          APK="$RUNNER_TEMP/out/tanji-murim-$BUILD_NUMBER.apk"
+          AAPT2=$(ls -d "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
+          "$AAPT2" dump badging "$APK" | grep -E "^package:|^application-label|^sdkVersion|^targetSdkVersion"
+          echo "--- 권한 ---"
+          "$AAPT2" dump permissions "$APK"
+          echo "--- 네이티브 라이브러리 ---"
+          unzip -l "$APK" | grep '\.so$'
+          if "$AAPT2" dump permissions "$APK" | grep -q 'android.permission.INTERNET'; then
+            echo "::error::출시 빌드에 인터넷 권한이 들어 있습니다(데이터 보안 답변과 다름)"; exit 1
+          fi
+          unzip -l "$APK" | grep -q 'arm64-v8a/libbox2d' || { echo "::error::arm64 물리 엔진 라이브러리가 없습니다"; exit 1; }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ env.BUILD_NUMBER }}
+          path: ${{ runner.temp }}/out/
+          retention-days: 30
+      - name: 구글 플레이에 올리기
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.play_track != '' }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: kr.ttong.alkkagi
+          releaseFiles: ${{ runner.temp }}/out/tanji-murim-${{ env.BUILD_NUMBER }}.aab
+          track: ${{ inputs.play_track }}
+          status: ${{ inputs.play_status }}
