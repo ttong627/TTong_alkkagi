@@ -7,6 +7,8 @@
 #   ANDROID_KEY_PASSWORD      키 비밀번호
 #   PLAY_SERVICE_ACCOUNT_JSON 구글 플레이 올리기용 서비스 계정 JSON (올리기를 쓸 때만)
 # 업로드 키가 없으면 디버그 키로 서명한 시험용 APK 만 만든다(플레이에는 못 올림).
+# make_release 를 켜면 APK·AAB 를 시험판 릴리스(build-번호)에도 올린다 — 산출물(artifact)
+# 저장소에 닿지 못하는 곳에서 파일을 받아 업로드 키로 따로 서명할 때 쓴다.
 name: app
 
 on:
@@ -23,6 +25,11 @@ on:
         description: '출시 상태: completed(바로 출시) / draft(초안으로만)'
         required: false
         default: draft
+      make_release:
+        description: 'APK·AAB 를 시험판 릴리스(build-번호)로도 올림'
+        type: boolean
+        required: false
+        default: false
 
 env:
   FLUTTER_VERSION: 3.47.6
@@ -55,6 +62,8 @@ jobs:
   android:
     needs: test
     runs-on: ubuntu-latest
+    outputs:
+      build_number: ${{ steps.bn.outputs.build_number }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -78,7 +87,10 @@ jobs:
             echo "::warning::업로드 키 비밀값이 없어 디버그 키로 서명합니다(플레이에 올릴 수 없음)."
           fi
       - name: 빌드 번호 = 실행 번호
-        run: echo "BUILD_NUMBER=$((100 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+        id: bn
+        run: |
+          echo "BUILD_NUMBER=$((100 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+          echo "build_number=$((100 + GITHUB_RUN_NUMBER))" >> "$GITHUB_OUTPUT"
       - name: APK·AAB 빌드
         working-directory: app
         env:
@@ -120,3 +132,27 @@ jobs:
           releaseFiles: ${{ runner.temp }}/out/tanji-murim-${{ env.BUILD_NUMBER }}.aab
           track: ${{ inputs.play_track }}
           status: ${{ inputs.play_status }}
+
+  # 쓰기 권한은 이 작업에만 준다(수동 실행 + make_release 일 때만 돈다).
+  release:
+    needs: android
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.make_release }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-${{ needs.android.outputs.build_number }}
+          path: out
+      - name: 시험판 릴리스에 올리기
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_NUMBER: ${{ needs.android.outputs.build_number }}
+        run: |
+          TAG="build-$BUILD_NUMBER"
+          ls -la out
+          gh release create "$TAG" out/* \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+            --title "시험판 $TAG" \
+            --notes "자동 빌드 $TAG (커밋 $GITHUB_SHA). 플레이 업로드용 AAB 는 업로드 키로 따로 서명한다."
