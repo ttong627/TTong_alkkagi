@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../game/arena.dart';
 import '../game/match.dart';
+import '../version.dart';
 import 'game_screen.dart';
 
 /// 첫 화면: 모드·난이도·대전장·내 돌(재질·모양)을 고른다.
@@ -149,6 +150,14 @@ class _HomeScreenState extends State<HomeScreen> {
               '돌 윗부분을 치면 맞힌 뒤 밀고 나가고, 아랫부분을 치면 끌려옵니다.\n'
               '상대 돌을 모두 판 밖으로 떨어뜨리면 이깁니다.',
               style: t.bodyMedium?.copyWith(height: 1.5),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              versionLabel,
+              textAlign: TextAlign.center,
+              style: t.bodySmall?.copyWith(
+                color: t.bodySmall?.color?.withValues(alpha: 0.6),
+              ),
             ),
           ],
         ),
