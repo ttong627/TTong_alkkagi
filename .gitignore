@@ -1,0 +1,6 @@
+# 서명 키·비밀값은 절대 올리지 않는다(공개 저장소).
+*.jks
+*.keystore
+*.p12
+secrets.txt
+key.properties
