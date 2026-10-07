@@ -10,7 +10,7 @@ val uploadKeystore = System.getenv("ALKKAGI_KEYSTORE_PATH")
 val hasUploadKey = !uploadKeystore.isNullOrBlank() && file(uploadKeystore).exists()
 
 android {
-    namespace = "kr.ttong.alkkagi"
+    namespace = "TTong.alkkagi"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,7 +20,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "kr.ttong.alkkagi"
+        applicationId = "TTong.alkkagi"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
