@@ -34,6 +34,52 @@ void main() {
     });
   });
 
+  group('대전장: 판 모양 · 바닥 감속 배수', () {
+    test('둥근 판은 모서리 쪽이 장외, 네모 판은 안', () {
+      // (17, 17): 중심에서 24cm — 둥근 판(반지름 21) 밖, 네모 판(±21) 안.
+      expect(Boundary.circle.isOut(17, 17), isTrue);
+      expect(Boundary.square.isOut(17, 17), isFalse);
+      expect(Boundary.circle.edgeDistance(0, 0), PhysicsConstants.halfBoard);
+      expect(Boundary.square.edgeDistance(20, 0), closeTo(1, 1e-9));
+    });
+    test('둥근 판에서 대각선으로 나가면 장외', () {
+      final t = Table(boundary: Boundary.circle);
+      final s = t.addStone(12, 12);
+      t.shoot(s, math.pi / 4, 60, 0);
+      t.runTurn();
+      expect(s.out, isTrue);
+      expect(s.position.length, greaterThan(PhysicsConstants.halfBoard));
+      t.dispose();
+    });
+    test('바닥 배수: 감속에 곱하고 하한 0.3 은 지킨다', () {
+      final dirt = Table(floorFactor: 1.4);
+      final oil = Table(floorFactor: 0.5);
+      expect(
+        dirt.dampingOf(StoneMaterial.cheongok, StoneShape.round),
+        closeTo(1.68, 1e-9),
+      );
+      expect(oil.dampingOf(StoneMaterial.cheongok, StoneShape.round), 0.6);
+      expect(oil.dampingOf(StoneMaterial.ice, StoneShape.round), 0.3);
+      dirt.dispose();
+      oil.dispose();
+    });
+    test('같은 속도면 미끄러운 바닥에서 더 멀리 간다', () {
+      double roll(double f) {
+        final t = Table(floorFactor: f);
+        final s = t.addStone(-18, 0);
+        t.shoot(s, 0, 30, 0);
+        t.runTurn();
+        final d = s.position.x + 18;
+        t.dispose();
+        return d;
+      }
+
+      final dirt = roll(1.4), plain = roll(1.0), oil = roll(0.6);
+      expect(dirt, lessThan(plain));
+      expect(plain, lessThan(oil));
+    });
+  });
+
   group('1-03 감속 하한 0.3', () {
     test('빙백한옥(0.15)도 실제 감속은 0.3', () {
       final t = Table();
