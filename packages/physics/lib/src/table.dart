@@ -37,6 +37,33 @@ class Stone {
   double get spin => _spin;
 }
 
+/// 판 모양. 돌 중심이 이 경계 밖으로 나가면 장외.
+enum Boundary {
+  /// 한 변 [PhysicsConstants.board] 인 네모 판.
+  square,
+
+  /// 지름 [PhysicsConstants.board] 인 둥근 판(객잔 원탁 등).
+  circle;
+
+  /// (x, y) 가 판 밖인가.
+  bool isOut(double x, double y) {
+    const h = PhysicsConstants.halfBoard;
+    return switch (this) {
+      Boundary.square => x.abs() > h || y.abs() > h,
+      Boundary.circle => x * x + y * y > h * h,
+    };
+  }
+
+  /// (x, y) 에서 가장 가까운 판 가장자리까지 거리(cm). 밖이면 음수.
+  double edgeDistance(double x, double y) {
+    const h = PhysicsConstants.halfBoard;
+    return switch (this) {
+      Boundary.square => h - math.max(x.abs(), y.abs()),
+      Boundary.circle => h - math.sqrt(x * x + y * y),
+    };
+  }
+}
+
 /// 한 수의 진행 상태.
 enum TurnStatus {
   /// 아직 쏘지 않았거나 이미 끝남.
@@ -71,14 +98,24 @@ class TurnResult {
 /// 위에서 내려다본 2D. 바닥 마찰은 감속 값으로, 상·중·하 타격은 회전 보정으로 만든다
 /// (설계서 v2 §3.2·§3.3).
 class Table {
-  Table({this.minDamping = PhysicsConstants.minDamping})
-    : world = World(
-        gravity: Vector2.zero(),
-        definition: WorldDef(gravity: Vector2.zero(), hitEventThreshold: 0.01),
-      );
+  Table({
+    this.minDamping = PhysicsConstants.minDamping,
+    this.floorFactor = 1.0,
+    this.boundary = Boundary.square,
+  }) : world = World(
+         gravity: Vector2.zero(),
+         definition: WorldDef(gravity: Vector2.zero(), hitEventThreshold: 0.01),
+       );
 
   /// 감속 하한. 게임은 기본값 0.3 을 쓰고, 시험만 다른 값을 쓴다.
   final double minDamping;
+
+  /// 바닥 감속 배수(대전장마다 다름). 1 이면 재질 × 모양 그대로.
+  /// 흙바닥은 크게(잘 멈춤), 기름·얼음 바닥은 작게(잘 미끄러짐) 준다.
+  final double floorFactor;
+
+  /// 판 모양.
+  final Boundary boundary;
   final World world;
   final List<Stone> stones = [];
 
@@ -92,9 +129,11 @@ class Table {
   /// 지금 한 수에서 지난 스텝 수.
   int get turnSteps => _turnSteps;
 
-  /// 이 재질·모양에 실제로 쓰는 감속 값.
-  double dampingOf(StoneMaterial material, StoneShape shape) =>
-      math.max(minDamping, material.damping * shape.dampingMultiplier);
+  /// 이 재질·모양에 실제로 쓰는 감속 값(바닥 배수를 곱한 뒤 하한 적용).
+  double dampingOf(StoneMaterial material, StoneShape shape) => math.max(
+    minDamping,
+    material.damping * shape.dampingMultiplier * floorFactor,
+  );
 
   /// 돌을 놓는다.
   Stone addStone(
@@ -179,8 +218,7 @@ class Table {
     for (final s in stones) {
       if (s.out) continue;
       final p = s.position;
-      if (p.x.abs() > PhysicsConstants.halfBoard ||
-          p.y.abs() > PhysicsConstants.halfBoard) {
+      if (boundary.isOut(p.x, p.y)) {
         s.out = true;
         s.body.linearVelocity = Vector2.zero();
         s.body.isEnabled = false;

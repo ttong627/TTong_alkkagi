@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:alkkagi_physics/alkkagi_physics.dart';
 import 'package:flutter/foundation.dart';
 
+import 'arena.dart';
 import 'match.dart';
 
 /// AI 가 고른 한 수.
@@ -25,10 +26,11 @@ typedef StoneData = ({
 });
 
 class _Request {
-  _Request(this.stones, this.team, this.difficulty, this.seed);
+  _Request(this.stones, this.team, this.difficulty, this.arena, this.seed);
   final List<StoneData> stones;
   final int team;
   final int difficulty;
+  final int arena;
   final int seed;
 }
 
@@ -51,6 +53,7 @@ Future<AiShot> chooseAiShot(Match match, {int? seed}) {
       stones,
       match.turn,
       match.config.difficulty.index,
+      match.config.arena.index,
       seed ?? DateTime.now().microsecondsSinceEpoch,
     ),
   );
@@ -60,6 +63,7 @@ Future<AiShot> chooseAiShot(Match match, {int? seed}) {
 Future<AiShot> _choose(_Request r) async {
   await initializePhysics();
   final diff = Difficulty.values[r.difficulty];
+  final arena = Arena.values[r.arena];
   final rand = math.Random(r.seed);
   final speeds = switch (diff) {
     Difficulty.easy => [70.0],
@@ -78,7 +82,15 @@ Future<AiShot> _choose(_Request r) async {
       final angle = math.atan2(tg.y - me.y, tg.x - me.x);
       for (final sp in speeds) {
         for (final hit in hits) {
-          final score = scoreShot(r.stones, i, angle, sp, hit, r.team);
+          final score = scoreShot(
+            r.stones,
+            i,
+            angle,
+            sp,
+            hit,
+            r.team,
+            arena: arena,
+          );
           if (score > bestScore) {
             bestScore = score;
             best = AiShot(i, angle, sp, hit);
@@ -103,16 +115,17 @@ Future<AiShot> _choose(_Request r) async {
 }
 
 /// 한 수를 미리 계산해 점수를 매긴다. 상대 돌 장외 +10, 내 돌 장외 −12,
-/// 쏜 돌이 판 가장자리에서 멀수록 조금 더 좋다.
+/// 쏜 돌이 판 가장자리에서 멀수록 조금 더 좋다. 대전장의 바닥·판 모양으로 계산한다.
 double scoreShot(
   List<StoneData> stones,
   int shooter,
   double angle,
   double speed,
   double hit,
-  int team,
-) {
-  final t = Table();
+  int team, {
+  Arena arena = Arena.turtleMarket,
+}) {
+  final t = Table(floorFactor: arena.floorFactor, boundary: arena.boundary);
   final placed = <Stone?>[];
   for (final s in stones) {
     placed.add(
@@ -136,10 +149,7 @@ double scoreShot(
   }
   final me = placed[shooter]!;
   if (!me.out) {
-    final edge =
-        PhysicsConstants.halfBoard -
-        math.max(me.position.x.abs(), me.position.y.abs());
-    score += edge * 0.1;
+    score += arena.boundary.edgeDistance(me.position.x, me.position.y) * 0.1;
   }
   t.dispose();
   return score;

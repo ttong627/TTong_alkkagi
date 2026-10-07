@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:alkkagi_physics/alkkagi_physics.dart';
 import 'package:flutter/foundation.dart';
 
+import 'arena.dart';
+
 /// 판 모드.
 enum MatchMode {
   /// 나 혼자 AI 와 대전.
@@ -45,16 +47,23 @@ class MatchConfig {
     this.difficulty = Difficulty.normal,
     this.myMaterial = StoneMaterial.cheongok,
     this.myShape = StoneShape.round,
+    this.arena = Arena.dustyYard,
   });
 
   final MatchMode mode;
   final Difficulty difficulty;
   final StoneMaterial myMaterial;
   final StoneShape myShape;
+
+  /// 대전장(바닥 그림·미끄러움·판 모양).
+  final Arena arena;
 }
 
-/// 판 한 칸 간격(cm). 19줄.
-const double gridGap = PhysicsConstants.board / 19;
+/// 처음 줄 세울 때 돌 사이 간격(cm). 둥근 판에서도 모서리 돌이 안쪽에 오게 잡았다.
+const double startGap = 3.4;
+
+/// 처음 줄의 판 중심에서 떨어진 거리(cm).
+const double startRow = 12;
 
 /// 한 편 돌 수.
 const int stonesPerTeam = 8;
@@ -64,20 +73,24 @@ const double baseMaxSpeed = 120;
 
 /// 알까기 한 판. 차례·승패를 관리하고, 물리는 [Table] 이 맡는다.
 class Match extends ChangeNotifier {
-  Match(this.config) : table = Table() {
+  Match(this.config)
+    : table = Table(
+        floorFactor: config.arena.floorFactor,
+        boundary: config.arena.boundary,
+      ) {
     for (var i = 0; i < stonesPerTeam; i++) {
-      final x = (i * 2 - 7) * gridGap;
+      final x = (i - (stonesPerTeam - 1) / 2) * startGap;
       table.addStone(
         x,
-        6 * gridGap,
+        startRow,
         material: config.myMaterial,
         shape: config.myShape,
         team: 0,
       );
     }
     for (var i = 0; i < stonesPerTeam; i++) {
-      final x = (i * 2 - 7) * gridGap;
-      table.addStone(x, -6 * gridGap, team: 1);
+      final x = (i - (stonesPerTeam - 1) / 2) * startGap;
+      table.addStone(x, -startRow, team: 1);
     }
   }
 
@@ -148,10 +161,6 @@ class Match extends ChangeNotifier {
       _turn = 1 - _turn;
     }
   }
-
-  /// 손가락으로 끈 길이(cm)를 쏘는 속도로 바꾼다. [maxDrag] 를 끌면 최대.
-  static double dragToSpeed(double dragCm, {double maxDrag = 10}) =>
-      (dragCm / maxDrag).clamp(0.0, 1.0) * baseMaxSpeed;
 
   /// 돌 중심과 손가락 사이 거리(cm).
   static double distance(Vector2 a, double x, double y) =>

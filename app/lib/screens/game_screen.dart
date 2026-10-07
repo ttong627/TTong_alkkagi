@@ -1,13 +1,17 @@
 import 'dart:async';
 
+import 'package:alkkagi_physics/alkkagi_physics.dart' as phys;
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
 import '../game/ai.dart';
 import '../game/board_game.dart';
+import '../game/flick.dart';
 import '../game/match.dart';
+import 'flick_view.dart';
 
-/// 한 판 화면: 위에 차례·남은 돌, 가운데 판, 아래 타격점(상·중·하).
+/// 한 판 화면: 위에 차례·남은 돌, 가운데 대전장.
+/// 내 돌을 누르면 그 돌을 가까이 보는 화면으로 바뀌고, 거기서 손끝으로 튕긴다.
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key, required this.config});
   final MatchConfig config;
@@ -19,7 +23,7 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   late Match _match;
   late BoardGame _game;
-  double _hit = 0;
+  phys.Stone? _selected;
   bool _aiThinking = false;
   bool _resultShown = false;
 
@@ -35,9 +39,11 @@ class _GameScreenState extends State<GameScreen> {
     _match = Match(widget.config)..addListener(_onMatch);
     _game = BoardGame(
       _match,
-      hit: () => _hit,
       canTouch: () => !_aiTurn && !_aiThinking,
+      onSelect: (s) => setState(() => _selected = s),
+      selected: () => _selected,
     );
+    _selected = null;
     _resultShown = false;
   }
 
@@ -61,6 +67,21 @@ class _GameScreenState extends State<GameScreen> {
     if (_aiTurn && !_match.isMoving && !_aiThinking && !_match.isOver) {
       unawaited(_playAi());
     }
+  }
+
+  void _shoot(FlickShot shot) {
+    final s = _selected;
+    setState(() => _selected = null);
+    if (s == null) return;
+    _match.shoot(s, shot.angle, shot.speed, shot.hit);
+  }
+
+  /// 고른 돌이 판 어디 있는지에 맞춰 가까이 보기 화면이 그 자리에서 커져 나온다.
+  Alignment get _zoomFrom {
+    final s = _selected;
+    if (s == null) return Alignment.center;
+    const h = phys.PhysicsConstants.halfBoard;
+    return Alignment(s.position.x / h * 0.85, s.position.y / h * 0.6);
   }
 
   Future<void> _playAi() async {
@@ -134,13 +155,13 @@ class _GameScreenState extends State<GameScreen> {
     if (_match.isMoving) return '돌이 움직이는 중…';
     switch (widget.config.mode) {
       case MatchMode.practice:
-        return '연습: 내 돌을 끌어서 쏘세요';
+        return '어느 돌로 공격할까요?';
       case MatchMode.vsAi:
         return _match.turn == 0
-            ? '내 차례'
+            ? '어느 돌로 공격할까요?'
             : (_aiThinking ? '상대가 수를 읽는 중…' : '상대 차례');
       case MatchMode.twoPlayer:
-        return _match.turn == 0 ? '흰 돌 차례' : '검은 돌 차례';
+        return _match.turn == 0 ? '흰 돌 · 어느 돌로 공격할까요?' : '검은 돌 · 어느 돌로 공격할까요?';
     }
   }
 
@@ -162,55 +183,76 @@ class _GameScreenState extends State<GameScreen> {
           ),
         ],
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  _Count(
-                    label: widget.config.mode == MatchMode.vsAi ? '상대' : '검',
-                    n: _match.alive(1),
-                    dark: true,
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
                   ),
-                  Expanded(
-                    child: Text(
-                      _status,
-                      textAlign: TextAlign.center,
-                      style: t.titleMedium,
-                    ),
-                  ),
-                  _Count(
-                    label: widget.config.mode == MatchMode.vsAi ? '나' : '흰',
-                    n: _match.alive(0),
-                    dark: false,
-                  ),
-                ],
-              ),
-            ),
-            Expanded(child: GameWidget(game: _game)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: Column(
-                children: [
-                  Text('타격점', style: t.titleSmall),
-                  const SizedBox(height: 6),
-                  SegmentedButton<double>(
-                    showSelectedIcon: false,
-                    segments: const [
-                      ButtonSegment(value: 1, label: Text('상 · 밀어치기')),
-                      ButtonSegment(value: 0, label: Text('중 · 강타')),
-                      ButtonSegment(value: -1, label: Text('하 · 끌어치기')),
+                  child: Row(
+                    children: [
+                      _Count(
+                        label: widget.config.mode == MatchMode.vsAi
+                            ? '상대'
+                            : '검',
+                        n: _match.alive(1),
+                        dark: true,
+                      ),
+                      Expanded(
+                        child: Text(
+                          _status,
+                          textAlign: TextAlign.center,
+                          style: t.titleMedium,
+                        ),
+                      ),
+                      _Count(
+                        label: widget.config.mode == MatchMode.vsAi ? '나' : '흰',
+                        n: _match.alive(0),
+                        dark: false,
+                      ),
                     ],
-                    selected: {_hit},
-                    onSelectionChanged: (s) => setState(() => _hit = s.first),
                   ),
-                ],
-              ),
+                ),
+                Expanded(child: GameWidget(game: _game)),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  child: Text(
+                    '${widget.config.arena.chapter} · ${widget.config.arena.label}',
+                    style: t.bodySmall,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          Positioned.fill(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 380),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, anim) => FadeTransition(
+                opacity: anim,
+                child: ScaleTransition(
+                  scale: Tween(begin: 0.25, end: 1.0).animate(anim),
+                  alignment: _zoomFrom,
+                  child: child,
+                ),
+              ),
+              child: _selected == null
+                  ? const SizedBox.shrink()
+                  : FlickView(
+                      key: ValueKey(_selected),
+                      match: _match,
+                      stone: _selected!,
+                      onShot: _shoot,
+                      onCancel: () => setState(() => _selected = null),
+                    ),
+            ),
+          ),
+        ],
       ),
     );
   }
