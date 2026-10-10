@@ -75,7 +75,7 @@ void main() {
       expect(shot.hit.abs(), lessThan(0.1), reason: '가운데를 쳤으니 강타');
     });
 
-    test('세기: 빠르기에 비례, 최소 12cm/s ~ 최대 120cm/s', () {
+    test('세기: 빠르기에 비례, 최소 8cm/s ~ 최대 120cm/s', () {
       expect(flickPower(FlickTuning.minPxPerSec), 0);
       expect(flickPower(FlickTuning.fullPxPerSec), 1);
       expect(flickPower(9999), 1);
@@ -91,7 +91,7 @@ void main() {
     });
 
     test('느리게 밀면 쏘지 않는다', () {
-      // 1초에 100px = 100px/s < 300px/s.
+      // 1초에 100px = 100px/s < 150px/s.
       final s = swipe(face.center, const Offset(0, -100), 1);
       expect(readFlick(s, face), FlickMiss.tooWeak);
     });
@@ -104,6 +104,39 @@ void main() {
       );
       expect(readFlick(s, face, releaseAt: 0.11), isA<FlickShot>());
       expect(readFlick(s, face, releaseAt: 0.3), FlickMiss.tooWeak);
+    });
+
+    test('방향은 돌을 지나간 선으로: 손 뗄 때 옆으로 흔들려도 덜 틀어진다', () {
+      // 위로 곧게 260px 튕기다 마지막 점만 오른쪽으로 15px 흔들림(손끝이 떨어지며).
+      final s = swipe(
+        Offset(200, face.bottom + 20),
+        const Offset(0, -260),
+        0.12,
+      );
+      final last = s.removeLast();
+      s.add(FlickSample(last.pos.translate(15, 0), last.t));
+      final c = firstContact(s, face);
+      final v = flickVelocity(s)!;
+      final byRelease = math.atan2(v.$1.dy, v.$1.dx);
+      final byStroke = flickDirection(s, c)!;
+      double err(double a) => (a + math.pi / 2).abs() * 180 / math.pi;
+      expect(err(byStroke), lessThan(err(byRelease)));
+      expect(err(byStroke), lessThan(4.5));
+      expect((readFlick(s, face) as FlickShot).angle, byStroke);
+    });
+
+    test('돌 위에서 바로 짧게 튕기면(선 24px 미만) 손 뗄 때 움직임으로 방향을 잰다', () {
+      final s = swipe(face.center, const Offset(10, -10), 0.01, steps: 2);
+      final c = firstContact(s, face);
+      expect((s.last.pos - c!).distance, lessThan(FlickTuning.minStroke));
+      expect(flickDirection(s, c), closeTo(-math.pi / 4, 1e-6));
+    });
+
+    test('민감도(2026-10-10): 살짝(200px/s)도 나가고, 1,200px/s 면 절반 넘는 내공', () {
+      expect(flickPower(200), greaterThan(0));
+      expect(flickPower(1200), closeTo((1200 - 150) / (2000 - 150), 1e-9));
+      expect(flickPower(1200), greaterThan(0.5));
+      expect(flickPower(2000), 1);
     });
 
     test('점 사이가 멀어도(빠른 손) 지나간 돌을 놓치지 않는다', () {

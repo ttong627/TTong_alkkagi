@@ -111,14 +111,17 @@ class FlickShot {
 
 /// 튕기기 → 세기 환산 기준(논리 화소/초). 실기기 손맛을 보며 조정한다.
 abstract final class FlickTuning {
-  /// 이보다 느리면 쏘지 않는다.
-  static const double minPxPerSec = 300;
+  /// 이보다 느리면 쏘지 않는다. 낮을수록 살짝 튕겨도 나간다(2026-10-10: 300 → 150).
+  static const double minPxPerSec = 150;
 
-  /// 이 빠르기면 내공 100%.
-  static const double fullPxPerSec = 3200;
+  /// 이 빠르기면 내공 100%. 낮을수록 같은 손놀림에 세게 나간다(2026-10-10: 3,200 → 2,000).
+  static const double fullPxPerSec = 2000;
 
-  /// 내공 0% 일 때도 나가는 최소 속도(cm/s).
-  static const double minShotSpeed = 12;
+  /// 내공 0% 일 때도 나가는 최소 속도(cm/s). 살짝 미는 수를 위해 낮춘다(12 → 8).
+  static const double minShotSpeed = 8;
+
+  /// 방향은 돌에 닿은 점 → 손 뗀 점의 선으로 잰다. 이 길이(화소)보다 짧으면 손 뗄 때 움직임으로 잰다.
+  static const double minStroke = 24;
 
   /// 손 뗄 때 빠르기를 잴 구간(초).
   static const double releaseWindow = 0.08;
@@ -154,6 +157,22 @@ double powerToSpeed(double power) =>
     FlickTuning.minShotSpeed +
     (baseMaxSpeed - FlickTuning.minShotSpeed) * power;
 
+/// 방향(라디안). 돌에 닿은 점 → 손 뗀 점의 선을 쓴다.
+///
+/// 손 뗄 때 마지막 몇 점만 보면 손끝이 떨어지며 옆으로 흔들린 것까지 방향에 섞인다.
+/// 돌을 지나간 선 전체로 재면 그 흔들림이 길이로 나뉘어 작아진다. 선이 너무 짧으면
+/// (돌 위에서 바로 튕긴 경우) 손 뗄 때 움직임 방향을 쓴다.
+double? flickDirection(List<FlickSample> s, Offset? contact) {
+  if (s.isEmpty) return null;
+  if (contact != null) {
+    final d = s.last.pos - contact;
+    if (d.distance >= FlickTuning.minStroke) return math.atan2(d.dy, d.dx);
+  }
+  final v = flickVelocity(s);
+  if (v == null || v.$2 <= 0) return null;
+  return math.atan2(v.$1.dy, v.$1.dx);
+}
+
 /// 손가락 길이 [s] 에서 돌에 처음 닿은 점. 점 사이가 멀면 선을 잘게 나눠 본다.
 Offset? firstContact(List<FlickSample> s, StoneFace face) {
   for (var i = 0; i < s.length; i++) {
@@ -187,7 +206,7 @@ Object readFlick(List<FlickSample> s, StoneFace face, {double? releaseAt}) {
   if (vel == null || vel.$2 < FlickTuning.minPxPerSec) return FlickMiss.tooWeak;
   final power = flickPower(vel.$2);
   return FlickShot(
-    angle: math.atan2(vel.$1.dy, vel.$1.dx),
+    angle: flickDirection(s, contact)!,
     speed: powerToSpeed(power),
     hit: face.hitAt(contact),
     power: power,
