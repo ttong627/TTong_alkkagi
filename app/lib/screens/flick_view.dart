@@ -62,6 +62,7 @@ class _FlickViewState extends State<FlickView>
   StoneFace? _face;
   Offset? _contact;
   double _power = 0;
+  int _powerStep = 0;
   double? _aimAngle;
   String? _hint;
 
@@ -139,6 +140,7 @@ class _FlickViewState extends State<FlickView>
       ..add(FlickSample(e.localPosition, _at(e)));
     _contact = null;
     _hint = null;
+    _powerStep = 0;
     _checkContact();
     setState(() {});
   }
@@ -150,7 +152,11 @@ class _FlickViewState extends State<FlickView>
     final v = flickVelocity(_samples);
     if (v != null && v.$2 > 1) {
       _power = flickPower(v.$2);
-      _aimAngle = math.atan2(v.$1.dy, v.$1.dx);
+      _aimAngle = flickDirection(_samples, _contact);
+      // 내공이 25% 칸을 넘을 때마다 손끝에 가볍게 알린다.
+      final step = (_power * 4).floor();
+      if (step > _powerStep) HapticFeedback.selectionClick();
+      _powerStep = step;
     }
   }
 
