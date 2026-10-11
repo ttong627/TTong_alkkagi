@@ -32,11 +32,14 @@ evidence() {
   echo "----- 호스트 메모리 -----"; free -m
   echo "----- 호스트 커널 기록(메모리 부족·강제 종료) -----"; sudo dmesg 2>/dev/null | grep -iE "oom|killed process|qemu|segfault|trap" | tail -20
   echo "----- 에뮬레이터 충돌 기록 -----"; ls -la /tmp/android-runner/ 2>&1 | tail; find /tmp/android-runner -type f 2>/dev/null | head
+  echo "----- 그리기 엔진 -----"; grep -iE "impeller|skia|rendering backend" "$LOGF" | tail -5
   echo "----- 앱 기록(flutter·충돌) -----"; grep -E "flutter|AndroidRuntime|FATAL|TTong.alkkagi|DEBUG  " "$LOGF" | tail -60
 }
 trap 'st=$?; [ "$st" != 0 ] && evidence; exit $st' EXIT
 echo "[단계] 앱 켜기"
-a shell am start -n "$PKG/.MainActivity"
+# 앱 화면(가까이 보기)이 뜬 지 2초쯤 뒤 에뮬레이터가 꺼졌다(2026-10-11 안드로이드 34·30 기록). 그리기 엔진
+# Impeller 를 이 시험에서만 끄고(엔진이 읽는 실행 인자) 옛 Skia 로 그린다. 기록의 「Using the Impeller」 줄로 확인.
+a shell am start -n "$PKG/.MainActivity" --ez enable-impeller false
 a shell dumpsys meminfo | head -5
 
 disc() { a logcat -d -s flutter:I | grep -o 'disc cx=[0-9]* cy=[0-9]* r=[0-9]*' | tail -1; }
