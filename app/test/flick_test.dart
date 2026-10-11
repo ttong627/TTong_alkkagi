@@ -239,6 +239,16 @@ void main() {
 
     test('모양이 틀린 묶음은 버린다', () {
       expect(TouchFeed.parse(null), isNull);
+      final hover = TouchFeed.parse(
+        Float64List.fromList([7, 1, 1000, 10, 20, 0, 0, 0]),
+      )!;
+      expect(hover.isHover, isTrue);
+      expect(hover.isDown, isFalse);
+      expect(
+        TouchFeed.parse(Float64List.fromList([10, 1, 1000, 10, 20, 0, 0, 0]))!
+            .isHoverEnd,
+        isTrue,
+      );
       expect(TouchFeed.parse(Float64List.fromList([2, 3, 1, 2])), isNull);
     });
   });

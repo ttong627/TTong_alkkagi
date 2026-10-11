@@ -103,16 +103,61 @@ class _FlickViewState extends State<FlickView>
   /// 짝이 안 맞을 때를 대비해 Flutter 포인터 점도 모아 둔다.
   final _lSamples = <FlickSample>[];
 
+  // 손가락 띄움(호버): 화면에 닿지 않고 돌 위를 스친 손(띄움을 알려 주는 폰만).
+  StreamSubscription<NativeTouch>? _hoverSub;
+  StrikeReader? _hoverReader;
+
   @override
   void initState() {
     super.initState();
     _ticker = createTicker(_tick)..start();
     _nativeSub = TouchFeed.instance.events.listen(_onNative);
+    _hoverSub = TouchFeed.instance.hovers.listen(_onHover);
+  }
+
+  /// 닿지 않은 손가락이 돌을 스쳤다 → 돌 위쪽(상단)을 친 것. 세기·방향은 닿았을 때와 같이 읽는다.
+  void _onHover(NativeTouch e) {
+    final disc = _disc;
+    final box = _padKey.currentContext?.findRenderObject();
+    if (disc == null || _down || _launch != null) return;
+    if (box is! RenderBox || !box.attached) return;
+    if (e.isHoverEnd) {
+      _hoverReader = null;
+      return;
+    }
+    for (final p in e.points) {
+      final s = FlickSample(box.globalToLocal(p.px / _dpr), p.t);
+      final r = _hoverReader;
+      if (r == null || e.action == 9) {
+        _hoverReader = StrikeReader(disc, profile: TouchProfile.off)..down(s);
+        continue;
+      }
+      final shot = r.move(s);
+      if (shot == null) continue;
+      _hoverReader = null;
+      _useNative = true;
+      e2eLog('hover-shot');
+      _fire(
+        FlickShot(
+          angle: shot.angle,
+          speed: shot.speed,
+          hit: 1,
+          power: shot.power,
+          contact: shot.contact,
+          offset: shot.offset,
+          curl: shot.curl,
+          critical: shot.critical,
+        ),
+        hover: true,
+      );
+      return;
+    }
   }
 
   @override
   void dispose() {
     _nativeSub?.cancel();
+    _hoverSub?.cancel();
     _ticker.dispose();
     Settings.saveAreas();
     _frame.dispose();
@@ -332,7 +377,7 @@ class _FlickViewState extends State<FlickView>
     });
   }
 
-  void _fire(FlickShot shot) {
+  void _fire(FlickShot shot, {bool hover = false}) {
     e2eLog(
       'shot native=$_useNative points=${_reader?.samples.length} '
       'angle=${(shot.angle * 180 / math.pi).toStringAsFixed(1)} '
@@ -348,7 +393,7 @@ class _FlickViewState extends State<FlickView>
       _hitNote = [
         if (shot.critical && _mode == StrikeMode.plain) '회심! 내공 +1',
         if (_mode != StrikeMode.plain) _modeName(_mode),
-        ?_describeHit(shot.hit),
+        if (hover) '안 닿고 스침 — 돌 위쪽을 맞아 튀어 오름' else ?_describeHit(shot.hit),
       ].join(' · ');
       _down = false;
       _shot = shot;

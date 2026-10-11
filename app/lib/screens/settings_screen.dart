@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../game/flick.dart';
+import '../input/touch_feed.dart';
 import '../progress/settings.dart';
 
 /// 설정 화면(설계서 §16.6).
@@ -13,6 +16,22 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final s = Settings.instance;
+  Timer? _poll;
+
+  @override
+  void initState() {
+    super.initState();
+    // 센서 점검 숫자가 살아 움직이게.
+    _poll = Timer.periodic(const Duration(milliseconds: 300), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
+  }
 
   void _set(void Function() f) {
     setState(f);
@@ -97,6 +116,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (mounted) setState(() {});
               },
               child: const Text('지우기'),
+            ),
+          ),
+          const Divider(),
+          Text('센서 점검', style: t.titleMedium),
+          ListTile(
+            key: const Key('sensor-check'),
+            title: Text(
+              '손가락 띄움(닿지 않은 손) 감지: '
+              '${TouchFeed.instance.hoverPoints > 0 ? '됨 ✓ (${TouchFeed.instance.hoverPoints}점 받음)' : '아직 0점'}',
+            ),
+            subtitle: const Text(
+              '손가락을 화면에 닿지 않게 1cm 위에서 움직여 보세요. 숫자가 오르면 이 폰은 안 닿고 '
+              '돌 위를 스친 손을 「돌 위쪽(상단) 타격」으로 읽습니다. 0 에서 안 오르면 이 폰의 화면은 '
+              '닿지 않은 손가락을 알려 주지 못합니다 — 그때는 아주 살짝 스치면 상단입니다.',
+            ),
+          ),
+          ListTile(
+            title: Text(
+              '손끝 점 받기(안드로이드): ${TouchFeed.instance.active ? '됨 ✓' : '아직 — 화면을 한 번 만져 보세요'} · '
+              '평소 넓이 ${TouchProfile.shared.count}번 모음',
             ),
           ),
           const Divider(),
