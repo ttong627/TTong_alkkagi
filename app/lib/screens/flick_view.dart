@@ -78,6 +78,11 @@ class _FlickViewState extends State<FlickView>
 
   StrikeReader? _reader;
   StoneDisc? _disc;
+
+  /// 당겨 쏘기(설정 「조작 방식」): 잡은 돌과 지금 손끝.
+  PullReader? _pull;
+  Offset? _pullAt;
+  bool get _pullMode => Settings.instance.pull;
   bool _down = false;
   double _power = 0;
   double? _aimAngle;
@@ -126,6 +131,7 @@ class _FlickViewState extends State<FlickView>
 
   /// 닿지 않은 손가락이 돌을 스쳤다 → 돌 위쪽(상단)을 친 것. 세기·방향은 닿았을 때와 같이 읽는다.
   void _onHover(NativeTouch e) {
+    if (_pullMode) return;
     final disc = _disc;
     final box = _padKey.currentContext?.findRenderObject();
     if (disc == null || _down || _launch != null) return;
@@ -230,6 +236,24 @@ class _FlickViewState extends State<FlickView>
   void _onDown(PointerDownEvent e) {
     final disc = _disc;
     if (_launch != null || disc == null) return;
+    if (_pullMode) {
+      final pull = _pull = PullReader(disc);
+      if (!pull.down(e.localPosition)) {
+        setState(() => _hint = '돌을 눌러 잡고 뒤로 당기세요');
+        _pull = null;
+        return;
+      }
+      Buzz.tick();
+      setState(() {
+        _down = true;
+        _hint = null;
+        _hitNote = null;
+        _power = 0;
+        _aimAngle = null;
+        _pullAt = e.localPosition;
+      });
+      return;
+    }
     _reader = null;
     _lSamples
       ..clear()
@@ -255,6 +279,21 @@ class _FlickViewState extends State<FlickView>
 
   void _onMove(PointerMoveEvent e) {
     if (_launch != null || !_down) return;
+    if (_pullMode) {
+      final pull = _pull;
+      if (pull == null) return;
+      pull.move(e.localPosition);
+      _pullAt = e.localPosition;
+      final a = pull.aim;
+      final crossed =
+          (a?.$2 ?? 0) >= PullReader.sweetLo && _power < PullReader.sweetLo;
+      _aimAngle = a?.$1;
+      _power = a?.$2 ?? 0;
+      // 회심 구간에 들어서면 톡.
+      if (crossed) Buzz.tick();
+      _updatePath(_at(e));
+      return;
+    }
     final s = _sample(e);
     _lSamples.add(s);
     if (_useNative) return;
@@ -264,6 +303,23 @@ class _FlickViewState extends State<FlickView>
 
   void _onUp(PointerUpEvent e) {
     if (_launch != null || !_down) return;
+    if (_pullMode) {
+      final shot = _pull?.release();
+      _pull = null;
+      _pullAt = null;
+      _path = const [];
+      if (shot != null) {
+        _fire(shot);
+        return;
+      }
+      setState(() {
+        _down = false;
+        _hint = '더 당겨야 나가요(놓으면 취소)';
+        _power = 0;
+        _aimAngle = null;
+      });
+      return;
+    }
     if (e.localPosition != _lSamples.last.pos) _lSamples.add(_sample(e));
     if (_useNative && _delta != null) {
       // 안드로이드 점의 「뗌」에서 끝낸다. 그 점이 끝내 안 오면 0.3초 뒤 여기서 끝낸다.
@@ -288,6 +344,7 @@ class _FlickViewState extends State<FlickView>
 
   /// 안드로이드 점 묶음이 왔다.
   void _onNative(NativeTouch e) {
+    if (_pullMode) return;
     if (e.isDown) {
       _nPoints = [...e.points];
       _nEnded = false;
@@ -478,7 +535,7 @@ class _FlickViewState extends State<FlickView>
     if (_down && _aimAngle != null) {
       return '내공 ${(_power * 100).round()}%';
     }
-    return _hint ?? '검지로 돌을 튕기세요';
+    return _hint ?? (_pullMode ? '돌을 잡고 뒤로 당겼다 놓기' : '검지로 돌을 튕기세요');
   }
 
   @override
@@ -505,7 +562,30 @@ class _FlickViewState extends State<FlickView>
                     label: const Text('다른 돌 고르기'),
                   ),
                   const Spacer(),
-                  Text(arena.label, style: t.labelLarge),
+                  // 조작 방식 바로 바꾸기(설정과 같은 값).
+                  Flexible(
+                    child: TextButton.icon(
+                      key: const Key('flick-control'),
+                      onPressed: _launch == null && !_down
+                          ? () {
+                              Sound.play('ui_tap', 0.7);
+                              setState(() {
+                                Settings.instance.pull = !_pullMode;
+                                _hint = null;
+                              });
+                              Settings.instance.save();
+                            }
+                          : null,
+                      icon: Icon(
+                        _pullMode ? Icons.open_with : Icons.touch_app,
+                        size: 20,
+                      ),
+                      label: Text(
+                        _pullMode ? '당겨 쏘기' : '튕기기',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -616,7 +696,9 @@ class _FlickViewState extends State<FlickView>
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    '가운데 → 곧게 · 가장자리 → 비스듬히',
+                                    _pullMode
+                                        ? '당긴 반대쪽으로 · 금빛 칸에서 놓으면 회심'
+                                        : '가운데 → 곧게 · 가장자리 → 비스듬히',
                                     style: t.bodySmall?.copyWith(
                                       color: Colors.white70,
                                     ),
@@ -631,24 +713,45 @@ class _FlickViewState extends State<FlickView>
                             Positioned.fill(
                               child: Ghost(
                                 builder: (t) => GhostFlickPainter(
-                                  from:
-                                      c -
-                                      Offset(
-                                            math.cos(widget.demoAngle),
-                                            math.sin(widget.demoAngle),
-                                          ) *
-                                          r *
-                                          2.4,
-                                  to:
-                                      c +
-                                      Offset(
-                                            math.cos(widget.demoAngle),
-                                            math.sin(widget.demoAngle),
-                                          ) *
-                                          r *
-                                          0.7,
+                                  // 당겨 쏘기: 돌을 잡고 뒤로 끈다. 튕기기: 돌 아래에서 위로 튕긴다.
+                                  from: _pullMode
+                                      ? c
+                                      : c -
+                                            Offset(
+                                                  math.cos(widget.demoAngle),
+                                                  math.sin(widget.demoAngle),
+                                                ) *
+                                                r *
+                                                2.4,
+                                  to: _pullMode
+                                      ? c -
+                                            Offset(
+                                                  math.cos(widget.demoAngle),
+                                                  math.sin(widget.demoAngle),
+                                                ) *
+                                                r *
+                                                2.6
+                                      : c +
+                                            Offset(
+                                                  math.cos(widget.demoAngle),
+                                                  math.sin(widget.demoAngle),
+                                                ) *
+                                                r *
+                                                0.7,
                                   t: t,
                                   size: r * 1.15,
+                                ),
+                              ),
+                            ),
+                          // 당겨 쏘기: 돌과 손끝을 잇는 줄 · 세기 눈금(금빛 = 회심 구간).
+                          if (_pullMode && _down && _pullAt != null)
+                            Positioned.fill(
+                              child: CustomPaint(
+                                painter: _PullPainter(
+                                  disc: _disc!,
+                                  finger: _pullAt!,
+                                  power: _power,
+                                  armed: _aimAngle != null,
                                 ),
                               ),
                             ),
@@ -673,6 +776,74 @@ class _FlickViewState extends State<FlickView>
       ),
     );
   }
+}
+
+/// 당겨 쏘기: 돌 뒤쪽에서 손끝까지 고무줄 두 가닥 · 돌 옆 세기 눈금(금빛 칸 = 회심).
+class _PullPainter extends CustomPainter {
+  _PullPainter({
+    required this.disc,
+    required this.finger,
+    required this.power,
+    required this.armed,
+  });
+  final StoneDisc disc;
+  final Offset finger;
+  final double power;
+
+  /// 쏠 만큼 당겼나(아니면 놓아도 취소).
+  final bool armed;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = disc.center, r = disc.radius;
+    final back = finger - c;
+    if (back.distance < 1) return;
+    final n = back / back.distance;
+    // 고무줄은 돌 뒤쪽 테두리 두 점에서 손끝으로(돌 앞면을 가로지르지 않게).
+    final perp = Offset(-n.dy, n.dx);
+    final band = Paint()
+      ..color = (armed ? const Color(0xFFFFD25A) : Colors.white).withValues(
+        alpha: 0.85,
+      )
+      ..strokeWidth = r * 0.1
+      ..strokeCap = StrokeCap.round;
+    for (final k in [-1.0, 1.0]) {
+      canvas.drawLine(c + n * r * 0.55 + perp * r * 0.82 * k, finger, band);
+    }
+    canvas.drawCircle(
+      finger,
+      r * 0.28,
+      Paint()..color = const Color(0xCCFFF2C0),
+    );
+    // 세기 눈금: 화면 오른쪽 끝 세로 막대(큰 돌이어도 화면 안).
+    final bh = math.min(r * 2.4, size.height * 0.5);
+    final bar = Rect.fromLTWH(size.width - 30, c.dy - bh / 2, 18, bh);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(bar, const Radius.circular(9)),
+      Paint()..color = const Color(0x99000000),
+    );
+    double y(double p) => bar.bottom - bar.height * p;
+    canvas.drawRect(
+      Rect.fromLTRB(
+        bar.left,
+        y(PullReader.sweetHi),
+        bar.right,
+        y(PullReader.sweetLo),
+      ),
+      Paint()..color = const Color(0x99FFD25A),
+    );
+    canvas.drawRect(
+      Rect.fromLTRB(bar.left, y(power), bar.right, bar.bottom),
+      Paint()
+        ..color = power >= PullReader.sweetLo && power <= PullReader.sweetHi
+            ? const Color(0xFFFFD25A)
+            : const Color(0xFF5FE0B0),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _PullPainter old) =>
+      old.finger != finger || old.power != power || old.armed != armed;
 }
 
 /// 손끝 자국.

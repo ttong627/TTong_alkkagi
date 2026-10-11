@@ -498,3 +498,70 @@ class StrikeReader {
     return (math.atan2(u.dy, u.dx), strikePower(u.distance, tune));
   }
 }
+
+/// 당겨 쏘기(설정 「조작 방식」 · 2026-10-11 형 지시): 돌을 누르고 뒤로 당겼다 놓으면 당긴 반대쪽으로 나간다.
+/// 튕기기가 어려운 사람(손이 불편한 분·처음 하는 분)을 위한 두 번째 방식. 판 물리는 같다.
+///
+/// - 세기 = 당긴 길이: 돌 반지름 [minPull] 배까지는 겨누기만(놓으면 취소), [fullPull] 배에서 가득.
+/// - 회심: 세기를 [sweetLo]~[sweetHi] 에 맞추고 놓으면(눈금의 금빛 구간). 튕기기의 「한가운데 · 알맞은 세기」와 비슷한 어려움.
+/// - 위아래 타격점은 늘 가운데(손끝 넓이를 쓰지 않는다).
+class PullReader {
+  PullReader(this.disc);
+  final StoneDisc disc;
+
+  /// 누를 수 있는 곳: 돌 반지름의 이 배 안.
+  static const double grab = 1.6;
+  static const double minPull = 0.6;
+  static const double fullPull = 3.6;
+  static const double sweetLo = 0.62;
+  static const double sweetHi = 0.74;
+
+  Offset? _now;
+  bool _held = false;
+
+  /// 돌을 잡았나.
+  bool get held => _held;
+
+  /// 손을 댔다. 돌 가까이를 눌렀으면 잡고 참.
+  bool down(Offset p) {
+    _held = (p - disc.center).distance <= disc.radius * grab;
+    _now = p;
+    return _held;
+  }
+
+  void move(Offset p) {
+    if (_held) _now = p;
+  }
+
+  /// 지금 겨눈 (방향, 세기 0~1). 덜 당겼으면 null.
+  (double, double)? get aim {
+    final now = _now;
+    if (!_held || now == null) return null;
+    final pull = disc.center - now;
+    final d = pull.distance / disc.radius;
+    if (d < minPull) return null;
+    final power = ((d - minPull) / (fullPull - minPull)).clamp(0.0, 1.0);
+    return (math.atan2(pull.dy, pull.dx), power);
+  }
+
+  /// 손을 뗐다: 겨눈 대로 쏜다(덜 당겼으면 null — 취소).
+  FlickShot? release() {
+    final a = aim;
+    _held = false;
+    if (a == null) return null;
+    final (angle, power) = a;
+    final critical = power >= sweetLo && power <= sweetHi;
+    final dir = Offset(math.cos(angle), math.sin(angle));
+    return FlickShot(
+      angle: angle,
+      speed:
+          powerToSpeed(power, disc.tune) *
+          massFactor(disc.mass) *
+          (critical ? CriticalRule.speedBonus : 1),
+      hit: 0,
+      power: power,
+      contact: disc.center - dir * disc.radius,
+      critical: critical,
+    );
+  }
+}
