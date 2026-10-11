@@ -5,6 +5,9 @@ import '../progress/profile.dart';
 import '../progress/store.dart';
 import '../story/chapters.dart';
 import 'shop_screen.dart';
+import '../ui/art.dart';
+import '../ui/theme.dart';
+import '../ui/kit.dart';
 
 /// 도감(설계서 §8.7): 모은 재질·모양·캐릭터·만난 고수. 재질 4종·모양 3종을 다 모으면
 /// 각각 모든 능력치 +1.
@@ -23,7 +26,8 @@ class CodexScreen extends StatelessWidget {
         children: [icon, const SizedBox(height: 4), Text(have ? name : '???')],
       ),
     );
-    return Scaffold(
+    return GameScaffold(
+      background: 'logicMarble',
       appBar: AppBar(title: Text('도감 · 세트 보너스 +${p.codexBonus}')),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -73,7 +77,7 @@ class CodexScreen extends StatelessWidget {
               for (final h in Fighter.values)
                 entry(
                   p.heroes.contains(h),
-                  const Icon(Icons.person, size: 36),
+                  _face(h.name, p.heroes.contains(h)),
                   h.label,
                 ),
             ],
@@ -87,7 +91,7 @@ class CodexScreen extends StatelessWidget {
               for (final b in bosses)
                 entry(
                   p.codex.contains('고수:$b'),
-                  const Icon(Icons.sports_kabaddi, size: 36),
+                  _face(Art.bossId(b), p.codex.contains('고수:$b')),
                   b,
                 ),
             ],
@@ -116,4 +120,15 @@ class CodexScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 도감 얼굴: 아직 못 만난 사람은 검은 그림자.
+Widget _face(String? id, bool known) {
+  final f = Portrait(id: id, size: 58, ring: known ? Palette.gold : Colors.white24);
+  return known
+      ? f
+      : ColorFiltered(
+          colorFilter: const ColorFilter.mode(Color(0xFF0E0A12), BlendMode.srcATop),
+          child: f,
+        );
 }

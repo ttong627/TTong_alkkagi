@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../progress/encounters.dart';
 import '../progress/store.dart';
+import '../ui/kit.dart';
 
 /// 기인방(설계서 §6.2C): 10분 동안만. 물건마다 특수효과 1개(각 20%)가 붙어 **사기 전에 보인다**.
 /// 값은 노인이 지금 엽전의 30~50% 를 부르고, 한 번 깎을 수 있다(50% 성공, −20%).
@@ -66,7 +67,8 @@ class _LegendaryShopScreenState extends State<LegendaryShopScreen> {
     final now = DateTime.now().millisecondsSinceEpoch;
     final left = ((p.legendaryUntil - now) / 1000).ceil();
     final open = p.legendaryOpen(now);
-    return Scaffold(
+    return GameScaffold(
+      background: 'oilyTable',
       appBar: AppBar(
         title: Text(
           open ? '기인방 · ${left ~/ 60}분 ${left % 60}초 남음' : '기인방 · 닫힘',

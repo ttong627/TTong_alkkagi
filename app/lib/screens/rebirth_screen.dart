@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../progress/profile.dart';
 import '../progress/store.dart';
+import '../ui/kit.dart';
 
 /// 비승 — 환골탈태(설계서 §10)와 윤회천기(§10.3).
 class RebirthScreen extends StatefulWidget {
@@ -67,7 +68,8 @@ class _RebirthScreenState extends State<RebirthScreen> {
   Widget build(BuildContext context) {
     final p = _store.profile;
     final t = Theme.of(context).textTheme;
-    return Scaffold(
+    return GameScaffold(
+      background: 'murimIce',
       appBar: AppBar(title: Text('비승 · 환생 ${p.rebirths}회')),
       body: ListView(
         padding: const EdgeInsets.all(16),

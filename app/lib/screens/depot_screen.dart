@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../progress/store.dart';
+import '../ui/kit.dart';
 
 /// 무림맹 보급소(설계서 §6.2B): 주말, 또는 목인항 1,000타, 또는 6장 격파 때 열린다. 무림맹 징표로 산다.
 class DepotScreen extends StatefulWidget {
@@ -43,7 +44,8 @@ class _DepotScreenState extends State<DepotScreen> {
   Widget build(BuildContext context) {
     final p = _store.profile;
     final open = p.depotOpen(DateTime.now());
-    return Scaffold(
+    return GameScaffold(
+      background: 'turtleMarket',
       appBar: AppBar(title: Text('무림맹 보급소 · 징표 ${p.tokens}')),
       body: !open
           ? const Padding(

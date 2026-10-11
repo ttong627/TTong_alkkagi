@@ -52,8 +52,15 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
 
   Arena get arena => match.config.arena;
 
+  // 판 밖은 비워 두고(투명) 뒤의 대전장 배경 그림이 보이게 한다.
   @override
-  Color backgroundColor() => arena.outside;
+  Color backgroundColor() => const Color(0x00000000);
+
+  /// 판 좌표(cm) → 이 게임 화면 안 좌표(입문 손가락 자리).
+  Offset screenOf(double x, double y) => _toScreen(x, y);
+
+  /// 돌 반지름의 화면 길이.
+  double get stoneRadiusPx => phys.PhysicsConstants.stoneRadius * _scale;
 
   @override
   void onGameResize(Vector2 size) {

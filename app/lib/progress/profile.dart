@@ -3,6 +3,8 @@ import 'dart:math' as math;
 
 import 'package:alkkagi_physics/alkkagi_physics.dart';
 
+import 'daily.dart';
+
 /// 캐릭터 10종 (설계서 §2.2·§16.3).
 enum Fighter {
   seokdu('석두', '근력형 · 탄지 파워 +10%', starter: true),
@@ -203,6 +205,30 @@ class Profile {
   /// 은자로 산 머리·도복 디자인 번호(기본 것은 늘 있음).
   final hairs = <int>{0, 1, 2};
   final robes = <int>{0, 1, 2};
+
+  // --- 요즘 게임 구성(설계서 §16.9) ---
+  /// 입문(강제 수련)을 마쳤나. 마치기 전에는 로비로 못 간다.
+  bool tutorialDone = false;
+
+  /// 출석: 마지막으로 받은 날(yyyymmdd)과 받은 횟수.
+  String attendDay = '';
+  int attendCount = 0;
+
+  /// 일일 임무: 날짜, 오늘 센 수, 받은 임무 번호(99 = 셋 다 끝낸 덤).
+  String missionDay = '';
+  final missionCounts = <Deed, int>{};
+  final missionClaimed = <int>{};
+
+  /// 평생 센 일(업적).
+  final lifetime = <Deed, int>{};
+
+  /// 받은 업적.
+  final achieved = <String>{};
+
+  /// 판마다 얻은 별(가장 좋았던 것).
+  final stars = <String, int>{};
+
+  int get totalStars => stars.values.fold(0, (a, b) => a + b);
 
   /// 머리·도복 디자인 사기(은자 [lookPrice]).
   bool buyHair(int i) {
@@ -419,6 +445,15 @@ class Profile {
     'robe': robe,
     'hairs': hairs.toList(),
     'robes': robes.toList(),
+    'tutorial': tutorialDone,
+    'attendDay': attendDay,
+    'attendCount': attendCount,
+    'missionDay': missionDay,
+    'missionCounts': {for (final e in missionCounts.entries) e.key.name: e.value},
+    'missionClaimed': missionClaimed.toList(),
+    'lifetime': {for (final e in lifetime.entries) e.key.name: e.value},
+    'achieved': achieved.toList(),
+    'stars': stars,
   };
 
   static T? _byName<T extends Enum>(List<T> values, Object? name) {
@@ -487,6 +522,24 @@ class Profile {
     p.hair = p.hairs.contains(h) ? h : 0;
     final r = j['robe'] as int? ?? 0;
     p.robe = p.robes.contains(r) ? r : 0;
+    // 입문 칸이 없는 옛 저장(입문이 생기기 전 판)도 새 입문을 한 번 거친다(형 지시 2026-10-11:
+    // 처음 할 일을 강제로 익히게). 진행은 그대로 두고 입문만 한다.
+    p.tutorialDone = j['tutorial'] as bool? ?? false;
+    p.attendDay = j['attendDay'] as String? ?? '';
+    p.attendCount = j['attendCount'] as int? ?? 0;
+    p.missionDay = j['missionDay'] as String? ?? '';
+    final mc = j['missionCounts'] as Map? ?? {};
+    final lt = j['lifetime'] as Map? ?? {};
+    for (final d in Deed.values) {
+      if (mc[d.name] is int) p.missionCounts[d] = mc[d.name] as int;
+      if (lt[d.name] is int) p.lifetime[d] = lt[d.name] as int;
+    }
+    p.missionClaimed.addAll((j['missionClaimed'] as List? ?? []).cast<int>());
+    p.achieved.addAll((j['achieved'] as List? ?? []).cast<String>());
+    final st2 = j['stars'] as Map? ?? {};
+    for (final e in st2.entries) {
+      if (e.value is int) p.stars[e.key as String] = (e.value as int).clamp(0, 3);
+    }
     return p;
   }
 

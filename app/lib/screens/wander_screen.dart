@@ -11,6 +11,7 @@ import '../progress/store.dart';
 import '../story/campaign.dart';
 import 'encounter_flow.dart';
 import 'game_screen.dart';
+import '../ui/kit.dart';
 
 /// 강호유랑(설계서 §8.4): 갈림길에서 전투·마을·물음표·수레 객잔을 골라 나아간다. 칸마다 진기 10.
 /// 매주 월요일 05:00 에 지도가 바뀐다. 끝까지 가면 무림맹 징표 +3.
@@ -151,7 +152,8 @@ class _WanderScreenState extends State<WanderScreen> {
     final p = _store.profile;
     final t = Theme.of(context).textTheme;
     final row = p.wanderRow;
-    return Scaffold(
+    return GameScaffold(
+      background: 'kubiForest',
       appBar: AppBar(title: Text('강호유랑 · 진기 ${p.staminaNow(_now).floor()}')),
       body: ListView(
         padding: const EdgeInsets.all(12),
