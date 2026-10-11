@@ -6,6 +6,10 @@ import 'package:flutter/foundation.dart';
 /// 가까이 보기 화면을 띄우며, 돌 자리와 쳐 낸 결과를 기록(logcat)에 남긴다. 보통 판에는 없다.
 const bool e2eFlick = bool.fromEnvironment('E2E_FLICK');
 
+/// 자동 업데이트 실제 시험(.github/workflows/updater-e2e.yml)용 판인가. 보통은 입문을 마친 뒤에만
+/// 업데이트를 확인하는데(입문 중 설치로 앱이 닫히지 않게), 시험 판은 새로 깐 채 켜자마자 확인한다.
+const bool e2eUpdater = bool.fromEnvironment('E2E_UPDATER');
+
 /// 시험 판에서만 기록을 남긴다.
 void e2eLog(String message) {
   if (e2eFlick) debugPrint('[E2E] $message');

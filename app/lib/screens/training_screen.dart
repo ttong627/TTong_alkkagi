@@ -7,6 +7,7 @@ import '../progress/profile.dart';
 import '../progress/store.dart';
 import 'encounter_flow.dart';
 import 'game_screen.dart';
+import '../ui/kit.dart';
 
 /// 목인항: 목각 더미를 맞힐 때마다 1타. 하루 처음 30타는 내공 3배(깨달음), 그 뒤 0.1배
 /// (설계서 §5.2). 꾸준히 매일 30타가 가장 빨리 큰다.
@@ -18,6 +19,16 @@ class TrainingScreen extends StatefulWidget {
 }
 
 class _TrainingScreenState extends State<TrainingScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 첫 방문 안내(설계서 §16.13).
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) =>
+          firstVisit(context, 'training', '목각 더미를 맞혀라. 하루 처음 30타는 내공이 세 배다!'),
+    );
+  }
+
   final _store = ProfileStore.instance;
   final _rand = math.Random();
   double _gained = 0;
@@ -27,6 +38,8 @@ class _TrainingScreenState extends State<TrainingScreen> {
     final p = _store.profile;
     if (m.touchedThisTurn.contains(1)) {
       final g = p.trainHit(today());
+      // 경지가 오르면 바로 축하.
+      if (p.stage > p.celebratedStage) celebrateStage(context);
       _gained += g;
       _last = g >= Training.bonus ? '깨달음! 내공 +$g' : '내공 +$g';
     } else {

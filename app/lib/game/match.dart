@@ -24,6 +24,7 @@ enum MatchMode {
 enum Difficulty {
   easy('쉬움', angleError: 0.12, speedError: 0.25),
   normal('보통', angleError: 0.05, speedError: 0.12),
+  skilled('숙련', angleError: 0.03, speedError: 0.08),
   hard('어려움', angleError: 0.015, speedError: 0.05);
 
   const Difficulty(
@@ -91,6 +92,7 @@ abstract final class QiClash {
       switch (d) {
         Difficulty.easy => 18,
         Difficulty.normal => 27,
+        Difficulty.skilled => 31,
         Difficulty.hard => 36,
       } +
       r.nextInt(7) -

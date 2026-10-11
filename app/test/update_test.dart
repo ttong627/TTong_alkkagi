@@ -7,9 +7,11 @@ void main() {
   group('version.json 읽기', () {
     test('올바른 내용', () {
       final i = UpdateInfo.parse(
-        '{"build":131,"apk":"https://github.com/a/b/releases/download/test-latest/tanji-murim-test.apk","notes":"더 세게"}',
+        '{"build":131,"apk":"https://github.com/a/b/releases/download/test-latest/tanji-murim-test.apk","sha256":"${'ab' * 32}","size":3000000,"notes":"더 세게"}',
       )!;
       expect(i.build, 131);
+      expect(i.sha256, 'ab' * 32);
+      expect(i.size, 3000000);
       expect(i.notes, '더 세게');
       expect(i.newerThan(127), isTrue);
       expect(i.newerThan(131), isFalse, reason: '같은 빌드는 다시 깔지 않는다');
@@ -20,6 +22,29 @@ void main() {
       expect(UpdateInfo.parse('{"build":5,"apk":"http://x/a.apk"}'), isNull);
       expect(UpdateInfo.parse('{"build":"5","apk":"https://x/a.apk"}'), isNull);
       expect(UpdateInfo.parse('[1,2]'), isNull);
+    });
+    test('지문·크기가 없거나 우리 릴리스 주소가 아니면 받지 않는다', () {
+      const ok = 'https://github.com/a/b/releases/download/t/x.apk';
+      final sha = 'ab' * 32;
+      expect(UpdateInfo.parse('{"build":5,"apk":"$ok"}'), isNull);
+      expect(
+        UpdateInfo.parse('{"build":5,"apk":"$ok","sha256":"xyz","size":9}'),
+        isNull,
+      );
+      expect(
+        UpdateInfo.parse('{"build":5,"apk":"$ok","sha256":"$sha"}'),
+        isNull,
+      );
+      expect(
+        UpdateInfo.parse(
+          '{"build":5,"apk":"https://evil.example/x.apk","sha256":"$sha","size":9}',
+        ),
+        isNull,
+      );
+      expect(
+        UpdateInfo.parse('{"build":5,"apk":"$ok","sha256":"$sha","size":9}'),
+        isNotNull,
+      );
     });
   });
 

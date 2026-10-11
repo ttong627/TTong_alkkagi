@@ -69,27 +69,29 @@ abstract final class Art {
     'rank',
   ];
 
-  // ── 대전장(Flame)이 캔버스에 바로 그릴 그림: 미리 읽어 둔다.
+  // ── 대전장(Flame)이 캔버스에 바로 그릴 바닥 그림: 미리 읽어 둔다.
+  // 판 크기(폰 너비)에 맞춰 768px 로 줄여 읽는다(1024² 원본 6장 25MB → 14MB).
+  // 대전장 배경은 Image.asset 이 따로 읽으므로 여기서 또 읽지 않는다(예전엔 50MB 를 그냥 들고 있었다 · 2026-10-11 점검).
   static final _floors = <Arena, ui.Image>{};
-  static final _scenes = <Arena, ui.Image>{};
 
   /// 대전장 바닥 그림(아직 못 읽었으면 null — 그때는 코드로 그린 바닥을 쓴다).
   static ui.Image? floorImage(Arena a) => _floors[a];
-  static ui.Image? sceneImage(Arena a) => _scenes[a];
 
-  /// 앱 시작 때 대전장 그림을 읽는다. 실패해도 게임은 코드로 그린 바닥으로 간다.
+  /// 앱 시작 때 대전장 바닥을 읽는다. 실패해도 게임은 코드로 그린 바닥으로 간다.
   static Future<void> preload() async {
     for (final a in Arena.values) {
       try {
-        _floors[a] = await _decode(floor(a));
-        _scenes[a] = await _decode(arenaBackground(a));
+        _floors[a] = await _decode(floor(a), 768);
       } catch (_) {}
     }
   }
 
-  static Future<ui.Image> _decode(String asset) async {
+  static Future<ui.Image> _decode(String asset, int width) async {
     final data = await rootBundle.load(asset);
-    final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+    final codec = await ui.instantiateImageCodec(
+      data.buffer.asUint8List(),
+      targetWidth: width,
+    );
     return (await codec.getNextFrame()).image;
   }
 }

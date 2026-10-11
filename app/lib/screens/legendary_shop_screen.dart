@@ -4,8 +4,11 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../progress/encounters.dart';
+import '../progress/profile.dart';
 import '../progress/store.dart';
+import '../ui/art.dart';
 import '../ui/kit.dart';
+import '../ui/theme.dart';
 
 /// 기인방(설계서 §6.2C): 10분 동안만. 물건마다 특수효과 1개(각 20%)가 붙어 **사기 전에 보인다**.
 /// 값은 노인이 지금 엽전의 30~50% 를 부르고, 한 번 깎을 수 있다(50% 성공, −20%).
@@ -57,8 +60,102 @@ class _LegendaryShopScreenState extends State<LegendaryShopScreen> {
           .showSnackBar(const SnackBar(content: Text('엽전이 모자랍니다')));
       return;
     }
+    // 산 뒤 남은 엽전을 보고 값을 다시 부른다(처음 값으로 여러 개 사던 구멍, 2026-10-11).
+    for (final k in _store.profile.legendary) {
+      if (!_haggled.contains(k)) {
+        _price[k] = legendaryPrice(_store.profile.coins, _rand);
+      }
+    }
     await _store.save();
     if (mounted) setState(() {});
+  }
+
+  /// 물건 한 칸: 이름 · 붙은 효과(사기 전에 보임) · 값 · 깎기 · 사기.
+  Widget _item(Profile p, String e) {
+    final name = itemLabel(e.split('|').first);
+    final perk = e.split('|').last;
+    final price = _price[e]!;
+    final can = p.coins >= price;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GlassPanel(
+        padding: const EdgeInsets.all(12),
+        radius: 18,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Image.asset(Art.icon('legend'), width: 48),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: titleFont,
+                          fontFamilyFallback: fallbackFonts,
+                          fontSize: 18,
+                        ),
+                      ),
+                      Text(
+                        '$perk · ${perkHelp(perk)}',
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: Palette.gold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: InfoPill(icon: 'coin', text: '$price', warn: !can),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 80,
+                  child: GameButton(
+                    label: '깎기',
+                    color: Palette.jade,
+                    height: 44,
+                    fontSize: 17,
+                    onTap: _haggled.contains(e) ? null : () => _haggle(e),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 80,
+                  child: GameButton(
+                    label: '사기',
+                    height: 44,
+                    fontSize: 17,
+                    color: Palette.red,
+                    onTap: can ? () => _buy(e) : null,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -70,51 +167,51 @@ class _LegendaryShopScreenState extends State<LegendaryShopScreen> {
     return GameScaffold(
       background: 'oilyTable',
       appBar: AppBar(
-        title: Text(
-          open ? '기인방 · ${left ~/ 60}분 ${left % 60}초 남음' : '기인방 · 닫힘',
-        ),
+        title: const Text('기인방'),
+        actions: [
+          if (open) ...[
+            const Icon(Icons.timer_outlined, color: Palette.gold),
+            const SizedBox(width: 4),
+            InfoPill(
+              text: '${left ~/ 60}:${(left % 60).toString().padLeft(2, '0')}',
+              warn: left < 60,
+            ),
+          ],
+          const SizedBox(width: 12),
+        ],
       ),
       body: !open
-          ? const Center(child: Text('노인은 이미 떠났다. 기연은 또 온다.'))
-          : ListView(
-              padding: const EdgeInsets.all(12),
-              children: [
-                Text('엽전 ${p.coins}'),
-                for (final e in p.legendary)
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            itemLabel(e.split('|').first),
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          Text(
-                            '붙은 효과: ${e.split('|').last} — ${perkHelp(e.split('|').last)}',
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Text('부른 값 엽전 ${_price[e]}'),
-                              const Spacer(),
-                              TextButton(
-                                onPressed: _haggled.contains(e)
-                                    ? null
-                                    : () => _haggle(e),
-                                child: const Text('깎기(1번)'),
-                              ),
-                              FilledButton(
-                                onPressed: () => _buy(e),
-                                child: const Text('사기'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+          ? Padding(
+              padding: const EdgeInsets.all(20),
+              child: GlassPanel(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Image.asset(Art.icon('legend'), height: 80),
+                    const SizedBox(height: 10),
+                    const Text(
+                      '노인은 이미 떠났다',
+                      style: TextStyle(fontFamily: titleFont, fontSize: 22),
                     ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      '기연은 또 와요',
+                      style: TextStyle(fontSize: 17, color: Palette.dim),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
+              children: [
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: InfoPill(icon: 'coin', text: '${p.coins}'),
                   ),
+                ),
+                for (final e in p.legendary) _item(p, e),
               ],
             ),
     );

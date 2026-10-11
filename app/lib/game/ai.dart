@@ -104,6 +104,7 @@ Future<AiShot> _choose(_Request r) async {
   var speeds = switch (diff) {
     Difficulty.easy => [70.0],
     Difficulty.normal => [55.0, 90.0],
+    Difficulty.skilled => [50.0, 80.0, 100.0],
     Difficulty.hard => [45.0, 70.0, 100.0],
   };
   var hits = diff == Difficulty.hard ? [0.0, -1.0] : [0.0];

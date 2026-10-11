@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'profile.dart';
 
 /// 요즘 게임의 「매일 들어올 이유」(설계서 §16.9): 출석 보상 · 일일 임무 · 업적 · 판마다 별.
@@ -31,19 +33,22 @@ class Reward {
 // ───────────────────────── 출석 ─────────────────────────
 
 /// 7일 출석 보상(빠진 날이 있어도 끊기지 않고 다음 칸으로 — 부담 없이).
+/// 2026-10-11 경제 점검: 엽전·은자는 4~6일이면 쓸 곳이 없어져 7칸째가 맥빠졌다 → 성장 재화 쪽으로.
 const attendanceRewards = [
   Reward(coins: 100),
   Reward(tp: 20),
   Reward(coins: 200),
-  Reward(silver: 1),
+  Reward(tp: 30),
   Reward(coins: 300),
-  Reward(tokens: 1),
-  Reward(silver: 2, coins: 300),
+  Reward(tokens: 2),
+  Reward(tokens: 2, tp: 50),
 ];
 
 abstract final class Attendance {
-  /// 오늘 받을 수 있나.
-  static bool canClaim(Profile p, String day) => p.attendDay != day;
+  /// 오늘 받을 수 있나. 날짜는 앞으로만 넘어간다(기기 시계를 되돌려 다시 받는 것 막기).
+  /// 시계가 잘못 앞서 갔던 날은 잊는다([saneDay]).
+  static bool canClaim(Profile p, String day) =>
+      day.compareTo(saneDay(p.attendDay, day)) > 0;
 
   /// 오늘 받을 칸(0~6).
   static int nextIndex(Profile p) => p.attendCount % attendanceRewards.length;
@@ -81,32 +86,48 @@ class Mission {
   final Reward reward;
 }
 
-/// 날마다 셋을 고르는 임무 묶음(날짜로 돌아간다 — 모두 같은 날 같은 임무).
+/// 임무 묶음 9가지. 날짜를 씨앗으로 서로 다른 일 셋을 뽑는다(예전엔 묶음이 둘뿐이었다 — 2026-10-11).
 const missionPool = [
-  Mission(Deed.win, 1, Reward(coins: 120)),
-  Mission(Deed.play, 3, Reward(coins: 100)),
-  Mission(Deed.knock, 6, Reward(coins: 120)),
+  Mission(Deed.win, 1, Reward(tp: 15, coins: 50)),
+  Mission(Deed.win, 3, Reward(tp: 30)),
+  Mission(Deed.play, 3, Reward(tp: 15, coins: 50)),
+  Mission(Deed.knock, 6, Reward(tp: 15, coins: 50)),
+  Mission(Deed.knock, 15, Reward(tp: 30)),
   Mission(Deed.critical, 2, Reward(tp: 15)),
+  Mission(Deed.critical, 5, Reward(tokens: 1)),
   Mission(Deed.train, 30, Reward(tp: 15)),
-  Mission(Deed.inner, 2, Reward(coins: 120)),
+  Mission(Deed.inner, 2, Reward(tp: 15, coins: 50)),
 ];
 
 /// 셋 다 끝내면 덤.
 const missionBonus = Reward(silver: 1);
 
 abstract final class Missions {
-  /// [day](yyyymmdd)의 임무 셋.
+  /// [day](yyyymmdd)의 임무 셋: 날짜를 씨앗으로 섞어 서로 다른 일 셋.
   static List<Mission> of(String day) {
-    final n = int.tryParse(day) ?? 0;
-    final start = n % missionPool.length;
-    return [
-      for (var i = 0; i < 3; i++)
-        missionPool[(start + i * 2) % missionPool.length],
-    ];
+    final order = [...missionPool]
+      ..shuffle(math.Random(int.tryParse(day) ?? 0));
+    final picked = <Mission>[];
+    for (final m in order) {
+      if (picked.any((x) => x.deed == m.deed)) continue;
+      picked.add(m);
+      if (picked.length == 3) break;
+    }
+    return picked;
   }
 
+  /// 시계를 되돌려도 지난날로 가지 않는다(앞으로만 — 2026-10-11).
+  /// 시계가 잘못 앞서 갔던 날은 잊는다([saneDay]).
+  static String _eff(Profile p, String day) {
+    final md = saneDay(p.missionDay, day);
+    return day.compareTo(md) < 0 ? md : day;
+  }
+
+  /// 화면이 보여 줄 날(받기·세기가 쓰는 날과 같은 날 — 화면과 실제 임무가 달라지지 않게).
+  static String effectiveDay(Profile p, String day) => _eff(p, day);
+
   static void _roll(Profile p, String day) {
-    if (p.missionDay == day) return;
+    if (day.compareTo(saneDay(p.missionDay, day)) <= 0) return;
     p.missionDay = day;
     p.missionCounts.clear();
     p.missionClaimed.clear();
@@ -115,22 +136,24 @@ abstract final class Missions {
   /// 한 일을 센다(임무와 업적 둘 다).
   static void record(Profile p, Deed d, String day, [int n = 1]) {
     if (n <= 0) return;
+    day = _eff(p, day);
     _roll(p, day);
     p.missionCounts[d] = (p.missionCounts[d] ?? 0) + n;
     p.lifetime[d] = (p.lifetime[d] ?? 0) + n;
   }
 
   static int progress(Profile p, Mission m, String day) =>
-      p.missionDay == day ? (p.missionCounts[m.deed] ?? 0) : 0;
+      p.missionDay == _eff(p, day) ? (p.missionCounts[m.deed] ?? 0) : 0;
 
   static bool done(Profile p, Mission m, String day) =>
       progress(p, m, day) >= m.goal;
 
   static bool claimed(Profile p, int i, String day) =>
-      p.missionDay == day && p.missionClaimed.contains(i);
+      p.missionDay == _eff(p, day) && p.missionClaimed.contains(i);
 
   /// [i] 번째 임무 보상 받기.
   static Reward? claim(Profile p, int i, String day) {
+    day = _eff(p, day);
     final ms = of(day);
     if (i < 0 || i >= ms.length) return null;
     if (!done(p, ms[i], day) || claimed(p, i, day)) return null;
@@ -142,6 +165,7 @@ abstract final class Missions {
 
   /// 셋 다 받은 날 덤(한 번).
   static Reward? claimBonus(Profile p, String day) {
+    day = _eff(p, day);
     if (p.missionDay != day ||
         p.missionClaimed.length < 3 ||
         p.missionClaimed.contains(99)) {
@@ -154,6 +178,7 @@ abstract final class Missions {
 
   /// 받을 것이 남았나(빨간 점).
   static bool hasClaimable(Profile p, String day) {
+    day = _eff(p, day);
     final ms = of(day);
     for (var i = 0; i < ms.length; i++) {
       if (done(p, ms[i], day) && !claimed(p, i, day)) return true;
@@ -237,10 +262,19 @@ final achievements = <Achievement>[
     const Reward(tokens: 3),
     (p) => p.done.contains('c6') ? 1 : 0,
   ),
+  // 강호행 9판 × 별 3 = 27 이 만점(예전 목표 30 은 이룰 수 없었다 — 2026-10-11).
+  Achievement('stars9', '별 9개', 9, const Reward(tp: 30), (p) => p.totalStars),
   Achievement(
-    'stars30',
-    '별 30개',
-    30,
+    'stars18',
+    '별 18개',
+    18,
+    const Reward(tokens: 1),
+    (p) => p.totalStars,
+  ),
+  Achievement(
+    'stars27',
+    '별 모두(27개)',
+    27,
     const Reward(silver: 3),
     (p) => p.totalStars,
   ),

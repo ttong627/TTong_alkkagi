@@ -51,6 +51,20 @@ ThemeData buildTheme() {
     letterSpacing: title ? 0.5 : 0.2,
   );
   final tt = base.textTheme;
+  // 글 모양마다 같은 보충 글꼴을 붙인다(도현에 없는 「·」 같은 기호가 네모로 나오지 않게).
+  const titleStyle = TextStyle(
+    fontFamily: titleFont,
+    fontFamilyFallback: fallbackFonts,
+  );
+  const bodyStyle = TextStyle(
+    fontFamily: bodyFont,
+    fontFamilyFallback: fallbackFonts,
+  );
+  final gold40 = Palette.gold.withValues(alpha: 0.4);
+  final panelBorder = RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(18),
+    side: BorderSide(color: Palette.gold.withValues(alpha: 0.45), width: 1.5),
+  );
   return base.copyWith(
     textTheme: tt.copyWith(
       displayLarge: t(tt.displayLarge, title: true),
@@ -69,26 +83,33 @@ ThemeData buildTheme() {
       labelMedium: t(tt.labelMedium),
       labelSmall: t(tt.labelSmall),
     ),
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: true,
-      titleTextStyle: TextStyle(
-        fontFamily: titleFont,
+      titleTextStyle: titleStyle.copyWith(
         fontSize: 22,
         color: Palette.gold,
-        shadows: [Shadow(color: Colors.black, blurRadius: 6)],
+        shadows: const [Shadow(color: Colors.black, blurRadius: 6)],
       ),
-      iconTheme: IconThemeData(color: Palette.text),
+      iconTheme: const IconThemeData(color: Palette.text),
     ),
+    // 옛 기본 카드·목록·선택 단추도 로비와 같은 어두운 판 + 금테로.
     cardTheme: CardThemeData(
-      color: Palette.panel,
+      color: Palette.panelLight,
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: Palette.gold.withValues(alpha: 0.35)),
-      ),
+      margin: const EdgeInsets.symmetric(vertical: 5),
+      shape: panelBorder,
+    ),
+    listTileTheme: ListTileThemeData(
+      iconColor: Palette.gold,
+      textColor: Palette.text,
+      minVerticalPadding: 8,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+      shape: panelBorder,
+      titleTextStyle: titleStyle.copyWith(fontSize: 17, color: Palette.text),
+      subtitleTextStyle: bodyStyle.copyWith(fontSize: 14, color: Palette.dim),
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: Palette.panelLight,
@@ -96,34 +117,83 @@ ThemeData buildTheme() {
         borderRadius: BorderRadius.circular(22),
         side: const BorderSide(color: Palette.goldDeep, width: 1.5),
       ),
-      titleTextStyle: const TextStyle(
-        fontFamily: titleFont,
-        fontSize: 24,
-        color: Palette.gold,
-      ),
+      titleTextStyle: titleStyle.copyWith(fontSize: 24, color: Palette.gold),
+      contentTextStyle: bodyStyle.copyWith(fontSize: 17, color: Palette.text),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: Palette.gold,
         foregroundColor: const Color(0xFF2A1A08),
-        textStyle: const TextStyle(fontFamily: titleFont, fontSize: 18),
+        disabledBackgroundColor: const Color(0xFF5A5060),
+        disabledForegroundColor: Colors.white54,
+        minimumSize: const Size(48, 48),
+        textStyle: titleStyle.copyWith(fontSize: 18),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
       ),
     ),
-    snackBarTheme: const SnackBarThemeData(
-      backgroundColor: Palette.panelLight,
-      contentTextStyle: TextStyle(
-        fontFamily: bodyFont,
-        fontSize: 16,
-        color: Palette.text,
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Palette.gold,
+        disabledForegroundColor: Colors.white38,
+        minimumSize: const Size(48, 48),
+        textStyle: titleStyle.copyWith(fontSize: 17),
+        side: BorderSide(color: gold40, width: 1.5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: Palette.gold,
+        minimumSize: const Size(48, 48),
+        textStyle: titleStyle.copyWith(fontSize: 17),
+      ),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
+        textStyle: WidgetStatePropertyAll(bodyStyle.copyWith(fontSize: 16)),
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected)
+              ? Palette.goldDeep
+              : Palette.panel,
+        ),
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected) ? Colors.white : Palette.text,
+        ),
+        side: WidgetStatePropertyAll(BorderSide(color: gold40)),
+      ),
+    ),
+    radioTheme: RadioThemeData(
+      fillColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.disabled) ? Colors.white30 : Palette.gold,
+      ),
+    ),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(
+      color: Palette.gold,
+      linearTrackColor: Colors.white12,
+    ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: Palette.panelLight,
+      contentTextStyle: bodyStyle.copyWith(fontSize: 16, color: Palette.text),
       behavior: SnackBarBehavior.floating,
     ),
-    chipTheme: base.chipTheme.copyWith(
+    chipTheme: ChipThemeData(
       backgroundColor: Palette.panel,
       selectedColor: Palette.goldDeep,
-      labelStyle: const TextStyle(fontFamily: bodyFont, color: Palette.text),
+      disabledColor: Palette.panel,
+      checkmarkColor: Colors.white,
+      side: BorderSide(color: gold40),
+      shape: const StadiumBorder(),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+      labelStyle: bodyStyle.copyWith(fontSize: 16, color: Palette.text),
+      secondaryLabelStyle: bodyStyle.copyWith(
+        fontSize: 16,
+        color: Colors.white,
+      ),
     ),
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {TargetPlatform.android: FadeForwardsPageTransitionsBuilder()},

@@ -15,6 +15,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 import kotlin.concurrent.thread
 
 /**
@@ -51,11 +52,13 @@ object Updater {
                 }
                 "install" -> {
                     val url = call.argument<String>("url")
-                    if (url == null) {
-                        result.error("bad", "url 없음", null)
+                    val sha = call.argument<String>("sha256")
+                    val size = (call.argument<Number>("size") ?: 0).toLong()
+                    if (url == null || sha == null || sha.length != 64 || size <= 0) {
+                        result.error("bad", "url·지문·크기 없음", null)
                     } else {
                         result.success(null)
-                        thread(name = "tanji-updater") { install(ctx, url) }
+                        thread(name = "tanji-updater") { install(ctx, url, sha, size) }
                     }
                 }
                 else -> result.notImplemented()
@@ -69,7 +72,11 @@ object Updater {
 
     fun failed(message: String) = send("failed", message)
 
-    private fun install(ctx: Context, url: String) {
+    /**
+     * 받으면서 SHA-256 을 세고, 크기가 version.json 과 다르거나 지문이 다르면 설치하지 않는다
+     * (세션을 버린다 · 2026-10-11 점검: 예전엔 https 면 무엇이든 그대로 설치 세션에 썼다).
+     */
+    private fun install(ctx: Context, url: String, sha256: String, size: Long) {
         var sessionId = -1
         try {
             val installer = ctx.packageManager.packageInstaller
@@ -86,7 +93,8 @@ object Updater {
                 conn.readTimeout = 30000
                 conn.connect()
                 if (conn.responseCode !in 200..299) throw IllegalStateException("HTTP ${conn.responseCode}")
-                val total = conn.contentLengthLong
+                val total = size
+                val digest = MessageDigest.getInstance("SHA-256")
                 conn.inputStream.use { input ->
                     session.openWrite("base.apk", 0, total).use { out ->
                         val buf = ByteArray(64 * 1024)
@@ -95,8 +103,10 @@ object Updater {
                         while (true) {
                             val n = input.read(buf)
                             if (n < 0) break
-                            out.write(buf, 0, n)
                             done += n
+                            if (done > total) throw IllegalStateException("파일이 예상보다 큽니다")
+                            digest.update(buf, 0, n)
+                            out.write(buf, 0, n)
                             if (total > 0) {
                                 val pct = (done * 100 / total).toInt()
                                 if (pct != lastPct) {
@@ -106,8 +116,11 @@ object Updater {
                             }
                         }
                         session.fsync(out)
+                        if (done != total) throw IllegalStateException("파일 크기가 다릅니다($done/$total)")
                     }
                 }
+                val got = digest.digest().joinToString("") { "%02x".format(it) }
+                if (!got.equals(sha256, ignoreCase = true)) throw IllegalStateException("파일 지문이 다릅니다")
                 send("installing", null)
                 var flags = PendingIntent.FLAG_UPDATE_CURRENT
                 // 시스템이 결과를 넣어 보내므로 바뀔 수 있는 PendingIntent 여야 한다.

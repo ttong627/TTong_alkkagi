@@ -154,8 +154,8 @@ abstract final class Campaign {
     final silver = first && s.chapter != null ? 5 : 0;
     p.coins += coins;
     p.silver += silver;
-    // 숙적을 이기면 무림맹 징표.
-    if (s.rival != null) p.tokens++;
+    // 숙적을 처음 이기면 무림맹 징표 2(다시 이겨도 매번 주던 구멍을 막음 — 2026-10-11 경제 점검).
+    if (s.rival != null && first) p.tokens += 2;
     p.done.add(s.id);
     Fighter? hero;
     final h = unlockByStage[s.id];

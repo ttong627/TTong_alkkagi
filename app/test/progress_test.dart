@@ -33,10 +33,13 @@ void main() {
   });
 
   test('내공 단계 8단계 (설계서 §16.2)', () {
+    // 2026-10-11 경제 점검: 0/90/270/540/900/1260/1800/2700(예전 끝 단계 4800 은 수개월 걸렸다).
     expect(stageOf(0), 1);
-    expect(stageOf(99.9), 1);
-    expect(stageOf(100), 2);
+    expect(stageOf(89.9), 1);
+    expect(stageOf(90), 2);
     expect(stageOf(1600), 6);
+    expect(stageOf(2699), 7);
+    expect(stageOf(2700), 8);
     expect(stageOf(9999), 8);
     final p = Profile()..naegong = 1600;
     expect(p.stageName, '화경');
@@ -44,17 +47,17 @@ void main() {
     expect(p.steers, 2);
   });
 
-  test('능력치: 단계 n→n+1 비용 10×(n+1), 파워 단계마다 +3cm/s, 20단계 180', () {
+  test('능력치: 단계 n→n+1 비용 6×(n+1), 파워 단계마다 +3cm/s, 20단계 180', () {
     final p = Profile()..trainingPoints = 100000;
     for (var i = 0; i < 25; i++) {
       p.raise(Stat.power);
     }
     expect(p.stats[Stat.power], maxStatLevel);
     expect(p.maxSpeed, 180);
-    expect(p.trainingPoints, 100000 - 2100);
-    final q = Profile()..trainingPoints = 15;
+    expect(p.trainingPoints, 100000 - 1260);
+    final q = Profile()..trainingPoints = 10;
     expect(q.raise(Stat.finesse), isTrue);
-    expect(q.raise(Stat.finesse), isFalse, reason: '두 번째는 20 필요');
+    expect(q.raise(Stat.finesse), isFalse, reason: '두 번째는 12 필요');
   });
 
   test('만물상: 엽전이 있어야 사고, 산 것만 고를 수 있고, 세트를 모으면 보너스', () {
@@ -108,13 +111,19 @@ void main() {
       expect(r1.coins, (30 + 10) * 2);
       expect(r1.silver, 5);
       expect(r1.awaken, isTrue);
+      // 다시 깨면 처음 값의 절반의 절반(기본의 반 — 1장 되풀이로 엽전을 벌지 않게 · 2026-10-11).
       final again = Campaign.finish(p, campaign[0], won: true);
-      expect(again.coins, 40);
+      expect(again.coins, 20);
       expect(again.first, isFalse);
       final c2 = campaign.firstWhere((s) => s.id == 'c2');
       expect(Campaign.finish(p, c2, won: true).hero, Fighter.banDal);
+      // 숙적: 처음 이기면 징표 2, 다시 이기면 징표 없음.
       final r = campaign.firstWhere((s) => s.id == 'r1');
+      final tokens = p.tokens;
       expect(Campaign.finish(p, r, won: true).coins, 100);
+      expect(p.tokens, tokens + 2);
+      Campaign.finish(p, r, won: true);
+      expect(p.tokens, tokens + 2, reason: '숙적 되풀이로 징표를 벌지 않는다');
       final lost = Campaign.finish(p, campaign[3], won: false);
       expect(lost.won, isFalse);
       expect(p.codex, contains('고수:${campaign[3].boss}'));
@@ -269,8 +278,8 @@ void main() {
     });
   });
 
-  test('외형: 앞 3가지는 처음부터, 나머지는 은자 3개 · 저장 되읽기', () {
-    final p = Profile()..silver = 4;
+  test('외형: 앞 3가지는 처음부터, 나머지는 은자 5개 · 저장 되읽기', () {
+    final p = Profile()..silver = 6;
     expect(p.hairs, {0, 1, 2});
     expect(p.buyHair(1), isFalse);
     expect(p.buyHair(4), isTrue);

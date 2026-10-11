@@ -116,6 +116,24 @@ void main() {
       expect(deg(shot.angle), closeTo(-45, 1e-6));
     });
 
+    test('돌 위에서 천천히 끌거나(겨누기) 손이 떨리면 쏘지 않는다', () {
+      // 반지름 둘만큼 0.8초에 걸쳐 아래로(새총처럼) 끌기.
+      final slow = swipe(
+        const Offset(200, 400),
+        Offset(0, disc.radius * 2),
+        0.8,
+      );
+      expect(run(disc, slow), FlickMiss.tooWeak);
+      // 손 떨림: 반지름 0.2 만큼 빠르게 흔들림.
+      final r = StrikeReader(disc)
+        ..down(const FlickSample(Offset(200, 400), 0));
+      expect(
+        r.move(FlickSample(Offset(200 + disc.radius * 0.2, 400), 0.03)),
+        isNull,
+      );
+      expect(r.up(), FlickMiss.tooWeak);
+    });
+
     test('돌 위에 손만 대고 떼면 쏘지 않는다', () {
       final r = StrikeReader(disc)
         ..down(const FlickSample(Offset(200, 400), 0));

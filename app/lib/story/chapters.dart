@@ -81,10 +81,11 @@ class Stage {
     _ => boss,
   };
 
-  /// 이겼을 때 엽전(설계서 §16.4): 장 30 + 장×10, 숙적 50. 처음이면 ×2.
+  /// 이겼을 때 엽전(설계서 §16.4): 장 30 + 장×10, 숙적 50. 처음이면 ×2, 다시 깨면 절반
+  /// (2026-10-11 경제 점검: 1장 되풀이로 엽전을 끝없이 모으던 것).
   int coins({required bool first}) {
     final base = rival != null ? 50 : 30 + (chapter ?? 0) * 10;
-    return first ? base * 2 : base;
+    return first ? base * 2 : base ~/ 2;
   }
 }
 
@@ -296,7 +297,7 @@ const List<Stage> campaign = [
     boss: '로직',
     material: StoneMaterial.ice,
     shape: StoneShape.round,
-    difficulty: Difficulty.hard,
+    difficulty: Difficulty.skilled,
     style: AiStyle.calculator,
     needStage: 5,
     features: [
@@ -330,7 +331,7 @@ const List<Stage> campaign = [
     boss: '묵현',
     material: StoneMaterial.hyeoncheol,
     shape: StoneShape.sphere,
-    difficulty: Difficulty.hard,
+    difficulty: Difficulty.skilled,
     style: AiStyle.master,
     martial: Technique.clone,
     bossQi: 3,

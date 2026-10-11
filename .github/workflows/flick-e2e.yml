@@ -6,8 +6,15 @@ name: flick-e2e
 
 on:
   workflow_dispatch:
+  # 화면 흐름(로비·대전·연습 판)이 바뀌어도 손끝 시험이 조용히 썩지 않게 매일 한 번 돈다(2026-10-11 점검).
+  schedule:
+    - cron: '17 18 * * *'
   pull_request:
     paths:
+      - 'app/lib/main.dart'
+      - 'app/lib/screens/home_screen.dart'
+      - 'app/lib/screens/free_play_screen.dart'
+      - 'app/lib/screens/game_screen.dart'
       - 'app/lib/game/flick.dart'
       - 'app/lib/screens/flick_view.dart'
       - 'app/lib/input/**'
@@ -17,6 +24,9 @@ on:
 
 env:
   FLUTTER_VERSION: 3.47.6
+
+permissions:
+  contents: read
 
 jobs:
   flick:

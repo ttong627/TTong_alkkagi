@@ -19,13 +19,28 @@ const updateUrl = String.fromEnvironment(
 
 /// version.json 내용.
 class UpdateInfo {
-  const UpdateInfo({required this.build, required this.apk, this.notes = ''});
+  const UpdateInfo({
+    required this.build,
+    required this.apk,
+    this.sha256 = '',
+    this.size = 0,
+    this.notes = '',
+  });
+
+  /// APK 를 받을 수 있는 곳(우리 저장소의 깃허브 릴리스).
+  static const allowedHosts = {'github.com'};
 
   /// 빌드 번호(첫 화면 「빌드 N」과 같은 수).
   final int build;
 
   /// 내려받을 APK 주소.
   final String apk;
+
+  /// 받은 APK 의 SHA-256(소문자 16진수 64자). 맞지 않으면 설치하지 않는다.
+  final String sha256;
+
+  /// APK 크기(바이트). 이보다 크게 오면 멈춘다.
+  final int size;
 
   /// 바뀐 점 한 줄.
   final String notes;
@@ -35,10 +50,23 @@ class UpdateInfo {
     try {
       final j = jsonDecode(text);
       if (j is! Map) return null;
-      final b = j['build'], a = j['apk'];
-      if (b is! int || a is! String || !a.startsWith('https://')) return null;
+      final b = j['build'], a = j['apk'], h = j['sha256'], z = j['size'];
+      if (b is! int || a is! String) return null;
+      // https · 우리 릴리스 주소만 · 지문과 크기가 있어야 받는다(2026-10-11 점검).
+      final u = Uri.tryParse(a);
+      if (u == null || u.scheme != 'https' || !allowedHosts.contains(u.host)) {
+        return null;
+      }
+      if (h is! String || !RegExp(r'^[0-9a-f]{64}$').hasMatch(h)) return null;
+      if (z is! int || z <= 0 || z > 300 * 1024 * 1024) return null;
       final n = j['notes'];
-      return UpdateInfo(build: b, apk: a, notes: n is String ? n : '');
+      return UpdateInfo(
+        build: b,
+        apk: a,
+        sha256: h,
+        size: z,
+        notes: n is String ? n : '',
+      );
     } on FormatException {
       return null;
     }
@@ -122,7 +150,11 @@ class Updater extends ChangeNotifier {
     }
     percent = 0;
     _set(UpdateStage.downloading);
-    await _ch.invokeMethod<void>('install', {'url': info.apk});
+    await _ch.invokeMethod<void>('install', {
+      'url': info.apk,
+      'sha256': info.sha256,
+      'size': info.size,
+    });
   }
 
   /// 「출처를 알 수 없는 앱 설치」 설정 화면을 연다. 돌아오면 [resumed] 가 다시 확인한다.

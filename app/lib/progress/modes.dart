@@ -16,10 +16,10 @@ abstract final class ArenaRules {
 
 /// 강호유랑 칸 종류(설계서 §8.4).
 enum WanderNode {
-  battle('전투', '고수와 한 판 — 이기면 엽전 50'),
-  village('마을', '쉬어 가기 — 진기 +15 · 엽전 +20'),
+  battle('전투', '고수와 한 판 — 이기면 엽전 80'),
+  village('마을', '쉬어 가기 — 진기 +8 · 엽전 +20'),
   mystery('물음표', '무슨 일이 생길지 모른다 — 기연 확률 ×5'),
-  wagon('수레 객잔', '이동 상점 — 진기 +30 · 특산물 흥정');
+  wagon('수레 객잔', '이동 상점 — 진기 +15 · 특산물 흥정');
 
   const WanderNode(this.label, this.help);
   final String label;
