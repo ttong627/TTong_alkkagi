@@ -159,6 +159,7 @@ class Table {
   Vector2? _absorbAt;
   final Set<int> _enemiesHit = {};
   bool _cloneUsed = false;
+  double _impactScale = 1;
 
   /// 지금 수에서 쏜 돌.
   Stone? get shooter => _shooter;
@@ -241,6 +242,8 @@ class Table {
     Technique technique = Technique.none,
     double curl = 0,
     double spinScale = 1,
+    double impactScale = 1,
+    double innerSpeed = TechniqueConstants.innerSpeed,
   }) {
     if (stone.out) throw StateError('장외된 돌은 쏠 수 없다');
     _inner = inner;
@@ -251,7 +254,8 @@ class Table {
     _absorbLeft = 0;
     _absorbAt = null;
     _enemiesHit.clear();
-    final s = (inner ? speed * TechniqueConstants.innerSpeed : speed).clamp(
+    _impactScale = impactScale;
+    final s = (inner ? speed * innerSpeed : speed).clamp(
       0.0,
       PhysicsConstants.maxShotSpeed,
     );
@@ -438,6 +442,9 @@ class Table {
     final point = Vector2(hit.x, hit.y);
     if (!_firstHit) {
       _firstHit = true;
+      if (_impactScale != 1) {
+        other.body.linearVelocity = other.velocity..scale(_impactScale);
+      }
       if (_inner) {
         other.body.linearVelocity = other.velocity
           ..scale(TechniqueConstants.innerImpact);

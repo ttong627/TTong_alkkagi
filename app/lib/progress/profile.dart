@@ -83,6 +83,13 @@ const shapePrices = {
   StoneShape.sphere: 500,
 };
 
+/// 진기(행동력) (설계서 §7.2): 최대 100, 6분에 1, 강호유랑 1칸·투기장 1회 10, 지면 50% 돌려줌.
+abstract final class Stamina {
+  static const int max = 100;
+  static const int regenMs = 6 * 60 * 1000;
+  static const double cost = 10;
+}
+
 /// 능력치 단계 n → n+1 비용(수련 포인트).
 int statCost(int level) => 10 * (level + 1);
 const int maxStatLevel = 20;
@@ -114,6 +121,40 @@ class Profile {
   /// 도감: 만난 고수·얻은 것 (설계서 §8.7).
   final codex = <String>{};
 
+  /// 무림맹 징표 (설계서 §6.1).
+  int tokens = 0;
+
+  /// 목인항 평생 타격 수(보급소 열림 조건 1,000타).
+  int totalHits = 0;
+
+  /// 진기(행동력, 설계서 §7.2)와 마지막으로 계산한 시각(밀리초).
+  double stamina = Stamina.max.toDouble();
+  int staminaAt = 0;
+
+  /// 기인방 특수효과(설계서 §6.2C) — 산 물건에 붙어 온 효과들(같은 효과는 하나만).
+  final perks = <String>{};
+
+  /// 은둔 고수 비급: 모든 능력치 +n (설계서 §5.3).
+  int secretArts = 0;
+
+  /// 꾸미기: 잔상 빛깔(보급소·기인방).
+  final trails = <String>{'기본'};
+  String trail = '기본';
+
+  /// 기인방이 열려 있는 끝 시각(밀리초)과 진열품.
+  int legendaryUntil = 0;
+  final legendary = <String>[];
+
+  /// 깬 목인항 묘수풀이(퍼즐) 번호.
+  final puzzles = <int>{};
+
+  /// 강호유랑: 이번 주 번호와 지나온 칸 수.
+  String wanderWeek = '';
+  int wanderRow = 0;
+
+  /// 투기장 최고 연승.
+  int arenaBest = 0;
+
   int get stage => stageOf(naegong);
   String get stageName => naegongStages[stage - 1].$1;
 
@@ -122,8 +163,43 @@ class Profile {
       stage >= naegongStages.length ? null : naegongStages[stage].$2 - naegong;
 
   // --- 능력치 값 ---
-  /// 능력치 단계 + 도감 세트 보너스(최대 20).
-  int level(Stat s) => math.min(maxStatLevel, stats[s]! + codexBonus);
+  /// 능력치 단계 + 도감 세트 보너스 + 은둔 고수 비급(최대 20).
+  int level(Stat s) =>
+      math.min(maxStatLevel, stats[s]! + codexBonus + secretArts);
+
+  /// 어기어석 꺾기: 내공 단계 + 기인방 효과 「꺾기 +1」.
+  int get steersTotal => steers + (perks.contains('꺾기+1') ? 1 : 0);
+
+  // --- 진기 ---
+  /// 지금(밀리초) 진기. 6분마다 1 찬다(최대 [Stamina.max]).
+  double staminaNow(int now) {
+    if (staminaAt == 0) return stamina;
+    final regen = (now - staminaAt) / Stamina.regenMs;
+    return math.min(Stamina.max.toDouble(), stamina + regen);
+  }
+
+  /// 진기를 쓴다. 모자라면 false.
+  bool spendStamina(int now, double n) {
+    final cur = staminaNow(now);
+    if (cur < n) return false;
+    stamina = cur - n;
+    staminaAt = now;
+    return true;
+  }
+
+  void refundStamina(int now, double n) {
+    stamina = math.min(Stamina.max.toDouble(), staminaNow(now) + n);
+    staminaAt = now;
+  }
+
+  /// 무림맹 보급소가 열렸나(설계서 §6.2B): 주말, 또는 목인항 1,000타, 또는 6장 격파.
+  bool depotOpen(DateTime now) =>
+      now.weekday >= DateTime.saturday ||
+      totalHits >= 1000 ||
+      done.contains('c6');
+
+  /// 기인방이 지금 열려 있나(10분).
+  bool legendaryOpen(int now) => now < legendaryUntil && legendary.isNotEmpty;
 
   double get maxSpeed =>
       (120 + 3 * level(Stat.power)) * (hero == Fighter.seokdu ? 1.1 : 1);
@@ -157,6 +233,7 @@ class Profile {
     }
     final g = Training.gain(trainingHits);
     trainingHits++;
+    totalHits++;
     naegong += g;
     trainingPoints += g;
     return g;
@@ -211,6 +288,20 @@ class Profile {
     'material': material.name,
     'shape': shape.name,
     'codex': codex.toList(),
+    'tokens': tokens,
+    'totalHits': totalHits,
+    'stamina': stamina,
+    'staminaAt': staminaAt,
+    'perks': perks.toList(),
+    'secretArts': secretArts,
+    'trails': trails.toList(),
+    'trail': trail,
+    'legUntil': legendaryUntil,
+    'legendary': legendary,
+    'puzzles': puzzles.toList(),
+    'wanderWeek': wanderWeek,
+    'wanderRow': wanderRow,
+    'arenaBest': arenaBest,
   };
 
   static T? _byName<T extends Enum>(List<T> values, Object? name) {
@@ -252,6 +343,20 @@ class Profile {
     final sh = _byName(StoneShape.values, j['shape']);
     if (sh != null && p.shapes.contains(sh)) p.shape = sh;
     p.codex.addAll((j['codex'] as List? ?? []).cast<String>());
+    p.tokens = j['tokens'] as int? ?? 0;
+    p.totalHits = j['totalHits'] as int? ?? 0;
+    p.stamina = (j['stamina'] as num? ?? Stamina.max).toDouble();
+    p.staminaAt = j['staminaAt'] as int? ?? 0;
+    p.perks.addAll((j['perks'] as List? ?? []).cast<String>());
+    p.secretArts = j['secretArts'] as int? ?? 0;
+    p.trails.addAll((j['trails'] as List? ?? []).cast<String>());
+    p.trail = j['trail'] as String? ?? '기본';
+    p.legendaryUntil = j['legUntil'] as int? ?? 0;
+    p.legendary.addAll((j['legendary'] as List? ?? []).cast<String>());
+    p.puzzles.addAll((j['puzzles'] as List? ?? []).cast<int>());
+    p.wanderWeek = j['wanderWeek'] as String? ?? '';
+    p.wanderRow = j['wanderRow'] as int? ?? 0;
+    p.arenaBest = j['arenaBest'] as int? ?? 0;
     return p;
   }
 

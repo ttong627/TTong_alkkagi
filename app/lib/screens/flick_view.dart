@@ -12,6 +12,7 @@ import '../game/board_paint.dart';
 import '../game/fx_colors.dart';
 import '../game/flick.dart';
 import '../game/match.dart';
+import '../game/predict.dart';
 import '../input/touch_feed.dart';
 
 /// 재질마다 기(氣) 빛깔.
@@ -91,6 +92,11 @@ class _FlickViewState extends State<FlickView>
   double _dpr = 1;
 
   final _padKey = GlobalKey();
+
+  /// 예상 궤적(판 좌표)과 마지막으로 계산한 시각.
+  List<Offset> _path = const [];
+  double _pathAt = 0;
+  (double, double)? _pathFor;
   String? _e2eLast;
 
   /// 짝이 안 맞을 때를 대비해 Flutter 포인터 점도 모아 둔다.
@@ -285,11 +291,30 @@ class _FlickViewState extends State<FlickView>
     final guess = reader.predict();
     _aimAngle = guess?.$1;
     _power = guess?.$2 ?? 0;
+    _updatePath(s.t);
     return false;
+  }
+
+  /// 겨눈 대로 쳤을 때의 길을 물리로 미리 계산(0.08초마다).
+  void _updatePath(double t) {
+    final a = _aimAngle;
+    if (a == null) {
+      _path = const [];
+      return;
+    }
+    if (t - _pathAt < 0.08 && _pathFor != null) return;
+    _pathAt = t;
+    _pathFor = (a, _power);
+    final speed =
+        powerToSpeed(_power) *
+        massFactor(_disc!.mass) *
+        widget.match.config.powerScale;
+    _path = predictPath(widget.match, widget.stone, a, speed);
   }
 
   void _end() {
     if (!mounted) return;
+    _path = const [];
     final miss = _reader?.up();
     e2eLog('miss native=$_useNative why=${miss?.name}');
     _reader = null;
@@ -476,6 +501,7 @@ class _FlickViewState extends State<FlickView>
                                 widget.stone,
                                 _aimAngle,
                                 _power,
+                                _down ? _path : const [],
                               ),
                             ),
                           ),
@@ -566,11 +592,14 @@ class _TrailPainter extends CustomPainter {
 
 /// 위쪽 작은 지도: 판 전체 + 고른 돌 + 지금 겨눈 방향.
 class _MiniBoardPainter extends CustomPainter {
-  _MiniBoardPainter(this.match, this.stone, this.angle, this.power);
+  _MiniBoardPainter(this.match, this.stone, this.angle, this.power, this.path);
   final Match match;
   final phys.Stone stone;
   final double? angle;
   final double power;
+
+  /// 예상 궤적(판 좌표).
+  final List<Offset> path;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -589,6 +618,29 @@ class _MiniBoardPainter extends CustomPainter {
         s.material,
         shape: s.shape,
         selected: identical(s, stone),
+      );
+    }
+    if (path.length > 1) {
+      final paint = Paint()
+        ..color = const Color(0xCCFFFFFF)
+        ..strokeWidth = math.max(1.5, scale * 0.25)
+        ..strokeCap = StrokeCap.round;
+      // 점선으로.
+      for (var i = 1; i < path.length; i += 2) {
+        canvas.drawLine(
+          at(path[i - 1].dx, path[i - 1].dy),
+          at(path[i].dx, path[i].dy),
+          paint,
+        );
+      }
+      final end = path.last;
+      canvas.drawCircle(
+        at(end.dx, end.dy),
+        phys.PhysicsConstants.stoneRadius * scale,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5
+          ..color = const Color(0xAAFFFFFF),
       );
     }
     final a = angle;

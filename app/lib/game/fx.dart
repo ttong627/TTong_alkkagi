@@ -230,7 +230,9 @@ class BattleFx {
     _trails.forEach((id, list) {
       if (list.length < 2 || id >= m.table.stones.length) return;
       final glow = _glow[id];
-      final base = glow?.$1 ?? const Color(0xFFFFFFFF);
+      final mine = m.table.stones[id].team == 0;
+      final custom = mine ? trailColor(m.config.myTrail) : null;
+      final base = glow?.$1 ?? custom ?? const Color(0xFFFFFFFF);
       for (var i = 1; i < list.length; i++) {
         final k = i / list.length;
         canvas.drawLine(

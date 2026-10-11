@@ -86,6 +86,22 @@ enum AiStyle {
   master,
 }
 
+/// 묘수풀이·특수 판의 돌 놓기.
+class Placement {
+  const Placement(
+    this.x,
+    this.y, {
+    this.team = 1,
+    this.material = StoneMaterial.cheongok,
+    this.shape = StoneShape.round,
+  });
+  final double x;
+  final double y;
+  final int team;
+  final StoneMaterial material;
+  final StoneShape shape;
+}
+
 /// 판 설정.
 class MatchConfig {
   const MatchConfig({
@@ -107,7 +123,49 @@ class MatchConfig {
     this.steerSeconds = 2.5,
     this.opponentName,
     this.training = false,
+    this.myTrail,
+    this.qiSaver = false,
+    this.impactScale = 1,
+    this.innerSpeed = TechniqueConstants.innerSpeed,
+    this.critDoubleChance = 0,
+    this.knockoutQiChance = 0,
+    this.knockoutQiMax = 0,
+    this.aimAssist = 2,
+    this.critWidth = 0.15,
+    this.layout,
+    this.shotLimit,
   });
+
+  /// 묘수풀이: 정해진 돌 놓기(내 돌 = 편 0). null 이면 보통 줄.
+  final List<Placement>? layout;
+
+  /// 묘수풀이: 칠 수 있는 수. 그 안에 상대 돌을 다 못 떨어뜨리면 실패.
+  final int? shotLimit;
+
+  /// 회심 판정 가운데 폭(정각 0.2).
+  final double critWidth;
+
+  /// 내 돌 잔상 빛깔 이름(꾸미기). null 이면 기본.
+  final String? myTrail;
+
+  /// 기인방 「내공 아낌」: 내공을 쓸 때 10% 로 1칸 돌려받음.
+  final bool qiSaver;
+
+  /// 내 수의 첫 충돌로 맞은 돌 빠르기 배수(기인방 +5%·반달 +10%).
+  final double impactScale;
+
+  /// 내공 타격 처음 속도 배수(용아 1.35).
+  final double innerSpeed;
+
+  /// 회심 때 내공 +1칸 더 받을 확률(취선 20%).
+  final double critDoubleChance;
+
+  /// 내가 상대 돌을 떨어뜨릴 때마다 내공 +1칸 받을 확률과 판당 최대(묵객 100%·2번, 기인방 10%).
+  final double knockoutQiChance;
+  final int knockoutQiMax;
+
+  /// 예상 궤적(설계서 §7.1): 2 = 두 번째 충돌까지, 1 = 첫 충돌까지, 0.5 = 첫 충돌까지의 절반, 0 = 없음.
+  final double aimAssist;
 
   /// 목인항: 내 돌 하나와 목각 더미 하나만 놓는다(설계서 §5.2·§8.1).
   final bool training;
@@ -168,6 +226,19 @@ class Match extends ChangeNotifier {
         floorFactor: config.arena.floorFactor,
         boundary: config.arena.boundary,
       ) {
+    final layout = config.layout;
+    if (layout != null) {
+      for (final pl in layout) {
+        table.addStone(
+          pl.x,
+          pl.y,
+          material: pl.team == 0 ? config.myMaterial : pl.material,
+          shape: pl.team == 0 ? config.myShape : pl.shape,
+          team: pl.team,
+        );
+      }
+      return;
+    }
     if (config.training) {
       table.addStone(
         0,
@@ -204,6 +275,8 @@ class Match extends ChangeNotifier {
   final Table table;
 
   int _turn = 0;
+  final _rand = math.Random();
+  int _knockoutQiGiven = 0;
   late final _qi = [
     math.min(maxQi, config.myStartQi),
     math.min(maxQi, config.opponentStartQi),
@@ -273,9 +346,17 @@ class Match extends ChangeNotifier {
     final team = s.team;
     final m = canUse(team, mode) ? mode : StrikeMode.plain;
     _qi[team] -= m.cost;
-    if (m == StrikeMode.plain && critical) {
-      _qi[team] = math.min(maxQi, _qi[team] + 1);
+    final mine = team == 0;
+    if (mine && m.cost > 0 && config.qiSaver && _rand.nextDouble() < 0.1) {
+      _qi[team] += 1;
     }
+    if (m == StrikeMode.plain && critical) {
+      final extra = mine && _rand.nextDouble() < config.critDoubleChance
+          ? 1
+          : 0;
+      _qi[team] = math.min(maxQi, _qi[team] + 1 + extra);
+    }
+    _aliveBefore = alive(1 - team);
     lastCritical = critical && m == StrikeMode.plain;
     lastMode = m;
     steersLeft = m == StrikeMode.ultimate ? config.steers : 0;
@@ -294,7 +375,9 @@ class Match extends ChangeNotifier {
       inner: m != StrikeMode.plain,
       technique: technique,
       curl: curl,
-      spinScale: team == 0 ? config.spinScale : 1,
+      spinScale: mine ? config.spinScale : 1,
+      impactScale: mine ? config.impactScale : 1,
+      innerSpeed: mine ? config.innerSpeed : TechniqueConstants.innerSpeed,
     );
     _turnCount++;
     notifyListeners();
@@ -344,10 +427,30 @@ class Match extends ChangeNotifier {
     return true;
   }
 
+  int _aliveBefore = 0;
+
   void _finishTurn() {
     if (config.training) return;
+    // 내가 상대 돌을 떨어뜨리면 내공(묵객·기인방 「장외 시 기」).
+    if (_turn == 0 && config.knockoutQiChance > 0) {
+      final knocked = _aliveBefore - alive(1);
+      for (var i = 0; i < knocked; i++) {
+        if (_knockoutQiGiven >= config.knockoutQiMax) break;
+        if (_rand.nextDouble() < config.knockoutQiChance) {
+          _qi[0] = math.min(maxQi, _qi[0] + 1);
+          _knockoutQiGiven++;
+        }
+      }
+    }
     if (config.mode == MatchMode.practice) {
-      if (alive(1) == 0 || alive(0) == 0) _winner = alive(0) > 0 ? 0 : 1;
+      // 상대 돌을 다 떨어뜨렸으면 내 돌이 같이 나가도 성공.
+      if (alive(1) == 0) {
+        _winner = 0;
+      } else if (alive(0) == 0) {
+        _winner = 1;
+      }
+      final limit = config.shotLimit;
+      if (_winner == null && limit != null && _turnCount >= limit) _winner = 1;
       return;
     }
     final a0 = alive(0), a1 = alive(1);

@@ -17,3 +17,13 @@ Color techniqueColor(Technique t) => switch (t) {
   Technique.clone => const Color(0xFFB07CFF),
   Technique.absorb => const Color(0xFF4DFFB8),
 };
+
+/// 꾸미기 잔상 빛깔(보급소·기인방). 모르는 이름이면 null(기본 흰빛).
+Color? trailColor(String? name) => switch (name) {
+  '불꽃' => const Color(0xFFFF7A2E),
+  '금빛 잔상' => innerColor,
+  '달맞이' => const Color(0xFFE8F0FF),
+  '청죽' => const Color(0xFF5FE08A),
+  '먹물' => const Color(0xFF444466),
+  _ => null,
+};

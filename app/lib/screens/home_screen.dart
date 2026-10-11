@@ -5,12 +5,18 @@ import '../progress/profile.dart';
 import '../progress/store.dart';
 import '../update/updater.dart';
 import '../version.dart';
+import 'arena_screen.dart';
 import 'campaign_screen.dart';
 import 'codex_screen.dart';
+import 'depot_screen.dart';
 import 'free_play_screen.dart';
+import 'legendary_shop_screen.dart';
+import 'odds_screen.dart';
+import 'puzzle_screen.dart';
 import 'shop_screen.dart';
 import 'stats_screen.dart';
 import 'training_screen.dart';
+import 'wander_screen.dart';
 
 /// 첫 화면: 내 진행(캐릭터·문파·내공 단계·재화)과 메뉴.
 class HomeScreen extends StatefulWidget {
@@ -129,7 +135,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '엽전 ${p.coins} · 은자 ${p.silver} · 수련 포인트 ${p.trainingPoints.toStringAsFixed(1)}',
+                      '엽전 ${p.coins} · 은자 ${p.silver} · 징표 ${p.tokens} · '
+                      '수련 포인트 ${p.trainingPoints.toStringAsFixed(1)} · '
+                      '진기 ${p.staminaNow(DateTime.now().millisecondsSinceEpoch).floor()}',
                     ),
                   ],
                 ),
@@ -150,6 +158,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               onTap: () => _open(const TrainingScreen()),
             ),
             _MenuButton(
+              icon: Icons.extension,
+              label: '목인항 묘수풀이',
+              help: '정해진 수로 표적 모두 떨어뜨리기',
+              onTap: () => _open(const PuzzleScreen()),
+            ),
+            _MenuButton(
+              icon: Icons.emoji_events,
+              label: '투기장',
+              help: 'AI 연승전 · 진기 10',
+              onTap: () => _open(const ArenaScreen()),
+            ),
+            _MenuButton(
+              icon: Icons.map,
+              label: '강호유랑',
+              help: '매주 바뀌는 지도 · 기연 찾기',
+              onTap: () => _open(const WanderScreen()),
+            ),
+            if (p.legendaryOpen(DateTime.now().millisecondsSinceEpoch))
+              _MenuButton(
+                icon: Icons.auto_awesome,
+                label: '기인방 (열림!)',
+                help: '10분 동안만 — 전설 상점',
+                onTap: () => _open(const LegendaryShopScreen()),
+                primary: true,
+              ),
+            _MenuButton(
               icon: Icons.storefront,
               label: '만물상',
               help: '엽전으로 재질·모양 사기',
@@ -166,6 +200,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               label: '도감',
               help: '모은 것 · 세트 보너스',
               onTap: () => _open(const CodexScreen()),
+            ),
+            _MenuButton(
+              icon: Icons.flag,
+              label: '무림맹 보급소',
+              help: '주말·1,000타·6장 격파 때 · 징표',
+              onTap: () => _open(const DepotScreen()),
+            ),
+            _MenuButton(
+              icon: Icons.percent,
+              label: '확률 안내',
+              help: '기연·기인방·흥정 확률',
+              onTap: () => _open(const OddsScreen()),
             ),
             _MenuButton(
               icon: Icons.sports_esports,

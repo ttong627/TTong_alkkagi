@@ -147,7 +147,13 @@ class _GameScreenState extends State<GameScreen> {
       shot.hit,
       lift: true,
       mode: mode,
-      critical: shot.critical,
+      // 정각: 회심 가운데 폭이 넓다.
+      critical:
+          shot.critical ||
+          (widget.config.critWidth > CriticalRule.maxOffset &&
+              shot.offset <= widget.config.critWidth &&
+              shot.power >= CriticalRule.minPower &&
+              shot.power <= CriticalRule.maxPower),
       curl: shot.curl,
     );
   }
