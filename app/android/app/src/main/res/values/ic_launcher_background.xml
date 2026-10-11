@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#3A1630</color>
+    <!-- 실행 화면 배경(로비 그림이 뜨기 전): 먹빛 -->
+    <color name="launch_background">#17111C</color>
+</resources>
