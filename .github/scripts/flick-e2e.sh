@@ -58,7 +58,11 @@ if [ -z "$D" ]; then
 fi
 CX=$(echo "$D" | sed -E 's/.*cx=([0-9]+).*/\1/'); CY=$(echo "$D" | sed -E 's/.*cy=([0-9]+).*/\1/'); R=$(echo "$D" | sed -E 's/.*r=([0-9]+).*/\1/')
 echo "돌 자리(화소): 가운데 ($CX, $CY), 반지름 $R"
-a shell wm size
+SIZE=$(a shell wm size | tr -d '\r' | grep -o '[0-9]*x[0-9]*' | tail -1)
+H=${SIZE#*x}
+echo "화면 $SIZE"
+# 손끝은 화면 안에서 시작해야 들어간다(2026-10-11: 화면 높이 640 인데 y=661 에서 시작한 두 번이 통째로 빠짐).
+low() { local y=$((CY + $1 * R)); [ "$y" -gt $((H - 4)) ] && y=$((H - 4)); echo "$y"; }
 echo "[단계] 손끝 밀기"
 
 shots() { a logcat -d -s flutter:I | grep -c '\[E2E\] shot'; }
@@ -67,12 +71,12 @@ wait_shot() { # $1 = 지금까지 쏜 수 → 하나 늘 때까지(최대 8초) 
   sleep 6
 }
 # 1) 돌 아래 3R 에서 가운데를 지나 위로 6R, 0.25초.
-a shell input swipe "$CX" $((CY + 3 * R)) "$CX" $((CY - 3 * R)) 250; wait_shot 0
+a shell input swipe "$CX" "$(low 3)" "$CX" $((CY - 3 * R)) 250; wait_shot 0
 # 2) 오른쪽 가장자리(0.8R)를 같은 빠르기로.
 B=$((R * 8 / 10))
-a shell input swipe $((CX + B)) $((CY + 3 * R)) $((CX + B)) $((CY - 3 * R)) 250; wait_shot 1
+a shell input swipe $((CX + B)) "$(low 3)" $((CX + B)) $((CY - 3 * R)) 250; wait_shot 1
 # 3) 살살: 돌 아래 2R 에서 1.5초 동안 위로.
-a shell input swipe "$CX" $((CY + 2 * R)) "$CX" $((CY - R)) 1500; wait_shot 2
+a shell input swipe "$CX" "$(low 2)" "$CX" $((CY - R)) 1500; wait_shot 2
 
 LOG=$(a logcat -d -s flutter:I | grep '\[E2E\]')
 echo "$LOG"
