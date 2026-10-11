@@ -72,18 +72,15 @@ echo "[단계] 손끝 밀기"
 shots() { a logcat -d -s flutter:I | grep -c '\[E2E\] shot'; }
 discs() { a logcat -d -s flutter:I | grep -c '\[E2E\] disc'; }
 # $1 = 지금까지 쏜 수 → 하나 늘 때까지(최대 8초) 기다린 뒤, 돌이 멈추고 다음 돌의 가까이 보기가 새로 뜰 때까지
-# (새 disc 줄 · 최대 30초) 기다리고 그 자리로 옮긴다. 예전엔 6초만 쉬어, 돌이 늦게 멈춘 판(안드로이드 34 ·
-# 2026-10-11)에서 다음 밀기가 가까이 보기가 뜨기 0.7초 전에 들어가 판 화면을 눌렀다.
+# (새 disc 줄 · 최대 30초) 기다린다. 예전엔 6초만 쉬어, 돌이 늦게 멈춘 판(안드로이드 34 · 2026-10-11)에서 다음
+# 밀기가 가까이 보기가 뜨기 0.7초 전에 들어가 판 화면을 눌렀다.
+# ⚠️ 새로 뜬 직후의 disc 줄은 커지는 연출 도중 자리라(168,427 · 135,367 …) 쓰지 않는다 — 가까이 보기는
+# 늘 화면 같은 자리(처음 잰 CX·CY)에 다 커진다. 그 줄로 자리를 옮겼다가 튕기기가 돌 안에서 떼어졌다.
 wait_shot() {
   local before; before=$(discs)
   for i in $(seq 1 40); do sleep 0.2; [ "$(shots)" -gt "$1" ] && break; done
   for i in $(seq 1 150); do sleep 0.2; [ "$(discs)" -gt "$before" ] && break; done
-  sleep 1.5 # 화면이 커지는 연출(0.38초)이 끝난 뒤 자리.
-  local d; d=$(disc)
-  if [ -n "$d" ]; then
-    CX=$(echo "$d" | sed -E 's/.*cx=([0-9]+).*/\1/'); CY=$(echo "$d" | sed -E 's/.*cy=([0-9]+).*/\1/'); R=$(echo "$d" | sed -E 's/.*r=([0-9]+).*/\1/')
-    echo "다음 돌 자리: ($CX, $CY) 반지름 $R"
-  fi
+  sleep 1.5 # 커지는 연출(0.38초)이 끝난 뒤.
 }
 # 1) 돌 아래 3R 에서 가운데를 지나 위로 6R, 0.25초.
 a shell input swipe "$CX" "$(low 3)" "$CX" $((CY - 3 * R)) 250; wait_shot 0
