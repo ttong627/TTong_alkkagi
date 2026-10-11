@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 import '../game/arena.dart';
 import '../progress/settings.dart';
 
-/// 소리(설계서 §16.5). 효과음은 `tool/make_sounds.dart` 로 직접 합성한 파일이다.
+/// 소리(설계서 §16.5). 효과음·음악은 `tool/make_audio.py` 로 직접 합성한 OGG 다(국악 악기 합성 · 잔향 · 이음매 없는 반복).
 ///
 /// [init] 을 부르기 전(시험 등)에는 아무 소리도 내지 않는다. 소리를 못 내도 판은 그대로 간다.
 abstract final class Sound {
