@@ -120,6 +120,12 @@ abstract final class Campaign {
       shiftingFloor: shiftingFloor,
       qiClash: qiClash,
       demonWorld: p.rebirths > 0,
+      art: switch (h) {
+        Fighter.magyo => RebirthArt.steal,
+        Fighter.geomhwang => RebirthArt.homing,
+        Fighter.sinseung => RebirthArt.reflect,
+        _ => RebirthArt.none,
+      },
     );
   }
 

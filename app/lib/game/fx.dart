@@ -261,6 +261,15 @@ class BattleFx {
           _text(at.translate(0, -2), '청죽!', c, size: 22);
       }
     }
+    for (final (name, x, y) in m.artEvents) {
+      const c = Color(0xFFD06BFF);
+      final at = Offset(x, y);
+      _text(at.translate(0, -2.5), name, c, size: 28);
+      _rings.add(_Ring(at, 0.5, 6, 0.5, c));
+      _burst(at, c, 30, 30);
+      _shake = math.max(_shake, 8);
+      Sound.play('tech_absorb', 0.8);
+    }
     var crowd = false;
     for (final s in t.stones) {
       if (s.out && !wasOut.contains(s.id)) {

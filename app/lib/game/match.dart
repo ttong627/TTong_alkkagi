@@ -97,6 +97,27 @@ abstract final class QiClash {
       3;
 }
 
+/// 환생 전용 캐릭터의 비기(설계서 §10.1). 수치는 [가정].
+enum RebirthArt {
+  none,
+
+  /// 마교 교주 · 흡성대법: 내 수에 맞은 상대 돌의 감속을 그 판 동안 30% 빼앗는다.
+  steal,
+
+  /// 검황 · 이기어검: 평타도 앞쪽 30° 안의 가장 가까운 상대 돌로 한 걸음에 0.6° 씩 따라가고(첫 충돌 전까지),
+  /// 어기어석 때는 첫 충돌에서 분신 둘이 다른 상대 돌 둘을 60% 빠르기로 쫓는다.
+  homing,
+
+  /// 신승 · 반탄공: 상대 차례에 내 돌이 맞을 때 30% 로 반발 2배(친 돌을 되튕기고 내 돌은 덜 밀린다).
+  reflect;
+
+  static const double stealScale = 0.7;
+  static const double homingCone = 30 * math.pi / 180;
+  static const double homingTurn = 0.6 * math.pi / 180;
+  static const double seekerSpeed = 0.6;
+  static const double reflectChance = 0.3;
+}
+
 /// 내공 칸 수(가득).
 const int maxQi = 3;
 
@@ -178,7 +199,11 @@ class MatchConfig {
     this.shiftingFloor = false,
     this.qiClash = false,
     this.demonWorld = false,
+    this.art = RebirthArt.none,
   });
+
+  /// 내 환생 캐릭터의 비기(설계서 §10.1).
+  final RebirthArt art;
 
   /// 환생 세계(어두운 마교 세계) 판인가.
   final bool demonWorld;
@@ -497,15 +522,23 @@ class Match extends ChangeNotifier {
   }
 
   /// 화면 프레임마다 1/60초씩 진행한다. 한 수가 끝나면 true.
+  /// 환생 비기가 터진 자리(연출용, 한 걸음마다 새로).
+  final artEvents = <(String, double, double)>[];
+  final _stolen = <int>{};
+  bool _artThisTurn = false;
+
   bool step() {
     if (!isMoving) return false;
     if (clash != null) return false;
+    artEvents.clear();
+    _homingBefore();
     final watch = config.qiClash && !_clashThisTurn && !config.training;
     final before = watch
         ? {for (final s in table.stones) s.id: s.velocity.clone()}
         : const <int, Vector2>{};
     final st = table.step();
     if (watch && st == TurnStatus.moving) _checkClash(before);
+    if (st == TurnStatus.moving) _artAfter();
     final shooterId = table.shooter?.id;
     for (final i in table.impacts) {
       if (i.a == shooterId) touchedThisTurn.add(i.b);
@@ -514,6 +547,7 @@ class Match extends ChangeNotifier {
     if (st == TurnStatus.moving) return false;
     table.endTurn();
     _clashThisTurn = false;
+    _artThisTurn = false;
     _finishTurn();
     notifyListeners();
     return true;
@@ -585,6 +619,107 @@ class Match extends ChangeNotifier {
       _winner = 1;
     } else {
       _turn = 1 - _turn;
+    }
+  }
+
+  /// 검황: 첫 충돌 전 평타가 앞쪽 상대 돌로 살짝 따라간다.
+  void _homingBefore() {
+    if (config.art != RebirthArt.homing || lastMode != StrikeMode.plain) return;
+    final sh = table.shooter;
+    if (sh == null || sh.team != 0 || sh.out || sh.airborne) return;
+    if (touchedThisTurn.isNotEmpty) return;
+    final v = sh.velocity;
+    if (v.length < 5) return;
+    final heading = math.atan2(v.y, v.x);
+    Stone? best;
+    var bestD = double.infinity;
+    var bestA = 0.0;
+    for (final s in table.stones) {
+      if (s.team != 1 || s.out || s.phantom) continue;
+      final d = s.position - sh.position;
+      final a = math.atan2(d.y, d.x);
+      final diff = _wrap(a - heading);
+      if (diff.abs() > RebirthArt.homingCone) continue;
+      if (d.length < bestD) {
+        bestD = d.length;
+        best = s;
+        bestA = diff;
+      }
+    }
+    if (best == null) return;
+    final turn = bestA.clamp(-RebirthArt.homingTurn, RebirthArt.homingTurn);
+    table.redirect(heading + turn);
+  }
+
+  static double _wrap(double a) {
+    while (a > math.pi) {
+      a -= 2 * math.pi;
+    }
+    while (a < -math.pi) {
+      a += 2 * math.pi;
+    }
+    return a;
+  }
+
+  /// 한 걸음 뒤: 흡성대법·이기어검 분신·반탄공.
+  void _artAfter() {
+    final art = config.art;
+    if (art == RebirthArt.none) return;
+    final sh = table.shooter;
+    if (sh == null) return;
+    for (final i in table.impacts) {
+      if (i.a != sh.id && i.b != sh.id) continue;
+      final other = _byId(i.a == sh.id ? i.b : i.a);
+      if (other == null || other.phantom) continue;
+      switch (art) {
+        case RebirthArt.steal:
+          if (sh.team == 0 && other.team == 1 && _stolen.add(other.id)) {
+            table.setDampingScale(other, RebirthArt.stealScale);
+            artEvents.add(('흡성대법', i.x, i.y));
+          }
+        case RebirthArt.homing:
+          if (sh.team == 0 &&
+              other.team == 1 &&
+              lastMode == StrikeMode.ultimate &&
+              !_artThisTurn) {
+            _artThisTurn = true;
+            final targets =
+                table.stones
+                    .where(
+                      (s) =>
+                          s.team == 1 &&
+                          !s.out &&
+                          !s.phantom &&
+                          s.id != other.id,
+                    )
+                    .toList()
+                  ..sort(
+                    (a, b) => a.position
+                        .distanceTo(sh.position)
+                        .compareTo(b.position.distanceTo(sh.position)),
+                  );
+            final speed =
+                math.max(sh.velocity.length, i.speed) * RebirthArt.seekerSpeed;
+            table.spawnSeekers(sh, targets.take(2).toList(), speed);
+            artEvents.add(('이기어검', i.x, i.y));
+          }
+        case RebirthArt.reflect:
+          if (sh.team == 1 &&
+              other.team == 0 &&
+              !_artThisTurn &&
+              _rand.nextDouble() < RebirthArt.reflectChance) {
+            _artThisTurn = true;
+            final n = sh.position - other.position;
+            if (n.length > 1e-6) {
+              n.normalize();
+              sh.body.linearVelocity = sh.velocity + n * i.speed;
+              other.body.linearVelocity = other.velocity * 0.5;
+              artEvents.add(('반탄공', i.x, i.y));
+            }
+          }
+        case RebirthArt.none:
+          break;
+      }
     }
   }
 
