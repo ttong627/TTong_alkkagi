@@ -18,6 +18,8 @@ for i in $(seq 1 10); do
     echo "실패: 앱을 켜기 전에 에뮬레이터가 꺼짐(앱과 무관)"; ls -la /tmp/android-runner/ 2>&1 | tail; exit 1; }
 done
 echo "앱 없이 20초 살아 있음"
+# 몸짓 탐색 대신 3버튼 탐색(없는 이미지면 그냥 지나감).
+a shell cmd overlay enable com.android.internal.systemui.navbar.threebutton >/dev/null 2>&1 || true
 echo "[단계] 설치"
 ok=0
 for i in 1 2 3; do T=180 a install -r "$1" && { ok=1; break; }; echo "설치 다시 ($i)"; sleep 5; done
@@ -62,7 +64,8 @@ SIZE=$(a shell wm size | tr -d '\r' | grep -o '[0-9]*x[0-9]*' | tail -1)
 H=${SIZE#*x}
 echo "화면 $SIZE"
 # 손끝은 화면 안에서 시작해야 들어간다(2026-10-11: 화면 높이 640 인데 y=661 에서 시작한 두 번이 통째로 빠짐).
-low() { local y=$((CY + $1 * R)); [ "$y" -gt $((H - 4)) ] && y=$((H - 4)); echo "$y"; }
+# 아래 가장자리에서 시작하면 안드로이드 14 의 「홈으로」 몸짓이 손끝을 가로챈다(2026-10-11: y=636 → 앱이 뒤로 감).
+low() { local y=$((CY + $1 * R)); [ "$y" -gt $((H - 70)) ] && y=$((H - 70)); echo "$y"; }
 echo "[단계] 손끝 밀기"
 
 shots() { a logcat -d -s flutter:I | grep -c '\[E2E\] shot'; }
