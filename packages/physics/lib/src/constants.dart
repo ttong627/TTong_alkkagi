@@ -38,4 +38,26 @@ abstract final class PhysicsConstants {
 
   /// 돌이 제자리에서 도는 것을 줄이는 값.
   static const double angularDamping = 2.0;
+
+  /// 중력 가속도(cm/s²). 떠서 날아가거나 튀어 오른 돌이 떨어지는 데 쓴다.
+  static const double gravity = 981;
+
+  /// 위·아래 타격점이 이 값을 넘으면 돌이 뜬다(아래 → 떠서 날아감, 위 → 바닥에 눌렸다 튀어 오름).
+  /// 그 안쪽은 지금처럼 회전(밀어치기·끌어치기)만 준다.
+  static const double liftThreshold = 0.5;
+
+  /// 타격점 ±1 일 때 돌이 들리는 각도(도).
+  static const double maxLiftDegrees = 35;
+
+  /// 바닥 반발: 위를 맞아 바닥에 눌린 돌이 튀어 오르는 비율, 떨어진 돌이 다시 튀는 비율.
+  static const double floorBounce = 0.4;
+
+  /// 떨어질 때마다 남는 옆 빠르기 비율(바닥에 닿으며 잃는다).
+  static const double landingKeep = 0.85;
+
+  /// 이보다 느리게 떨어지면 더 튀지 않고 바닥에 붙는다(cm/s).
+  static const double settleSpeed = 15;
+
+  /// 돌 바닥이 이 높이(cm)보다 높이 떠 있으면 다른 돌 위를 넘어간다(부딪히지 않는다).
+  static const double clearHeight = 0.6;
 }

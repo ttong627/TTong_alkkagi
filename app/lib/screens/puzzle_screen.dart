@@ -1,0 +1,85 @@
+import 'package:flutter/material.dart';
+
+import '../game/match.dart';
+import '../progress/store.dart';
+import '../story/puzzles.dart';
+import 'encounter_flow.dart';
+import 'game_screen.dart';
+
+/// 목인항 묘수풀이(설계서 §8.1): 정해진 수 안에 표적을 모두 떨어뜨린다. 처음 풀면 수련 포인트.
+class PuzzleScreen extends StatefulWidget {
+  const PuzzleScreen({super.key});
+
+  @override
+  State<PuzzleScreen> createState() => _PuzzleScreenState();
+}
+
+class _PuzzleScreenState extends State<PuzzleScreen> {
+  final _store = ProfileStore.instance;
+
+  Future<void> _play(Puzzle z) async {
+    final p = _store.profile;
+    final won = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => GameScreen(
+          title: '묘수풀이 · ${z.title}',
+          info: () => '${z.help} (${z.shots}수)',
+          config: MatchConfig(
+            mode: MatchMode.practice,
+            arena: puzzleArena,
+            layout: z.layout,
+            shotLimit: z.shots,
+            myMaterial: p.material,
+            myShape: p.shape,
+            powerScale: p.maxSpeed / baseMaxSpeed,
+            spinScale: p.spinScale,
+          ),
+        ),
+      ),
+    );
+    if (won == null || !mounted) return;
+    final first = won && p.puzzles.add(z.id);
+    if (first) p.trainingPoints += z.reward;
+    await _store.save();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          won
+              ? (first ? '풀었다! 수련 포인트 +${z.reward}' : '다시 풀었다')
+              : '못 풀었다 — 다시 해 보세요',
+        ),
+      ),
+    );
+    setState(() {});
+    await afterRound(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = _store.profile;
+    return Scaffold(
+      appBar: AppBar(title: const Text('목인항 · 묘수풀이')),
+      body: ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          for (final z in puzzles)
+            Card(
+              child: ListTile(
+                leading: Icon(
+                  p.puzzles.contains(z.id)
+                      ? Icons.check_circle
+                      : Icons.extension,
+                ),
+                title: Text('${z.id}. ${z.title}'),
+                subtitle: Text(
+                  '${z.help} · ${z.shots}수 · 처음 풀면 수련 포인트 +${z.reward}',
+                ),
+                onTap: () => _play(z),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

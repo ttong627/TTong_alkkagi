@@ -1,13 +1,28 @@
-import 'package:alkkagi_physics/alkkagi_physics.dart';
 import 'package:flutter/material.dart';
 
-import '../game/arena.dart';
-import '../game/match.dart';
+import '../e2e.dart';
+import '../game/avatar.dart';
+import '../progress/profile.dart';
+import '../progress/store.dart';
 import '../update/updater.dart';
 import '../version.dart';
-import 'game_screen.dart';
+import 'arena_screen.dart';
+import 'campaign_screen.dart';
+import 'codex_screen.dart';
+import 'depot_screen.dart';
+import 'free_play_screen.dart';
+import 'legendary_shop_screen.dart';
+import 'odds_screen.dart';
+import 'look_screen.dart';
+import 'puzzle_screen.dart';
+import 'rebirth_screen.dart';
+import 'settings_screen.dart';
+import 'shop_screen.dart';
+import 'stats_screen.dart';
+import 'training_screen.dart';
+import 'wander_screen.dart';
 
-/// 첫 화면: 모드·난이도·대전장·내 돌(재질·모양)을 고른다.
+/// 첫 화면: 내 진행(캐릭터·문파·내공 단계·재화)과 메뉴.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -17,22 +32,28 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final _updater = Updater();
-  Difficulty _difficulty = Difficulty.easy;
-  StoneMaterial _material = StoneMaterial.cheongok;
-  StoneShape _shape = StoneShape.round;
-  Arena _arena = Arena.dustyYard;
+  final _store = ProfileStore.instance;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _updater.addListener(_onUpdate);
+    _store.addListener(_onUpdate);
     _updater.run();
+    if (e2eFlick) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _open(const FreePlayScreen(autoPractice: true)),
+      );
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _pickHeroIfNew());
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _store.removeListener(_onUpdate);
     _updater
       ..removeListener(_onUpdate)
       ..dispose();
@@ -48,33 +69,48 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) _updater.resumed();
   }
 
-  void _start(MatchMode mode) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => GameScreen(
-          config: MatchConfig(
-            mode: mode,
-            difficulty: _difficulty,
-            myMaterial: _material,
-            myShape: _shape,
-            arena: _arena,
-          ),
-        ),
+  Future<void> _open(Widget screen) =>
+      Navigator.of(context)
+          .push(MaterialPageRoute<void>(builder: (_) => screen));
+
+  /// 처음 켰으면 캐릭터를 고른다(설계서 §2.1).
+  Future<void> _pickHeroIfNew() async {
+    if (_store.profile.hero != null || !mounted) return;
+    final h = await showDialog<Fighter>(
+      context: context,
+      barrierDismissible: false,
+      builder: (c) => SimpleDialog(
+        title: const Text('누구로 강호에 나서겠습니까?'),
+        children: [
+          for (final h in Fighter.values.where((h) => h.starter))
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(c, h),
+              child: ListTile(title: Text(h.label), subtitle: Text(h.trait)),
+            ),
+        ],
       ),
     );
+    if (h == null) return;
+    _store.profile
+      ..hero = h
+      ..heroes.add(h)
+      ..codex.add('캐릭터:${h.name}');
+    await _store.save();
   }
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final p = _store.profile;
+    final next = p.toNextStage;
     return Scaffold(
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 32, 20, 24),
+          padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
           children: [
             UpdateBanner(updater: _updater),
             Text(
-              '탄지 무림',
+              '탄지무림 알까기',
               textAlign: TextAlign.center,
               style: t.displaySmall?.copyWith(fontWeight: FontWeight.w800),
             ),
@@ -84,101 +120,134 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               textAlign: TextAlign.center,
               style: t.titleMedium,
             ),
-            const SizedBox(height: 28),
-            _Section(
-              title: 'AI 난이도',
-              child: SizedBox(
-                width: double.infinity,
-                child: SegmentedButton<Difficulty>(
-                  showSelectedIcon: false,
-                  segments: [
-                    for (final d in Difficulty.values)
-                      ButtonSegment(value: d, label: Text(d.label)),
+            const SizedBox(height: 20),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    InkWell(
+                      key: const Key('home-avatar'),
+                      onTap: () => _open(const LookScreen()),
+                      child: Avatar.of(p, size: 64),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${p.hero?.label ?? '이름 없는 초행자'} · '
+                            '${p.school == null ? '평민(1장을 깨면 문파 각성)' : '${p.school!.label} 문파'}',
+                            style: t.titleMedium,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '내공 ${p.stageName}(${p.stage}단계) · ${p.naegong.toStringAsFixed(1)}'
+                            '${next == null ? '' : ' · 다음 단계까지 ${next.toStringAsFixed(1)}'}',
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '엽전 ${p.coins} · 은자 ${p.silver} · 징표 ${p.tokens} · '
+                            '수련 포인트 ${p.trainingPoints.toStringAsFixed(1)} · '
+                            '진기 ${p.staminaNow(DateTime.now().millisecondsSinceEpoch).floor()}',
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
-                  selected: {_difficulty},
-                  onSelectionChanged: (s) =>
-                      setState(() => _difficulty = s.first),
                 ),
               ),
             ),
-            _Section(
-              title: '대전장',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final a in Arena.values)
-                        ChoiceChip(
-                          avatar: CircleAvatar(backgroundColor: a.floor),
-                          label: Text(a.label),
-                          selected: _arena == a,
-                          onSelected: (_) => setState(() => _arena = a),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '${_arena.chapter} · ${_arena.feel}',
-                    style: t.bodySmall,
-                  ),
-                ],
+            const SizedBox(height: 14),
+            _MenuButton(
+              icon: Icons.landscape,
+              label: '강호행',
+              help: '줄거리 6장 · 숙적 묵현',
+              onTap: () => _open(const CampaignScreen()),
+              primary: true,
+            ),
+            _MenuButton(
+              icon: Icons.sports_martial_arts,
+              label: '목인항',
+              help: '하루 처음 30타는 내공 3배',
+              onTap: () => _open(const TrainingScreen()),
+            ),
+            _MenuButton(
+              icon: Icons.extension,
+              label: '목인항 묘수풀이',
+              help: '정해진 수로 표적 모두 떨어뜨리기',
+              onTap: () => _open(const PuzzleScreen()),
+            ),
+            _MenuButton(
+              icon: Icons.emoji_events,
+              label: '투기장',
+              help: 'AI 연승전 · 진기 10',
+              onTap: () => _open(const ArenaScreen()),
+            ),
+            _MenuButton(
+              icon: Icons.map,
+              label: '강호유랑',
+              help: '매주 바뀌는 지도 · 기연 찾기',
+              onTap: () => _open(const WanderScreen()),
+            ),
+            if (p.legendaryOpen(DateTime.now().millisecondsSinceEpoch))
+              _MenuButton(
+                icon: Icons.auto_awesome,
+                label: '기인방 (열림!)',
+                help: '10분 동안만 — 전설 상점',
+                onTap: () => _open(const LegendaryShopScreen()),
+                primary: true,
               ),
+            _MenuButton(
+              icon: Icons.storefront,
+              label: '만물상',
+              help: '엽전으로 재질·모양 사기',
+              onTap: () => _open(const ShopScreen()),
             ),
-            _Section(
-              title: '내 돌 재질',
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final m in StoneMaterial.values)
-                    ChoiceChip(
-                      label: Text(m.label),
-                      selected: _material == m,
-                      onSelected: (_) => setState(() => _material = m),
-                    ),
-                ],
+            _MenuButton(
+              icon: Icons.trending_up,
+              label: '능력치 · 캐릭터 · 내 돌',
+              help: '수련 포인트로 성장',
+              onTap: () => _open(const StatsScreen()),
+            ),
+            _MenuButton(
+              icon: Icons.menu_book,
+              label: '도감',
+              help: '모은 것 · 세트 보너스',
+              onTap: () => _open(const CodexScreen()),
+            ),
+            _MenuButton(
+              icon: Icons.flag,
+              label: '무림맹 보급소',
+              help: '주말·1,000타·6장 격파 때 · 징표',
+              onTap: () => _open(const DepotScreen()),
+            ),
+            _MenuButton(
+              icon: Icons.percent,
+              label: '확률 안내',
+              help: '기연·기인방·흥정 확률',
+              onTap: () => _open(const OddsScreen()),
+            ),
+            _MenuButton(
+              icon: Icons.sports_esports,
+              label: '자유 대전',
+              help: '혼자·둘이·연습 (보상 없음)',
+              onTap: () => _open(const FreePlayScreen()),
+            ),
+            if (p.canRebirth || p.rebirths > 0)
+              _MenuButton(
+                icon: Icons.autorenew,
+                label: p.canRebirth ? '비승 · 환생 (열림!)' : '비승 · 윤회천기',
+                help: '환골탈태 · 천년내단 ${p.danCores}',
+                onTap: () => _open(const RebirthScreen()),
+                primary: p.canRebirth,
               ),
-            ),
-            _Section(
-              title: '내 돌 모양',
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final s in StoneShape.values)
-                    ChoiceChip(
-                      label: Text(s.label),
-                      selected: _shape == s,
-                      onSelected: (_) => setState(() => _shape = s),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: () => _start(MatchMode.vsAi),
-              child: const _BigLabel('혼자 하기 (AI 대전)'),
-            ),
-            const SizedBox(height: 10),
-            FilledButton.tonal(
-              onPressed: () => _start(MatchMode.twoPlayer),
-              child: const _BigLabel('둘이 하기 (한 기기)'),
-            ),
-            const SizedBox(height: 10),
-            OutlinedButton(
-              onPressed: () => _start(MatchMode.practice),
-              child: const _BigLabel('연습'),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              '공격할 내 돌을 누르면 그 돌을 가까이 보는 화면으로 바뀝니다.\n'
-              '손끝으로 돌을 튕기세요. 튕긴 방향으로, 빠르게 튕길수록 세게 나갑니다.\n'
-              '돌 윗부분을 치면 맞힌 뒤 밀고 나가고, 아랫부분을 치면 끌려옵니다.\n'
-              '상대 돌을 모두 판 밖으로 떨어뜨리면 이깁니다.',
-              style: t.bodyMedium?.copyWith(height: 1.5),
+            _MenuButton(
+              icon: Icons.settings,
+              label: '설정',
+              help: '소리·진동·손맛 보정·왼손잡이',
+              onTap: () => _open(const SettingsScreen()),
             ),
             const SizedBox(height: 16),
             Text(
@@ -195,34 +264,48 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 }
 
-class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.child});
-  final String title;
-  final Widget child;
+class _MenuButton extends StatelessWidget {
+  const _MenuButton({
+    required this.icon,
+    required this.label,
+    required this.help,
+    required this.onTap,
+    this.primary = false,
+  });
+  final IconData icon;
+  final String label;
+  final String help;
+  final VoidCallback onTap;
+  final bool primary;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 18),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 8),
-        child,
-      ],
-    ),
-  );
-}
-
-class _BigLabel extends StatelessWidget {
-  const _BigLabel(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 14),
-    child: Text(text, style: const TextStyle(fontSize: 18)),
-  );
+  Widget build(BuildContext context) {
+    final child = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          Icon(icon, size: 28),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 18)),
+                Text(help, style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right),
+        ],
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: primary
+          ? FilledButton(onPressed: onTap, child: child)
+          : FilledButton.tonal(onPressed: onTap, child: child),
+    );
+  }
 }
 
 /// 시험판 자동 업데이트 알림 줄. 할 일이 없으면 보이지 않는다.

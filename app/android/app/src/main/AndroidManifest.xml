@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="탄지 무림"
+        android:label="탄지무림 알까기"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

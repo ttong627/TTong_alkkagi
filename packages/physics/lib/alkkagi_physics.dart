@@ -1,4 +1,4 @@
-/// 탄지 무림(알까기) 물리 모델 (설계서 v2 §3).
+/// 탄지무림(알까기) 물리 모델 (설계서 v2 §3).
 ///
 /// 단위: 1 = 1cm, 1초 = 60스텝. 앱(화면)과 서버(판정)가 이 코드를 같이 쓴다.
 library;
@@ -9,3 +9,5 @@ export 'src/constants.dart';
 export 'src/materials.dart';
 export 'src/scenes.dart';
 export 'src/table.dart';
+export 'src/techniques.dart';
+export 'src/terrain.dart';

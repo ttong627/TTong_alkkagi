@@ -1,0 +1,65 @@
+# 손끝으로 돌 맞히기 실제 확인 (안드로이드 14 에뮬레이터)
+#
+# 시험 판(--dart-define=E2E_FLICK=true)은 켜자마자 연습 판의 내 돌 하나를 가까이 보기로 띄운다.
+# adb 로 손끝 밀기를 넣고, 안드로이드 손끝 점(TouchFeed)으로 읽어 돌이 맞아 나갔는지 기록으로 본다.
+name: flick-e2e
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'app/lib/game/flick.dart'
+      - 'app/lib/screens/flick_view.dart'
+      - 'app/lib/input/**'
+      - 'app/android/app/src/main/kotlin/**'
+      - '.github/workflows/flick-e2e.yml'
+      - '.github/scripts/flick-e2e.sh'
+
+env:
+  FLUTTER_VERSION: 3.47.6
+
+jobs:
+  flick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # 안드로이드 34 에뮬레이터가 앱 켠 뒤 수 초 만에 꺼진다(2026-10-11 5번). 30 과 나란히 돌려 어느 쪽 문제인지 가른다.
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [34, 30]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: 시험 판 빌드(x86_64)
+        working-directory: app
+        run: |
+          flutter pub get
+          flutter build apk --release --flavor sideload --split-per-abi --target-platform android-x64 \
+            --dart-define=E2E_FLICK=true
+          cp build/app/outputs/flutter-apk/app-x86_64-sideload-release.apk "$RUNNER_TEMP/e2e.apk"
+      - name: KVM 켜기
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: 에뮬레이터에서 손끝으로 돌 맞히기
+        uses: reactivecircus/android-emulator-runner@v2
+        timeout-minutes: 25
+        with:
+          emulator-boot-timeout: 600
+          # 앱이 첫 화면을 그릴 때 에뮬레이터가 통째로 꺼졌다(2026-10-11 기록: 앱 켠 뒤 7초, 호스트 메모리 9.4GB 남음·
+          # OOM 없음, 그래픽 오류 「Failed to find ColorBuffer」). 가상 Vulkan 을 꺼서 OpenGL 로 그리게 한다.
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -feature -Vulkan
+          api-level: ${{ matrix.api }}
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: bash .github/scripts/flick-e2e.sh "$RUNNER_TEMP/e2e.apk"
