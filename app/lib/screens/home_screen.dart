@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../e2e.dart';
+import '../game/avatar.dart';
 import '../progress/profile.dart';
 import '../progress/store.dart';
 import '../update/updater.dart';
@@ -12,6 +13,7 @@ import 'depot_screen.dart';
 import 'free_play_screen.dart';
 import 'legendary_shop_screen.dart';
 import 'odds_screen.dart';
+import 'look_screen.dart';
 import 'puzzle_screen.dart';
 import 'rebirth_screen.dart';
 import 'settings_screen.dart';
@@ -122,24 +124,36 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Text(
-                      '${p.hero?.label ?? '이름 없는 초행자'} · '
-                      '${p.school == null ? '평민(1장을 깨면 문파 각성)' : '${p.school!.label} 문파'}',
-                      style: t.titleMedium,
+                    InkWell(
+                      key: const Key('home-avatar'),
+                      onTap: () => _open(const LookScreen()),
+                      child: Avatar.of(p, size: 64),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '내공 ${p.stageName}(${p.stage}단계) · ${p.naegong.toStringAsFixed(1)}'
-                      '${next == null ? '' : ' · 다음 단계까지 ${next.toStringAsFixed(1)}'}',
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '엽전 ${p.coins} · 은자 ${p.silver} · 징표 ${p.tokens} · '
-                      '수련 포인트 ${p.trainingPoints.toStringAsFixed(1)} · '
-                      '진기 ${p.staminaNow(DateTime.now().millisecondsSinceEpoch).floor()}',
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${p.hero?.label ?? '이름 없는 초행자'} · '
+                            '${p.school == null ? '평민(1장을 깨면 문파 각성)' : '${p.school!.label} 문파'}',
+                            style: t.titleMedium,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '내공 ${p.stageName}(${p.stage}단계) · ${p.naegong.toStringAsFixed(1)}'
+                            '${next == null ? '' : ' · 다음 단계까지 ${next.toStringAsFixed(1)}'}',
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '엽전 ${p.coins} · 은자 ${p.silver} · 징표 ${p.tokens} · '
+                            '수련 포인트 ${p.trainingPoints.toStringAsFixed(1)} · '
+                            '진기 ${p.staminaNow(DateTime.now().millisecondsSinceEpoch).floor()}',
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
