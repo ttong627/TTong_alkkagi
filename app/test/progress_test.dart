@@ -1,4 +1,5 @@
 import 'package:alkkagi/game/match.dart';
+import 'package:alkkagi/progress/encounters.dart';
 import 'package:alkkagi/progress/profile.dart';
 import 'package:alkkagi/story/campaign.dart';
 import 'package:alkkagi/story/chapters.dart';
@@ -183,6 +184,88 @@ void main() {
       expect(campaign.length, 9);
       expect(campaign.map((s) => s.id).toSet().length, 9);
       expect(campaign.where((s) => s.chapter != null).length, 6);
+    });
+  });
+
+  group('환생(설계서 §10)', () {
+    Profile ready() {
+      final p = Profile()
+        ..naegong = 3500
+        ..coins = 900
+        ..silver = 7
+        ..tokens = 4
+        ..trainingPoints = 50
+        ..school = Technique.stomp;
+      p.done.addAll(['c1', 'c6']);
+      p.stats[Stat.power] = 12;
+      p.materials.add(StoneMaterial.ice);
+      p.codex.add('고수:촌장');
+      return p;
+    }
+
+    test('조건: 6장 우승 + 생사경. 환생 전용 캐릭터만 고를 수 있다', () {
+      final p = Profile()..naegong = 3500;
+      expect(p.canRebirth, isFalse);
+      p.done.add('c6');
+      expect(p.canRebirth, isTrue);
+      expect(p.rebirth(Fighter.seokdu), isFalse);
+      expect(Fighter.values.where((f) => f.rebirth).length, 3);
+    });
+
+    test('처음으로 / 그대로 / 얻음', () {
+      final p = ready();
+      expect(p.rebirth(Fighter.magyo), isTrue);
+      // 처음으로
+      expect(p.naegong, 0);
+      expect(p.stage, 1);
+      expect(p.stats[Stat.power], 0);
+      expect(p.done, isEmpty);
+      expect(p.coins, 0);
+      expect(p.trainingPoints, 0);
+      expect(p.school, isNull);
+      // 그대로
+      expect(p.silver, 7);
+      expect(p.tokens, 4);
+      expect(p.materials, contains(StoneMaterial.ice));
+      expect(p.codex, contains('고수:촌장'));
+      // 얻음
+      expect(p.rebirths, 1);
+      expect(p.danCores, 1);
+      expect(p.hero, Fighter.magyo);
+      expect(p.heroes, contains(Fighter.magyo));
+      expect(p.canRebirth, isFalse);
+    });
+
+    test('윤회천기: 내단 1개로 한 칸, 갈래마다 3칸 — 30타 내공 90 → 150 · 진기 160 · 기인방 0.8%', () {
+      final p = Profile()..danCores = 9;
+      expect(Training.dayTotal(30, first: p.trainingFirst), closeTo(90, 1e-9));
+      for (var i = 0; i < 4; i++) {
+        p.openTree(TreeNode.training);
+        p.openTree(TreeNode.stamina);
+        p.openTree(TreeNode.legend);
+      }
+      expect(p.danCores, 0);
+      expect(p.tree[TreeNode.training], 3);
+      expect(Training.dayTotal(30, first: p.trainingFirst), closeTo(150, 1e-9));
+      expect(p.staminaMax, 160);
+      expect(legendaryChance(p.tree[TreeNode.legend]!), closeTo(0.008, 1e-12));
+      expect(p.openTree(TreeNode.legend), isFalse);
+    });
+
+    test('환생 세계: 블랙홀·지뢰석이 더해지고 묵현 무공이 바뀐다 · 저장 되읽기', () {
+      final p = ready()..rebirth(Fighter.sinseung);
+      final r1 = campaign.firstWhere((s) => s.id == 'r1');
+      final c = Campaign.configFor(p, r1);
+      expect(c.demonWorld, isTrue);
+      expect(
+        c.features.map((f) => f.kind),
+        containsAll([FeatureKind.blackHole, FeatureKind.mine]),
+      );
+      expect(c.opponentMartial, isNot(r1.martial));
+      final back = Profile.decode(p.encode());
+      expect(back.rebirths, 1);
+      expect(back.danCores, 1);
+      expect(back.hero, Fighter.sinseung);
     });
   });
 }

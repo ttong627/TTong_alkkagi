@@ -122,6 +122,13 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
         Paint()..color = const Color(0x33FF5A1F),
       );
     }
+    if (match.config.demonWorld) {
+      // 환생 세계: 같은 판이 어두운 마교 세계로(설계서 §10.2).
+      canvas.drawRect(
+        Rect.fromPoints(_toScreen(-25, -25), _toScreen(25, 25)),
+        Paint()..color = const Color(0x664A1460),
+      );
+    }
     for (final f in match.table.features) {
       paintFeature(canvas, f, _toScreen, _scale);
     }

@@ -177,7 +177,11 @@ class MatchConfig {
     this.civilians = const [],
     this.shiftingFloor = false,
     this.qiClash = false,
+    this.demonWorld = false,
   });
+
+  /// 환생 세계(어두운 마교 세계) 판인가.
+  final bool demonWorld;
 
   /// 내공 겨루기(설계서 §4): 고수전에서 양편 가장 무거운 돌이 정면으로 부딪히면 연타로 겨룬다.
   final bool qiClash;

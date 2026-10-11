@@ -22,19 +22,38 @@ abstract final class Campaign {
   }
 
   /// 이 판을 칠 판 설정: 내 돌·무공·능력치와 고수의 돌·버릇.
+  /// 환생 세계(설계서 §10.2): 같은 판에 블랙홀·지뢰석이 더해진다(처음 줄·다른 지물과 2cm 넘게 떨어진 자리).
+  static const rebirthFeatures = [
+    Feature(FeatureKind.blackHole, 9.5, -6),
+    Feature(FeatureKind.mine, -9.5, 6),
+  ];
+
+  /// 숙적 묵현은 환생할 때마다 다른 문파의 무공을 익혀 나타난다(설계서 §9.2).
+  static Technique rivalMartial(Stage s, int rebirths) {
+    if (s.rival == null || rebirths == 0) return s.martial;
+    const order = [
+      Technique.swordQi,
+      Technique.stomp,
+      Technique.taiji,
+      Technique.clone,
+    ];
+    final i = order.indexOf(s.martial);
+    return order[(i < 0 ? 0 : i + rebirths) % order.length];
+  }
+
   static MatchConfig configFor(Profile p, Stage s) => playerConfig(
     p,
     arena: s.arena,
     difficulty: s.difficulty,
     opponentMaterial: s.material,
     opponentShape: s.shape,
-    opponentMartial: s.martial,
+    opponentMartial: rivalMartial(s, p.rebirths),
     aiStyle: s.style,
     opponentStartQi: s.bossQi,
     opponentName: s.boss,
     aimAssist: aimAssistFor(s),
     weather: s.weather,
-    features: s.features,
+    features: [...s.features, if (p.rebirths > 0) ...rebirthFeatures],
     civilians: s.civilians,
     shiftingFloor: s.shiftingFloor,
     qiClash: true,
@@ -100,6 +119,7 @@ abstract final class Campaign {
       civilians: civilians,
       shiftingFloor: shiftingFloor,
       qiClash: qiClash,
+      demonWorld: p.rebirths > 0,
     );
   }
 
