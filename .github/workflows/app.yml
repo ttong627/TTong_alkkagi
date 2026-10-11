@@ -160,9 +160,10 @@ jobs:
           status: ${{ inputs.play_status }}
 
   # 쓰기 권한은 이 작업에만 준다(수동 실행 + make_release 일 때만 돈다).
+  # 업로드 키로 서명된 빌드만 올린다 — 임시 키 판이 올라가면 받은 폰에서 정식 판 설치가 막힌다.
   release:
     needs: android
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.make_release }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.make_release && needs.android.outputs.signed == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -1,0 +1,52 @@
+# 임시 키로 서명된 시험판 릴리스 지우기 (손으로만 실행)
+#
+# 비밀값 등록 전 빌드는 실행마다 임시 키로 서명됐다. 그 판이 폰에 깔리면 정식(업로드 키) 판을
+# 그 위에 설치할 수 없다(「앱이 설치되지 않았습니다」). build-* 릴리스의 APK 서명을 하나씩 확인해
+# 업로드 키가 아닌 것만 지운다. 업로드 키 판과 test-latest 는 건드리지 않는다.
+# dry_run 을 켜면 지울 목록만 보여 준다.
+name: release-cleanup
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '지우지 않고 목록만 보기'
+        type: boolean
+        default: true
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      UPLOAD_CERT_SHA256: 90dbee10f71a1ebca7365d85d5d9eccebd08f5a07f350b46bd4179d6f79d8ab0
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: 서명 확인 후 정리
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          SIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          for TAG in $(gh release list --repo "$GITHUB_REPOSITORY" --limit 200 --json tagName --jq '.[].tagName' | grep -E '^build-[0-9]+$'); do
+            rm -rf dl && mkdir dl
+            gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.apk' --dir dl
+            BAD=0; ANY=0
+            for APK in dl/*.apk; do
+              [ -f "$APK" ] || continue
+              ANY=1
+              GOT=$("$SIGNER" verify --print-certs "$APK" | sed -nE 's/.*certificate SHA-256 digest: ([0-9a-f]+).*/\1/p' | head -1)
+              echo "$TAG $(basename "$APK") ${GOT:0:16}"
+              [ "$GOT" = "$UPLOAD_CERT_SHA256" ] || BAD=1
+            done
+            if [ "$ANY" = 1 ] && [ "$BAD" = 1 ]; then
+              if [ "$DRY_RUN" = "true" ]; then
+                echo "→ 지울 대상: $TAG"
+              else
+                gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --cleanup-tag -y
+                echo "→ 지움: $TAG"
+              fi
+            else
+              echo "→ 남김: $TAG"
+            fi
+          done
