@@ -13,6 +13,7 @@ import 'progress/store.dart';
 import 'screens/home_screen.dart';
 import 'screens/splash_screen.dart';
 import 'ui/art.dart';
+import 'ui/kit.dart';
 import 'ui/theme.dart';
 
 Future<void> main() async {
@@ -53,6 +54,7 @@ class AlkkagiApp extends StatelessWidget {
       title: '탄지무림 알까기',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
+      navigatorObservers: [BackSoundObserver()],
       home: e2eFlick ? const HomeScreen() : const SplashScreen(),
     );
   }

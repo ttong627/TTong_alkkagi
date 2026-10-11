@@ -97,6 +97,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (mounted) {
       Sound.lobby();
       setState(() {});
+      // 기연 등으로 내공 경지가 올랐으면 로비에서 축하.
+      await celebrateStage(context);
     }
   }
 

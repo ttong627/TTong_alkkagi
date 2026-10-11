@@ -27,6 +27,16 @@ class CampaignScreen extends StatefulWidget {
 }
 
 class _CampaignScreenState extends State<CampaignScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 첫 방문 안내(설계서 §16.13).
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) =>
+          firstVisit(context, 'campaign', '장을 하나씩 깨며 강호로 나아가거라. 판마다 별 셋을 노려라!'),
+    );
+  }
+
   final _store = ProfileStore.instance;
 
   Future<void> _play(int i) async {

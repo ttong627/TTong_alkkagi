@@ -33,6 +33,10 @@ class _WanderScreenState extends State<WanderScreen> {
   @override
   void initState() {
     super.initState();
+    // 첫 방문 안내(설계서 §16.13).
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => firstVisit(context, 'wander', '한 칸 갈 때마다 진기가 든다. 길 위에서 기연을 찾아라!'),
+    );
     final p = _store.profile;
     if (p.wanderWeek != _week) {
       p

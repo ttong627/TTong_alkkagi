@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../audio/sound.dart';
 import '../progress/settings.dart';
+import '../progress/store.dart';
 import 'art.dart';
 import 'theme.dart';
 
@@ -828,5 +829,155 @@ class Portrait extends StatelessWidget {
               ),
       ),
     );
+  }
+}
+
+/// 내공 경지가 올랐으면 한 번 축하한다(설계서 §16.13). 올랐는지는 [Profile.celebratedStage] 와 비교.
+Future<void> celebrateStage(BuildContext context) async {
+  final store = ProfileStore.instance;
+  final p = store.profile;
+  if (p.stage <= p.celebratedStage) return;
+  p.celebratedStage = p.stage;
+  await store.save();
+  if (!context.mounted) return;
+  Sound.play('jingle_levelup');
+  Buzz.heavy();
+  await showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: '경지 상승',
+    barrierColor: Colors.black.withValues(alpha: 0.75),
+    transitionDuration: const Duration(milliseconds: 420),
+    pageBuilder: (c, _, _) => GestureDetector(
+      key: const Key('stage-up'),
+      behavior: HitTestBehavior.opaque,
+      onTap: () => Navigator.pop(c),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CharacterSprite(id: p.hero?.name ?? 'seokdu', height: 240),
+            const OutlinedText(
+              '경지 상승!',
+              size: 46,
+              title: true,
+              color: Palette.gold,
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset(Art.icon('naegong'), width: 44),
+                const SizedBox(width: 8),
+                OutlinedText(
+                  '${p.stageName} · ${p.stage}단계',
+                  size: 30,
+                  title: true,
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            const OutlinedText('눌러서 닫기', size: 15, color: Palette.dim),
+          ],
+        ),
+      ),
+    ),
+    transitionBuilder: (_, a, _, child) => ScaleTransition(
+      scale: CurvedAnimation(parent: a, curve: Curves.elasticOut),
+      child: FadeTransition(opacity: a, child: child),
+    ),
+  );
+}
+
+/// 화면을 처음 열 때 사부가 한 줄로 알려 준다(설계서 §16.13). 한 번 본 화면은 다시 안 뜬다.
+Future<void> firstVisit(BuildContext context, String key, String line) async {
+  final store = ProfileStore.instance;
+  final p = store.profile;
+  if (p.seenHints.contains(key)) return;
+  p.seenHints.add(key);
+  await store.save();
+  if (!context.mounted) return;
+  await showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: '안내',
+    barrierColor: Colors.black.withValues(alpha: 0.55),
+    transitionDuration: const Duration(milliseconds: 260),
+    pageBuilder: (c, _, _) => GestureDetector(
+      key: const Key('first-visit'),
+      behavior: HitTestBehavior.opaque,
+      onTap: () => Navigator.pop(c),
+      child: SafeArea(
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const CharacterSprite(id: 'sabu', height: 170),
+                Expanded(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 40),
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+                      decoration: BoxDecoration(
+                        color: Palette.paper,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: const Color(0xFF2A1A12),
+                          width: 3,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            '사부',
+                            style: TextStyle(
+                              fontFamily: titleFont,
+                              fontSize: 15,
+                              color: Palette.redDeep,
+                            ),
+                          ),
+                          Text(
+                            line,
+                            style: const TextStyle(
+                              fontFamily: bodyFont,
+                              fontSize: 20,
+                              color: Color(0xFF2A1A12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+    transitionBuilder: (_, a, _, child) => FadeTransition(
+      opacity: a,
+      child: SlideTransition(
+        position: Tween(
+          begin: const Offset(0, 0.2),
+          end: Offset.zero,
+        ).animate(a),
+        child: child,
+      ),
+    ),
+  );
+}
+
+/// 뒤로 갈 때 「톡」(설계서 §16.13).
+class BackSoundObserver extends NavigatorObserver {
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (route is PageRoute) Sound.play('ui_back', 0.7);
   }
 }

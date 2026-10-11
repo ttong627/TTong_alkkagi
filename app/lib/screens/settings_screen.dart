@@ -9,6 +9,10 @@ import '../ui/kit.dart';
 import '../ui/theme.dart';
 import 'tutorial_screen.dart';
 
+import 'package:flutter/services.dart';
+
+import '../progress/store.dart';
+
 /// 설정 화면(설계서 §16.6).
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -41,6 +45,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
     s.save();
   }
 
+  /// 백업 코드를 붙여 넣어 진행을 바꾼다(지금 진행은 덮어씀 — 한 번 더 묻는다).
+  Future<void> _restore(BuildContext context) async {
+    final ctl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('코드로 불러오기'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('지금 진행은 지워지고 코드의 진행으로 바뀝니다.'),
+            const SizedBox(height: 10),
+            TextField(
+              key: const Key('backup-field'),
+              controller: ctl,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                hintText: 'TJ1-…',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('그만두기'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('불러오기'),
+          ),
+        ],
+      ),
+    );
+    final code = ctl.text;
+    ctl.dispose();
+    if (ok != true || !context.mounted) return;
+    final done = await ProfileStore.instance.importCode(code);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(done ? '불러왔습니다.' : '코드가 맞지 않습니다. 지금 진행은 그대로입니다.')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
@@ -63,6 +112,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () =>
                 Navigator.of(context)
                     .push(gameRoute<void>(const TutorialScreen())),
+          ),
+          const SizedBox(height: 10),
+          // 진행 백업(설계서 §16.13): 서버가 없어 폰을 바꾸면 진행이 사라진다 → 코드로 옮긴다.
+          Row(
+            children: [
+              Expanded(
+                child: GameButton(
+                  key: const Key('backup-copy'),
+                  label: '백업 코드 복사',
+                  color: Palette.sky,
+                  height: 50,
+                  fontSize: 17,
+                  onTap: () async {
+                    await Clipboard.setData(
+                      ClipboardData(text: ProfileStore.instance.exportCode()),
+                    );
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('백업 코드를 복사했습니다. 메모·메신저에 붙여 넣어 두세요.'),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: GameButton(
+                  key: const Key('backup-restore'),
+                  label: '코드로 불러오기',
+                  color: Palette.sky,
+                  height: 50,
+                  fontSize: 17,
+                  onTap: () => _restore(context),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           Text('소리', style: t.titleMedium),

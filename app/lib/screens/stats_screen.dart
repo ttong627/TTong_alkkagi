@@ -15,6 +15,15 @@ class StatsScreen extends StatefulWidget {
 }
 
 class _StatsScreenState extends State<StatsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 첫 방문 안내(설계서 §16.13).
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => firstVisit(context, 'stats', '수련 포인트로 힘·재주·집중을 올려라.'),
+    );
+  }
+
   final _store = ProfileStore.instance;
 
   Future<void> _save() async {

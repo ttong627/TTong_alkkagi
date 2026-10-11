@@ -15,6 +15,16 @@ class ShopScreen extends StatefulWidget {
 }
 
 class _ShopScreenState extends State<ShopScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 첫 방문 안내(설계서 §16.13).
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) =>
+          firstVisit(context, 'shop', '엽전으로 새 돌을 사거라. 무거운 돌, 잘 구르는 돌, 미끄러운 돌…'),
+    );
+  }
+
   final _store = ProfileStore.instance;
 
   Future<void> _buy(bool ok, String what) async {

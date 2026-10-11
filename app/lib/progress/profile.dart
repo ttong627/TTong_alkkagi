@@ -230,6 +230,12 @@ class Profile {
 
   int get totalStars => stars.values.fold(0, (a, b) => a + b);
 
+  /// 이미 본 첫 방문 안내(화면 이름).
+  final seenHints = <String>{};
+
+  /// 축하를 보여 준 내공 경지(이보다 높아지면 로비·목인항에서 한 번 축하).
+  int celebratedStage = 1;
+
   /// 머리·도복 디자인 사기(은자 [lookPrice]).
   bool buyHair(int i) {
     if (i < 0 || i >= hairStyles.length || hairs.contains(i)) return false;
@@ -369,6 +375,8 @@ class Profile {
     final g = Training.gain(trainingHits, first: trainingFirst);
     trainingHits++;
     totalHits++;
+    // 일일 임무「목인항 치기」(빠져 있어 그 임무를 끝낼 수 없었다 — 2026-10-11 고침).
+    Missions.record(this, Deed.train, day);
     naegong += g;
     trainingPoints += g;
     return g;
@@ -456,6 +464,8 @@ class Profile {
     'lifetime': {for (final e in lifetime.entries) e.key.name: e.value},
     'achieved': achieved.toList(),
     'stars': stars,
+    'seenHints': seenHints.toList(),
+    'celebrated': celebratedStage,
   };
 
   static T? _byName<T extends Enum>(List<T> values, Object? name) {
@@ -544,6 +554,9 @@ class Profile {
         p.stars[e.key as String] = (e.value as int).clamp(0, 3);
       }
     }
+    p.seenHints.addAll((j['seenHints'] as List? ?? []).cast<String>());
+    // 칸이 없는 옛 저장은 지금 경지를 이미 축하한 것으로 본다(켜자마자 몰아서 축하하지 않게).
+    p.celebratedStage = j['celebrated'] as int? ?? p.stage;
     return p;
   }
 

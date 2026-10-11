@@ -16,6 +16,16 @@ class PuzzleScreen extends StatefulWidget {
 }
 
 class _PuzzleScreenState extends State<PuzzleScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 첫 방문 안내(설계서 §16.13).
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) =>
+          firstVisit(context, 'puzzle', '정해진 수 안에 표적을 모두 떨어뜨려라. 처음 풀면 수련 포인트!'),
+    );
+  }
+
   final _store = ProfileStore.instance;
 
   Future<void> _play(Puzzle z) async {

@@ -23,6 +23,16 @@ class ArenaScreen extends StatefulWidget {
 }
 
 class _ArenaScreenState extends State<ArenaScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 첫 방문 안내(설계서 §16.13).
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) =>
+          firstVisit(context, 'arena', '이길수록 상금이 불어난다. 지면 절반만 남으니 적당할 때 챙겨라.'),
+    );
+  }
+
   final _store = ProfileStore.instance;
   final _rand = math.Random();
   bool _inRun = false;
