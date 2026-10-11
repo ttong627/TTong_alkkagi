@@ -5,7 +5,9 @@ import 'package:alkkagi_physics/alkkagi_physics.dart' as phys;
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
+import '../audio/sound.dart';
 import '../e2e.dart';
+import '../game/arena.dart';
 import '../game/ai.dart';
 import '../game/board_game.dart';
 import '../game/flick.dart';
@@ -79,6 +81,7 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void initState() {
     super.initState();
+    Sound.music(widget.config.arena);
     _newMatch();
     if (e2eDemoMode.isNotEmpty) {
       Future<void>.delayed(const Duration(milliseconds: 1500), _demoShot);
@@ -148,6 +151,7 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {});
     if (_match.clash != null && !_clashing) {
       _clashing = true;
+      Sound.play('clash');
       _selected = null;
     }
     if (_wasMoving && !_match.isMoving) {
@@ -163,6 +167,7 @@ class _GameScreenState extends State<GameScreen> {
           _match.winner == 0 &&
           !_match.isDraw;
       if (boss) {
+        Sound.play('finisher');
         setState(() => _finisher = finisherName(widget.config.martial));
         Future<void>.delayed(const Duration(milliseconds: 1900), () {
           if (mounted) setState(() => _finisher = null);
@@ -283,6 +288,8 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void dispose() {
     _quipTimer?.cancel();
+    Sound.slide(0);
+    Sound.music(Arena.dustyYard);
     _match
       ..removeListener(_onMatch)
       ..dispose();

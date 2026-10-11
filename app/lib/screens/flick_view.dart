@@ -5,6 +5,7 @@ import 'package:alkkagi_physics/alkkagi_physics.dart' as phys;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
+import '../audio/sound.dart';
 import '../e2e.dart';
 import '../game/arena.dart';
 import '../game/board_paint.dart';
@@ -340,6 +341,7 @@ class _FlickViewState extends State<FlickView>
       'profile=${TouchProfile.shared.count}',
     );
     Buzz.heavy();
+    Sound.touch(shot.power);
     _burst(shot);
     _nPoints = null;
     setState(() {

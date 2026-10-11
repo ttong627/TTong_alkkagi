@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:alkkagi_physics/alkkagi_physics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'audio/sound.dart';
+import 'game/arena.dart';
 import 'input/touch_feed.dart';
 import 'progress/settings.dart';
 import 'progress/store.dart';
@@ -15,6 +19,9 @@ Future<void> main() async {
   // 기기에 저장한 진행(캐릭터·내공·재화·강호행)을 읽는다.
   await ProfileStore.load();
   await Settings.load();
+  // 소리(효과음·장마다 배경 음악). 준비에 실패해도 게임은 소리 없이 간다.
+  // 첫 화면을 기다리게 하지 않도록 뒤에서 준비한다.
+  unawaited(Sound.init().then((_) => Sound.music(Arena.dustyYard)));
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(const AlkkagiApp());
 }

@@ -7,6 +7,7 @@ import 'package:flame/game.dart';
 
 import 'arena.dart';
 import 'board_paint.dart';
+import '../audio/sound.dart';
 import 'fx.dart';
 import '../progress/settings.dart';
 import 'fx_colors.dart';
@@ -73,7 +74,17 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
       if (s != null) fx.onShot(match, s);
     }
     if (fx.steerLeft <= 0 && match.steersLeft > 0) match.steersLeft = 0;
-    if (!match.isMoving) return;
+    if (!match.isMoving || match.clash != null) {
+      Sound.slide(0);
+      if (!match.isMoving) return;
+    } else {
+      // 미끄러지는 소리: 가장 빠른 돌의 빠르기(80cm/s 에서 가장 큼).
+      var top = 0.0;
+      for (final s in match.table.stones) {
+        if (!s.out) top = math.max(top, s.velocity.length);
+      }
+      Sound.slide(math.min(1, top / 80) * fx.timeScale.clamp(0.3, 1));
+    }
     _acc += real * fx.timeScale;
     if (match.clash != null) {
       _acc = 0;

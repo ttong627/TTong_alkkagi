@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:alkkagi_physics/alkkagi_physics.dart' as phys;
 import 'package:flutter/material.dart';
 
+import '../audio/sound.dart';
 import 'fx_colors.dart';
 import 'match.dart';
 
@@ -75,6 +76,7 @@ class BattleFx {
   void onShot(Match m, phys.Stone s) {
     final at = Offset(s.position.x, s.position.y);
     if (m.lastCritical) {
+      Sound.play('critical');
       _text(at.translate(0, -2.5), '회심!', innerColor, size: 34);
       _rings.add(_Ring(at, 0.5, 4, 0.35, innerColor));
       _burst(at, innerColor, 24, 20);
@@ -92,6 +94,8 @@ class BattleFx {
         final c = m.lastMode == StrikeMode.absorb
             ? techniqueColor(phys.Technique.absorb)
             : techniqueColor(martial);
+        Sound.play('inner');
+        if (martial == phys.Technique.taiji) Sound.technique(martial);
         _glow[s.id] = (c, 2.5);
         _rings.add(_Ring(at, 0.5, 5, 0.4, c));
         _burst(at, c, 30, 25);
@@ -102,6 +106,7 @@ class BattleFx {
         );
         _shake = 6;
       case StrikeMode.ultimate:
+        Sound.play('ultimate');
         _glow[s.id] = (ultimateColor, 4);
         _rings.add(_Ring(at, 1, 10, 0.6, ultimateColor));
         _burst(at, ultimateColor, 40, 30);
@@ -123,6 +128,7 @@ class BattleFx {
       _ => '일타다피!',
     };
     _text(const Offset(0, -3), name, c, size: 40);
+    Sound.play('clash');
     if (mine && m.config.mode == MatchMode.vsAi) {
       _text(
         const Offset(0, 1.5),
@@ -141,7 +147,19 @@ class BattleFx {
   void onStep(Match m, Set<int> wasOut) {
     final t = m.table;
     final shooterId = t.shooter?.id ?? -1;
+    var sounds = 0;
     for (final i in t.impacts) {
+      // 재질별 충돌음: 쏜 돌이 맞힌 돌(아니면 먼저 적힌 돌)의 재질. 한 걸음에 둘까지.
+      if (sounds < 2) {
+        final id = i.a == shooterId ? i.b : i.a;
+        for (final st in t.stones) {
+          if (st.id == id) {
+            Sound.hit(st.material, i.speed);
+            sounds++;
+            break;
+          }
+        }
+      }
       final at = Offset(i.x, i.y);
       final strong = i.speed >= 60;
       final mid = i.speed >= 20;
@@ -168,14 +186,17 @@ class BattleFx {
       final at = Offset(e.x, e.y);
       switch (e.fx) {
         case phys.TechniqueFx.innerImpact:
+          Sound.play('inner', 0.8);
           _rings.add(_Ring(at, 0.5, 5, 0.45, innerColor));
           _burst(at, innerColor, 30, 40);
           _shake = math.max(_shake, 12);
         case phys.TechniqueFx.swordQi:
+          Sound.technique(phys.Technique.swordQi);
           final c = techniqueColor(phys.Technique.swordQi);
           if (e.stoneId != null) _glow[e.stoneId!] = (c, 1.2);
           _text(at.translate(0, -2), '검기', c);
         case phys.TechniqueFx.stomp:
+          Sound.technique(phys.Technique.stomp);
           final c = techniqueColor(phys.Technique.stomp);
           _rings.add(
             _Ring(at, 0.5, phys.TechniqueConstants.stompRadius, 0.5, c),
@@ -187,11 +208,13 @@ class BattleFx {
           _text(at.translate(0, -2), '진각', c);
           _shake = math.max(_shake, 16);
         case phys.TechniqueFx.clone:
+          Sound.technique(phys.Technique.clone);
           final c = techniqueColor(phys.Technique.clone);
           _burst(at, c, 36, 25);
           if (e.stoneId != null) _glow[e.stoneId!] = (c, 3);
           _text(at.translate(0, -2), '분신', c);
         case phys.TechniqueFx.absorb:
+          Sound.technique(phys.Technique.absorb);
           final c = techniqueColor(phys.Technique.absorb);
           const r = phys.TechniqueConstants.absorbRadius;
           for (var k = 0; k < 40; k++) {
@@ -207,15 +230,18 @@ class BattleFx {
       final at = Offset(e.x, e.y);
       switch (e.fx) {
         case phys.TerrainFx.gong:
+          Sound.play('terrain_gong');
           const c = Color(0xFFF2CF7A);
           _rings.add(_Ring(at, 1.5, phys.TerrainConstants.gongRadius, 0.6, c));
           _text(at.translate(0, -2), '경종!', c);
           _shake = math.max(_shake, 8);
         case phys.TerrainFx.swallow:
+          Sound.play('tech_absorb', 0.7);
           const c = Color(0xFFB07CFF);
           _rings.add(_Ring(at, phys.TerrainConstants.holeRadius, 0.3, 0.5, c));
           _text(at.translate(0, -2), '흡입!', c);
         case phys.TerrainFx.mine:
+          Sound.play('terrain_mine');
           const c = Color(0xFFFF7A2E);
           _burst(at, c, 60, 60, size: 0.45);
           _rings.add(_Ring(at, 0.5, phys.TerrainConstants.mineRadius, 0.5, c));
@@ -224,17 +250,23 @@ class BattleFx {
           _flash = math.max(_flash, 0.5);
           _flashColor = c;
         case phys.TerrainFx.frostStop:
+          Sound.play('hit_ice', 0.6);
           const c = Color(0xFFBFEFFF);
           _burst(at, c, 16, 10);
           _text(at.translate(0, -2), '결빙', c);
         case phys.TerrainFx.bamboo:
+          Sound.play('hit_wood');
           const c = Color(0xFF5FE08A);
           _rings.add(_Ring(at, 0.3, 2.5, 0.3, c));
           _text(at.translate(0, -2), '청죽!', c, size: 22);
       }
     }
+    var crowd = false;
     for (final s in t.stones) {
       if (s.out && !wasOut.contains(s.id)) {
+        Sound.play('out_thud');
+        if (!crowd) Sound.play('out_crowd', 0.7);
+        crowd = true;
         final at = Offset(s.position.x, s.position.y);
         _text(at, '장외!', const Color(0xFFFF6B5B), size: 24);
         _burst(at, const Color(0xFFC9A57A), 20, 15, size: 0.35);
