@@ -46,8 +46,16 @@ class _Request {
     this.martial = 0,
     this.weather = 0,
     this.features = const [],
+    this.rule = 0,
+    this.generals = const {},
+    this.jewel,
   });
   final int weather;
+
+  /// 판 규칙([MatchRule.index])·장수 돌 자리(stones 의 번호 → 편)·보주 자리.
+  final int rule;
+  final Map<int, int> generals;
+  final int? jewel;
 
   /// (종류, x, y, 각도).
   final List<(int, double, double, double)> features;
@@ -63,6 +71,14 @@ class _Request {
 
 /// AI 가 둘 수를 고른다. 휴대폰에서는 화면이 멈추지 않게 따로 계산한다.
 Future<AiShot> chooseAiShot(Match match, {int? seed}) {
+  final all = match.table.stones;
+  final generals = <int, int>{
+    for (var i = 0; i < all.length; i++)
+      if (match.isGeneral(all[i])) i: all[i].team,
+  };
+  final jewel = match.jewelId == null
+      ? null
+      : all.indexWhere((s) => s.id == match.jewelId);
   final stones = [
     for (final s in match.table.stones)
       (
@@ -89,6 +105,9 @@ Future<AiShot> chooseAiShot(Match match, {int? seed}) {
       features: [
         for (final f in match.table.features) (f.kind.index, f.x, f.y, f.angle),
       ],
+      rule: match.rule.index,
+      generals: generals,
+      jewel: jewel,
     ),
   );
 }
@@ -128,9 +147,12 @@ Future<AiShot> _choose(_Request r) async {
   final martial = Technique.values[r.martial];
 
   // 자객: 판 가장자리에 가까운 상대 돌 2개만 노린다.
+  final rule = MatchRule.values[r.rule];
   final targets = <StoneData>[
     for (final s in r.stones)
       if (!s.out && s.team == 1 - r.team) s,
+    // 점수전: 보주도 노린다.
+    if (r.jewel case final j? when !r.stones[j].out) r.stones[j],
   ];
   if (style == AiStyle.assassin && targets.length > 2) {
     targets.sort(
@@ -167,6 +189,9 @@ Future<AiShot> _choose(_Request r) async {
                   for (final (k, x, y, a) in r.features)
                     Feature(FeatureKind.values[k], x, y, angle: a),
                 ],
+                rule: rule,
+                generals: r.generals,
+                jewel: r.jewel,
               );
               if (style == AiStyle.ram) {
                 // 통통: 가까운 돌부터.
@@ -222,6 +247,7 @@ Future<AiShot> _choose(_Request r) async {
 
 /// 한 수를 미리 계산해 점수를 매긴다. 상대 돌 장외 +10, 내 돌 장외 −12,
 /// 쏜 돌이 판 가장자리에서 멀수록 조금 더 좋다. 대전장의 바닥·판 모양으로 계산한다.
+/// 규칙([rule]): 장수전은 상대 장수 +60 · 내 장수 −100(반칙패), 점수전은 보주 +30.
 double scoreShot(
   List<StoneData> stones,
   int shooter,
@@ -234,6 +260,9 @@ double scoreShot(
   Technique technique = Technique.none,
   Weather weather = Weather.clear,
   List<Feature> features = const [],
+  MatchRule rule = MatchRule.annihilate,
+  Map<int, int> generals = const {},
+  int? jewel,
 }) {
   final t = Table(
     floorFactor: arena.floorFactor,
@@ -267,10 +296,18 @@ double scoreShot(
   );
   t.runTurn();
   var score = 0.0;
-  for (final s in placed) {
+  for (var i = 0; i < placed.length; i++) {
+    final s = placed[i];
     if (s == null || !s.out) continue;
+    if (i == jewel) {
+      score += MatchRule.jewelPoints.toDouble();
+      continue;
+    }
     // 내 돌 −12, 상대 돌 +10, 백성 돌 −5.
     score += s.team == team ? -12 : (s.team == 2 ? -5 : 10);
+    if (rule == MatchRule.general && generals.containsKey(i)) {
+      score += s.team == team ? -100 : 60;
+    }
   }
   final me = placed[shooter]!;
   if (!me.out) {

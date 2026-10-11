@@ -736,6 +736,13 @@ class _MiniBoardPainter extends CustomPainter {
         shape: s.shape,
         selected: identical(s, stone),
       );
+      if (match.isGeneral(s)) {
+        paintGeneralMark(
+          canvas,
+          at(s.position.x, s.position.y),
+          phys.PhysicsConstants.stoneRadius * scale,
+        );
+      }
     }
     if (path.length > 1) {
       final paint = Paint()
@@ -824,6 +831,9 @@ class _FloorPainter extends CustomPainter {
         s.material,
         shape: s.shape,
       );
+      if (match.isGeneral(s)) {
+        paintGeneralMark(canvas, at(s.position.x, s.position.y), disc.radius);
+      }
     }
 
     // 겨눈 방향: 돌에서 나갈 길을 옅게.
@@ -860,6 +870,7 @@ class _FloorPainter extends CustomPainter {
         ).createShader(Rect.fromCircle(center: c, radius: glowR)),
     );
     paintTopStone(canvas, c, r, stone.team, stone.material, shape: stone.shape);
+    if (match.isGeneral(stone)) paintGeneralMark(canvas, c, r);
 
     for (final p in particles) {
       final al = (p.life / p.maxLife).clamp(0.0, 1.0);

@@ -11,6 +11,7 @@ import 'package:alkkagi/screens/campaign_screen.dart';
 import 'package:alkkagi/screens/codex_screen.dart';
 import 'package:alkkagi/screens/daily_screen.dart';
 import 'package:alkkagi/screens/dialogue_screen.dart';
+import 'package:alkkagi/screens/free_play_screen.dart';
 import 'package:alkkagi/screens/settings_screen.dart';
 import 'package:alkkagi/screens/shop_screen.dart';
 import 'package:alkkagi/screens/stats_screen.dart';
@@ -144,6 +145,18 @@ void main() {
       'result',
       settleMs: 2200,
     );
+    // 규칙 변형(장수전·점수전) 판.
+    for (final rule in [MatchRule.general, MatchRule.score]) {
+      await _shot(
+        t,
+        GameScreen(
+          config: MatchConfig(mode: MatchMode.twoPlayer, rule: rule),
+        ),
+        'rule_${rule.name}',
+        settleMs: 2000,
+      );
+    }
+    await _shot(t, const FreePlayScreen(), 'free_play');
     await _shot(t, const CampaignScreen(), 'campaign');
     await _shot(
       t,

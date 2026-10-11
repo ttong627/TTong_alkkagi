@@ -431,7 +431,7 @@ class _GameScreenState extends State<GameScreen> {
       if (mounted) _restart();
       return;
     }
-    final String title;
+    String title;
     if (_match.isDraw) {
       title = '비김';
     } else if (widget.config.mode == MatchMode.twoPlayer) {
@@ -443,6 +443,14 @@ class _GameScreenState extends State<GameScreen> {
     } else {
       title = won ? '승리!' : '패배';
     }
+    // 규칙 판은 어떻게 끝났는지 한 줄 덧붙인다.
+    final why = switch (_match.rule) {
+      MatchRule.general when !_match.isDraw => '장수가 떨어졌다',
+      MatchRule.score => '${_match.scores[0]} : ${_match.scores[1]}',
+      MatchRule.shots => '남은 돌 ${_match.alive(0)} : ${_match.alive(1)}',
+      _ => null,
+    };
+    if (why != null) title = '$title\n$why';
     Sound.play(won ? 'jingle_win' : 'jingle_lose');
     setState(() => _result = _Result(title, won, stars, _match.bonusCoins));
   }
@@ -653,6 +661,7 @@ class _GameScreenState extends State<GameScreen> {
                         const SizedBox(height: 2),
                         Text(
                           widget.info?.call() ??
+                              _match.ruleStatus ??
                               '${widget.config.arena.chapter} · ${widget.config.arena.label}',
                           style: t.bodySmall,
                           textAlign: TextAlign.center,
@@ -1319,7 +1328,7 @@ class _ResultOverlayState extends State<ResultOverlay>
                   Transform.scale(
                     scale: 0.4 + 0.6 * pop,
                     child: OutlinedText(
-                      widget.title,
+                      widget.title.split('\n').first,
                       size: 54,
                       title: true,
                       color: widget.won
@@ -1327,6 +1336,9 @@ class _ResultOverlayState extends State<ResultOverlay>
                           : const Color(0xFFB0B8C8),
                     ),
                   ),
+                  // 규칙 판은 어떻게 끝났는지 한 줄(점수·남은 돌·장수).
+                  if (widget.title.contains('\n'))
+                    OutlinedText(widget.title.split('\n').last, size: 22),
                   const SizedBox(height: 8),
                   if (widget.stars > 0 || widget.won)
                     Row(

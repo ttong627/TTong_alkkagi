@@ -24,6 +24,8 @@ Color stoneShine(int team) =>
 /// 재질·편마다 돌 겉면 색 (밝은 쪽, 어두운 쪽). 편 0 = 밝은 돌, 편 1 = 어두운 돌, 편 2 = 백성 돌(짚빛).
 (Color, Color) _faceColors(StoneMaterial m, int team) => switch ((m, team)) {
   (_, 2) => (const Color(0xFFF0DFA8), const Color(0xFFB8964E)),
+  // 편 3 = 점수전 보주(붉은 구슬).
+  (_, 3) => (const Color(0xFFFF8A80), const Color(0xFF9B1B1B)),
   (StoneMaterial.cheongok, 0) => (
     const Color(0xFFD9F2E6),
     const Color(0xFF6DBB97),
@@ -265,6 +267,45 @@ void _drawStone(Canvas c, StoneMaterial m, StoneShape shape, int team) {
       )
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
   );
+}
+
+/// 장수전의 장수 돌 표시: 금테 두 겹과 위쪽 작은 왕관(세 꼭지).
+void paintGeneralMark(Canvas canvas, Offset c, double r) {
+  canvas.drawCircle(
+    c,
+    r * 1.08,
+    Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = r * 0.22
+      ..color = const Color(0xFF3A2400),
+  );
+  canvas.drawCircle(
+    c,
+    r * 1.08,
+    Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = r * 0.13
+      ..color = const Color(0xFFFFD25A),
+  );
+  final w = r * 0.9, h = r * 0.55, top = c.translate(0, -r * 1.35);
+  final crown = Path()
+    ..moveTo(top.dx - w / 2, top.dy + h / 2)
+    ..lineTo(top.dx - w / 2, top.dy - h / 2)
+    ..lineTo(top.dx - w / 4, top.dy)
+    ..lineTo(top.dx, top.dy - h / 2)
+    ..lineTo(top.dx + w / 4, top.dy)
+    ..lineTo(top.dx + w / 2, top.dy - h / 2)
+    ..lineTo(top.dx + w / 2, top.dy + h / 2)
+    ..close();
+  canvas.drawPath(
+    crown,
+    Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = r * 0.16
+      ..strokeJoin = StrokeJoin.round
+      ..color = const Color(0xFF3A2400),
+  );
+  canvas.drawPath(crown, Paint()..color = const Color(0xFFFFD25A));
 }
 
 /// 위에서 본 입체 돌 하나(재질·모양·편대로). [ring] 이면 고를 수 있는 돌 표시, [selected] 면 고른 돌.

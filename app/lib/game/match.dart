@@ -20,6 +20,41 @@ enum MatchMode {
   final String label;
 }
 
+/// 판의 규칙(설계서 §16.15 · 2026-10-11 형 지시 「규칙 변형 모드」). 대전(혼자·둘이)에만 쓴다.
+enum MatchRule {
+  /// 기본: 상대 돌을 모두 떨어뜨리면 이긴다.
+  annihilate('전멸전', '상대 돌을 모두 떨어뜨리면 승리'),
+
+  /// 장수전: 편마다 장수 돌 하나(금테). 상대 장수를 떨어뜨리면 이기고, 내 장수가 떨어지면(내 수라도) 진다.
+  general('장수전', '상대 장수(금테 돌)를 떨어뜨리면 승리 · 내 장수를 잃으면 패배'),
+
+  /// 점수전: 상대 돌 10점 · 가운데 붉은 보주 30점 · 내 돌을 잃으면 상대가 10점. 먼저 [scoreTarget] 점.
+  score('점수전', '먼저 60점 · 돌 10점 · 가운데 보주 30점 · 제 돌 잃으면 상대 +10'),
+
+  /// 여섯 수 승부: 한 사람 [shotLimit] 수씩. 다 치면 남은 돌이 많은 쪽이 이긴다.
+  shots('여섯 수 승부', '한 사람 여섯 수 · 끝나면 남은 돌이 많은 쪽 승리');
+
+  const MatchRule(this.label, this.help);
+  final String label;
+  final String help;
+
+  /// 점수전 목표.
+  static const int scoreTarget = 60;
+
+  /// 점수전: 돌 하나·보주 값.
+  static const int stonePoints = 10;
+  static const int jewelPoints = 30;
+
+  /// 여섯 수 승부: 한 사람이 칠 수 있는 수.
+  static const int shotLimit = 6;
+
+  /// 장수 돌 자리: 줄 세운 8개 가운데 4번째(가운데 왼쪽).
+  static const int generalIndex = 3;
+
+  /// 점수전 보주의 편 번호(아무도 칠 수 없는 돌).
+  static const int jewelTeam = 3;
+}
+
 /// AI 난이도 (체크리스트 2-04: 조준 오차 크기로 구분).
 enum Difficulty {
   easy('쉬움', angleError: 0.12, speedError: 0.25),
@@ -202,7 +237,11 @@ class MatchConfig {
     this.qiClash = false,
     this.demonWorld = false,
     this.art = RebirthArt.none,
+    this.rule = MatchRule.annihilate,
   });
+
+  /// 판의 규칙(대전에서만 — 연습·묘수·목인항은 늘 기본).
+  final MatchRule rule;
 
   /// 내 환생 캐릭터의 비기(설계서 §10.1).
   final RebirthArt art;
@@ -366,7 +405,58 @@ class Match extends ChangeNotifier {
         team: 1,
       );
     }
+    if (rule == MatchRule.general) {
+      final mine = table.stones.where((s) => s.team == 0).toList();
+      final theirs = table.stones.where((s) => s.team == 1).toList();
+      generals[0] = mine[MatchRule.generalIndex].id;
+      generals[1] = theirs[MatchRule.generalIndex].id;
+    }
+    if (rule == MatchRule.score) {
+      // 가운데 붉은 보주: 무겁고 둥근 돌(쉽게 안 밀린다).
+      jewelId = table
+          .addStone(
+            0,
+            0,
+            material: StoneMaterial.hyeoncheol,
+            shape: StoneShape.sphere,
+            team: MatchRule.jewelTeam,
+          )
+          .id;
+    }
   }
+
+  /// 이 판에 실제로 쓰는 규칙. 대전(혼자·둘이)에서만 바꿀 수 있고, 묘수·목인항·연습은 늘 기본.
+  MatchRule get rule =>
+      config.mode == MatchMode.practice ||
+          config.layout != null ||
+          config.training
+      ? MatchRule.annihilate
+      : config.rule;
+
+  /// 장수전: 편마다 장수 돌 id.
+  final generals = <int, int>{};
+
+  /// 점수전: 가운데 보주 id(없으면 null).
+  int? jewelId;
+
+  /// 점수전 점수(편 0, 편 1).
+  final scores = [0, 0];
+
+  /// 여섯 수 승부: 편마다 친 수.
+  final shotsTaken = [0, 0];
+
+  /// 이 돌이 장수인가.
+  bool isGeneral(Stone s) => generals[s.team] == s.id;
+
+  bool _isOut(int? id) {
+    if (id == null) return false;
+    for (final s in table.stones) {
+      if (s.id == id) return s.out;
+    }
+    return false;
+  }
+
+  bool _jewelBefore = false;
 
   final MatchConfig config;
   final Table table;
@@ -454,6 +544,8 @@ class Match extends ChangeNotifier {
       _qi[team] = math.min(maxQi, _qi[team] + 1 + extra);
     }
     _aliveBefore = alive(1 - team);
+    _jewelBefore = jewelId != null && !_isOut(jewelId);
+    shotsTaken[team]++;
     _ownBefore = alive(team);
     lastCritical = critical && m == StrikeMode.plain;
     lastMode = m;
@@ -612,6 +704,44 @@ class Match extends ChangeNotifier {
       if (_winner == null && limit != null && _turnCount >= limit) _winner = 1;
       return;
     }
+    switch (rule) {
+      case MatchRule.annihilate:
+        break;
+      case MatchRule.general:
+        // 내 장수가 떨어지면(상대 장수를 함께 떨어뜨려도) 반칙패.
+        if (_isOut(generals[_turn])) {
+          _winner = 1 - _turn;
+          return;
+        }
+        if (_isOut(generals[1 - _turn])) {
+          _winner = _turn;
+          return;
+        }
+      case MatchRule.score:
+        final jewel = _jewelBefore && _isOut(jewelId);
+        scores[_turn] +=
+            lastKnocked * MatchRule.stonePoints +
+            (jewel ? MatchRule.jewelPoints : 0);
+        scores[1 - _turn] += lastSelfLost * MatchRule.stonePoints;
+        final done =
+            scores[0] >= MatchRule.scoreTarget ||
+            scores[1] >= MatchRule.scoreTarget ||
+            alive(0) == 0 ||
+            alive(1) == 0;
+        if (done) {
+          _endByCount(scores[0], scores[1]);
+          return;
+        }
+      case MatchRule.shots:
+        final a0 = alive(0), a1 = alive(1);
+        if (a0 > 0 &&
+            a1 > 0 &&
+            shotsTaken[0] >= MatchRule.shotLimit &&
+            shotsTaken[1] >= MatchRule.shotLimit) {
+          _endByCount(a0, a1);
+          return;
+        }
+    }
     final a0 = alive(0), a1 = alive(1);
     if (a0 == 0 && a1 == 0) {
       _draw = true;
@@ -623,6 +753,26 @@ class Match extends ChangeNotifier {
       _turn = 1 - _turn;
     }
   }
+
+  /// 많은 쪽이 이긴다(같으면 비김).
+  void _endByCount(int mine, int theirs) {
+    if (mine == theirs) {
+      _draw = true;
+    } else {
+      _winner = mine > theirs ? 0 : 1;
+    }
+  }
+
+  /// 판 아래에 보일 규칙 상황 한 줄(기본 규칙이면 null).
+  String? get ruleStatus => switch (rule) {
+    MatchRule.annihilate => null,
+    MatchRule.general => '장수전 · 금테 돌을 지켜라',
+    MatchRule.score =>
+      '점수 ${scores[0]} : ${scores[1]} · 먼저 ${MatchRule.scoreTarget}점',
+    MatchRule.shots =>
+      '남은 수 ${MatchRule.shotLimit - shotsTaken[0]} : '
+          '${MatchRule.shotLimit - shotsTaken[1]}',
+  };
 
   /// 검황: 첫 충돌 전 평타가 앞쪽 상대 돌로 살짝 따라간다.
   void _homingBefore() {
