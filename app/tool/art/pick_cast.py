@@ -4,9 +4,9 @@
   python tool/art/pick_cast.py compare                 # build/compare/<id>.png · build/compare/_all.png
   python tool/art/pick_cast.py apply picks.json        # assets/images/chars/<id>_{idle,attack,face}.webp
 
-picks.json = {"<id>": {"engine": "codex"|"agy", "flip": true|false}, ...}
+picks.json = {"<id>": {"engine": "codex"|"agy"}, ...}  (또는 "*": {"engine": "codex"} 로 모두)
  - engine: 어느 엔진 그림을 쓸지(서 있기·탄지 둘 다 같은 엔진 — 한 사람이 두 화풍이 되지 않게)
- - flip: 앱 그림은 **오른쪽을 본다**(탄지 손이 오른쪽). 왼쪽을 보는 그림이면 true.
+ - 방향: 앱 그림은 **오른쪽을 본다**(탄지 손이 오른쪽). 탄지 자세가 왼쪽으로 뻗었으면 두 자세 모두 뒤집는다(엔진마다 방향이 들쭉날쭉 — 나노바나나 실측).
 
 처리: 초록 배경(#00FF00) 지우기 → 가장자리 초록 번짐 빼기 → 몸만 잘라 880×1040 판에 발을 y=1032 에 맞춰 세움
       → 얼굴만 따로 256×256(동그란 얼굴 칸용 · 7등신이라 전신 그림에서 얼굴이 작다).
@@ -47,6 +47,20 @@ def key_green(im: Image.Image) -> Image.Image:
     g2 = np.where(spill, np.maximum(r, b) + (g - np.maximum(r, b)) * 0.15, g)
     out = np.stack([r, g2, b, a[..., 3] * alpha], -1)
     return Image.fromarray(out.clip(0, 255).astype(np.uint8), "RGBA")
+
+
+def faces_left(im: Image.Image) -> bool:
+    """탄지 자세가 왼쪽으로 뻗었나: 어깨 높이(키의 22~40%)에서 몸통 가운데로부터 왼쪽·오른쪽 끝까지 거리를 견준다.
+    뻗은 팔이 더 멀리 나간다(머리카락은 위, 허리띠는 아래라 이 높이를 피한다)."""
+    a = np.asarray(key_green(im).getchannel("A")).astype(np.float32)
+    ys, _ = np.nonzero(a > 24)
+    top, bottom = ys.min(), ys.max()
+    hgt = bottom - top
+    torso = a[top + int(hgt * 0.3) : top + int(hgt * 0.55)]
+    cx = (torso.sum(0) * np.arange(torso.shape[1])).sum() / max(1, torso.sum())
+    band = a[top + int(hgt * 0.22) : top + int(hgt * 0.40)] > 24
+    cols = np.nonzero(band.any(0))[0]
+    return (cx - cols.min()) > (cols.max() - cx)
 
 
 def place(im: Image.Image, flip: bool) -> Image.Image:
@@ -132,14 +146,25 @@ def compare() -> None:
 
 def apply(picks_path: str) -> None:
     picks = json.loads(Path(picks_path).read_text(encoding="utf-8"))
-    for cid, pk in picks.items():
-        eng, flip = pk["engine"], bool(pk.get("flip", False))
-        for pose in ("idle", "attack"):
-            p = find(eng, cid, pose)
-            if not p:
-                print(f"⛔{cid}_{pose}: {eng} 그림 없음 — 건너뜀")
+    spec = json.loads((APP / "tool" / "art" / "wuxia_cast.json").read_text(encoding="utf-8"))
+    ids = [c["id"] for c in spec["cast"]]
+    for cid in ids:
+        pk = picks.get(cid) or picks.get("*")
+        if not pk:
+            continue
+        eng = pk["engine"]
+        att = find(eng, cid, "attack")
+        if not att or not find(eng, cid, "idle"):
+            alt = "agy" if eng == "codex" else "codex"
+            if find(alt, cid, "attack") and find(alt, cid, "idle"):
+                print(f"↪ {cid}: {eng} 그림이 모자라 {alt} 로")
+                eng, att = alt, find(alt, cid, "attack")
+            else:
+                print(f"⛔{cid}: 두 자세가 다 있는 엔진이 없음 — 건너뜀")
                 continue
-            img = place(Image.open(p), flip)
+        flip = faces_left(Image.open(att)) if "flip" not in pk else bool(pk["flip"])
+        for pose in ("idle", "attack"):
+            img = place(Image.open(find(eng, cid, pose)), flip)
             img.save(OUT / f"{cid}_{pose}.webp", "WEBP", quality=88, method=6)
             if pose == "idle":
                 face(img).save(OUT / f"{cid}_face.webp", "WEBP", quality=90, method=6)

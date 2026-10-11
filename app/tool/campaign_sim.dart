@@ -18,6 +18,9 @@ import 'package:alkkagi/story/chapters.dart';
 import 'package:alkkagi_physics/alkkagi_physics.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+/// 내 돌이 떨어진 수: 내가 쳐서(자멸) / 상대가 쳐서.
+int selfOuts = 0, foeOuts = 0;
+
 /// 한 판을 끝까지 둔다. 이기면 참.
 bool playOne(MatchConfig cfg, int seed, double angleErr, double speedErr) {
   final rand = math.Random(seed);
@@ -25,6 +28,7 @@ bool playOne(MatchConfig cfg, int seed, double angleErr, double speedErr) {
   var guard = 0;
   while (!m.isOver && guard++ < 120) {
     final mine = m.turn == 0;
+    final before = m.alive(0);
     final shot = mine
         ? aiShotNow(
             m,
@@ -51,6 +55,12 @@ bool playOne(MatchConfig cfg, int seed, double angleErr, double speedErr) {
       }
       m.step();
     }
+    final lost = before - m.alive(0);
+    if (mine) {
+      selfOuts += lost;
+    } else {
+      foeOuts += lost;
+    }
   }
   final won = m.winner == 0 && !m.isDraw;
   m.dispose();
@@ -71,6 +81,7 @@ void main() {
     ];
     if (scales.isEmpty) scales.add(null);
     final power = double.tryParse(Platform.environment['POWER'] ?? '');
+    final blunder = double.tryParse(Platform.environment['BLUNDER'] ?? '');
     final (ae, se) = hand == 'novice'
         ? (11.5 * math.pi / 180, 0.35)
         : (7.9 * math.pi / 180, 0.25);
@@ -84,9 +95,11 @@ void main() {
           easy: easy,
           aiErrorScale: sc,
           aiPowerScale: power,
+          aiBlunder: blunder,
         );
         final sw = Stopwatch()..start();
         var wins = 0;
+        selfOuts = foeOuts = 0;
         for (var i = 0; i < n; i++) {
           if (playOne(cfg, 1000 + i, ae, se)) wins++;
         }
@@ -94,7 +107,7 @@ void main() {
         print(
           '${s.id}\t${s.boss}\t${easy ? '쉬움' : '보통'}\t$hand\t'
           '이김 $wins/$n = ${(100 * wins / n).toStringAsFixed(0)}%\t'
-          '(오차 ×${cfg.aiErrorScale.toStringAsFixed(2)} · 세기 ×${cfg.aiPowerScale.toStringAsFixed(2)} · ${sw.elapsed.inSeconds}초)',
+          '(내 돌 잃음: 내가 친 수 ${(selfOuts / n).toStringAsFixed(1)} · 상대 ${(foeOuts / n).toStringAsFixed(1)} · 오차 ×${cfg.aiErrorScale.toStringAsFixed(2)} · 세기 ×${cfg.aiPowerScale.toStringAsFixed(2)} · 실수 ${cfg.aiBlunder.toStringAsFixed(2)} · ${sw.elapsed.inSeconds}초)',
         );
       }
     }

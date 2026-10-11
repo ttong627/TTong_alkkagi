@@ -51,6 +51,7 @@ class _Request {
     this.jewel,
     this.errorScale = 1,
     this.powerScale = 1,
+    this.blunder = 0,
     this.angleError,
     this.speedError,
   });
@@ -65,6 +66,9 @@ class _Request {
 
   /// 세기 배수([MatchConfig.aiPowerScale]).
   final double powerScale;
+
+  /// 실수 확률([MatchConfig.aiBlunder]).
+  final double blunder;
 
   /// 판 규칙([MatchRule.index])·장수 돌 자리(stones 의 번호 → 편)·보주 자리.
   final int rule;
@@ -149,6 +153,7 @@ _Request _requestFor(
     jewel: jewel,
     errorScale: search == null ? match.config.aiErrorScale : 1,
     powerScale: search == null ? match.config.aiPowerScale : 1,
+    blunder: search == null ? match.config.aiBlunder : 0,
     angleError: angleError,
     speedError: speedError,
   );
@@ -278,6 +283,11 @@ AiShot _plan(_Request r) {
       rand.nextDouble() < 0.4) {
     // 촌장: 가르치는 사람이라 가장 좋은 수를 자주 피한다.
     best = scored[1 + rand.nextInt(math.min(4, scored.length - 1))].$2;
+  } else if (r.blunder > 0 &&
+      scored.length > 2 &&
+      rand.nextDouble() < r.blunder) {
+    // 실수: 가장 좋은 수를 놓치고 위쪽 절반 아무거나.
+    best = scored[1 + rand.nextInt(math.max(1, scored.length ~/ 2))].$2;
   } else {
     best = scored.first.$2;
   }
