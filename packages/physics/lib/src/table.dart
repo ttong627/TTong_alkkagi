@@ -29,6 +29,9 @@ class Stone {
   /// 분신으로 잠깐 생긴 돌인가(한 수가 끝나면 사라진다).
   bool phantom = false;
 
+  /// 이 돌의 감속 배수(환생 캐릭터 마교 교주 흡성대법이 빼앗으면 1 보다 작아진다).
+  double dampingScale = 1;
+
   double _spin = 0;
   bool _spinUsed = true;
   double _z = 0;
@@ -147,7 +150,7 @@ class Table {
     _floorFactor = v;
     for (final s in stones) {
       if (!s.out && !s.airborne) {
-        s.body.linearDamping = dampingOf(s.material, s.shape);
+        s.body.linearDamping = dampingFor(s);
       }
     }
   }
@@ -226,6 +229,39 @@ class Table {
     minDamping,
     material.damping * shape.dampingMultiplier * floorFactor,
   );
+
+  /// 이 돌의 지금 감속(재질·모양·바닥 × 돌마다 배수).
+  double dampingFor(Stone s) => dampingOf(s.material, s.shape) * s.dampingScale;
+
+  /// 돌의 감속 배수를 바꾼다(흡성대법: 판 끝까지 간다). 바닥에 붙어 있으면 바로 맞춘다.
+  void setDampingScale(Stone s, double scale) {
+    s.dampingScale = scale;
+    if (!s.out && !s.airborne) s.body.linearDamping = dampingFor(s);
+  }
+
+  /// [from] 자리에서 분신을 [targets] 마다 하나씩 그 돌 쪽으로 [speed] 로 날린다(검황 궁극기 —
+  /// 한 수가 끝나면 사라진다). 만든 분신을 돌려준다.
+  List<Stone> spawnSeekers(Stone from, List<Stone> targets, double speed) {
+    final made = <Stone>[];
+    for (final t in targets) {
+      final d = t.position - from.position;
+      if (d.length < 1e-6) continue;
+      d.normalize();
+      // 겹치지 않게 그 방향으로 지름만큼 앞에 놓는다.
+      final p = from.position + d * (PhysicsConstants.stoneRadius * 2.1);
+      final twin = addStone(
+        p.x,
+        p.y,
+        material: from.material,
+        shape: from.shape,
+        team: from.team,
+      )..phantom = true;
+      twin.body.linearVelocity = d * speed;
+      events.add(TechniqueEvent(TechniqueFx.clone, p.x, p.y, stoneId: twin.id));
+      made.add(twin);
+    }
+    return made;
+  }
 
   /// 돌을 놓는다.
   Stone addStone(
@@ -492,7 +528,7 @@ class Table {
     if (_swordQiLeft > 0) {
       _swordQiLeft--;
       if (_swordQiLeft == 0 && !shooter.airborne && !shooter.out) {
-        shooter.body.linearDamping = dampingOf(shooter.material, shooter.shape);
+        shooter.body.linearDamping = dampingFor(shooter);
       }
     }
   }
@@ -629,8 +665,7 @@ class Table {
             _swordQiLeft = TechniqueConstants.swordQiSteps;
             if (!shooter.airborne) {
               shooter.body.linearDamping =
-                  dampingOf(shooter.material, shooter.shape) *
-                  TechniqueConstants.swordQiDamping;
+                  dampingFor(shooter) * TechniqueConstants.swordQiDamping;
             }
             events.add(
               TechniqueEvent(
@@ -718,7 +753,7 @@ class Table {
         sh.filter = Filter(maskBits: g ? 0 : Filter.allCategories);
       }
     }
-    s.body.linearDamping = ghost == null ? dampingOf(s.material, s.shape) : 0;
+    s.body.linearDamping = ghost == null ? dampingFor(s) : 0;
   }
 
   /// 중력으로 떨어뜨리고, 바닥에 닿으면 튀거나 붙는다.

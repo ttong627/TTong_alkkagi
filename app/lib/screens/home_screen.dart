@@ -13,6 +13,7 @@ import 'free_play_screen.dart';
 import 'legendary_shop_screen.dart';
 import 'odds_screen.dart';
 import 'puzzle_screen.dart';
+import 'rebirth_screen.dart';
 import 'settings_screen.dart';
 import 'shop_screen.dart';
 import 'stats_screen.dart';
@@ -220,6 +221,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               help: '혼자·둘이·연습 (보상 없음)',
               onTap: () => _open(const FreePlayScreen()),
             ),
+            if (p.canRebirth || p.rebirths > 0)
+              _MenuButton(
+                icon: Icons.autorenew,
+                label: p.canRebirth ? '비승 · 환생 (열림!)' : '비승 · 윤회천기',
+                help: '환골탈태 · 천년내단 ${p.danCores}',
+                onTap: () => _open(const RebirthScreen()),
+                primary: p.canRebirth,
+              ),
             _MenuButton(
               icon: Icons.settings,
               label: '설정',

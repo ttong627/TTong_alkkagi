@@ -57,8 +57,9 @@ int legendaryPrice(int coins, math.Random r, {bool haggled = false}) {
 }
 
 /// 판당 기인방 확률: 0.5% + 환생마다 0.1%p, 최대 0.8% (설계서 §5.3·§10.3).
-double legendaryChance(int rebirths) =>
-    math.min(0.008, Encounter.legendary.chance + 0.001 * rebirths);
+/// 기인방 등장 확률: 0.5% + 윤회천기 「기연의 눈」 칸마다 0.1%p, 최대 0.8%(설계서 §10.3).
+double legendaryChance(int level) =>
+    math.min(0.008, Encounter.legendary.chance + 0.001 * level);
 
 /// 한 판이 끝났다. 기연이 있으면 돌려주고 바로 적용할 것(영약·기인방)은 적용한다.
 /// [boost] 는 강호유랑 물음표 칸(5배).
@@ -71,7 +72,7 @@ Encounter? rollEncounter(
   final u = r.nextDouble();
   final e1 = Encounter.elixir.chance * boost;
   final e2 = e1 + Encounter.hermit.chance * boost;
-  final e3 = e2 + legendaryChance(0) * boost;
+  final e3 = e2 + legendaryChance(p.tree[TreeNode.legend]!) * boost;
   final Encounter? e = u < e1
       ? Encounter.elixir
       : u < e2
