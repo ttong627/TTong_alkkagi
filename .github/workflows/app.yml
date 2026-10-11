@@ -220,7 +220,12 @@ jobs:
         env:
           BUILD_NUMBER: ${{ needs.android.outputs.build_number }}
           HEAD_MSG: ${{ github.event.head_commit.message }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          # 손으로 돌린 실행에는 head_commit 이 없다 → 그 커밋 메시지를 직접 읽는다.
+          if [ -z "$HEAD_MSG" ]; then
+            HEAD_MSG=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA" --jq .commit.message || true)
+          fi
           # 병합 커밋이면 첫 줄(Merge pull request …) 대신 PR 제목 줄을 쓴다.
           WHAT=$(printf '%s\n' "$HEAD_MSG" | awk 'NF && !/^Merge pull request/ {print; exit}')
           printf '%s' "$WHAT" > what.txt
@@ -252,7 +257,7 @@ jobs:
           fi
           LINK="https://github.com/$GITHUB_REPOSITORY/releases/download/test-latest/tanji-murim-test.apk"
           WHAT=$(cat what.txt)
-          TEXT=$(printf '탄지 무림 시험판 빌드 %s\n%s\n\n받기: %s\n이미 깔려 있으면 앱을 켤 때 저절로 업데이트됩니다.' "$BUILD_NUMBER" "$WHAT" "$LINK")
+          TEXT=$(printf '탄지 무림 시험판 빌드 %s\n바뀐 점: %s\n\n▶ APK 받기(늘 최신 · 링크 고정)\n%s\n\n• 처음: 링크로 받아 한 번만 설치\n• 그다음: 새로 설치할 필요 없음 — 앱을 켜면 새 판을 스스로 받아 업데이트(처음 한 번 「이 출처 허용」만 켜기)\n• 링크로 다시 받아 깔아도 지우지 않고 그 위에 업데이트(앱 데이터 그대로)' "$BUILD_NUMBER" "${WHAT:-없음}" "$LINK")
           curl -sS -o resp.json "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" --data-urlencode "text=${TEXT}"
           python3 -c "import json,sys; r=json.load(open('resp.json')); print('텔레그램 보냄' if r.get('ok') else '텔레그램 실패: '+str(r.get('description'))); sys.exit(0 if r.get('ok') else 1)"
