@@ -61,12 +61,19 @@ class _ArenaScreenState extends State<ArenaScreen> {
       opponentName: '투기장 ${_streak + 1}번째 상대',
       aimAssist: 1,
     );
+    Match? last;
     final won = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => GameScreen(config: cfg, title: '투기장 ${_streak + 1}연전'),
+        builder: (_) => GameScreen(
+          config: cfg,
+          title: '투기장 ${_streak + 1}연전',
+          onTurnEnd: (m) => last = m,
+        ),
       ),
     );
     if (won == null || !mounted) return;
+    // 일타쌍피 엽전(설계서 §16.7)은 판돈과 따로 바로 받는다.
+    p.coins += last?.bonusCoins ?? 0;
     if (won) {
       _pot += ArenaRules.winReward(_streak);
       _streak++;

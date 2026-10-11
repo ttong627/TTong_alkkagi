@@ -59,6 +59,44 @@ enum StrikeMode {
   final int cost;
 }
 
+/// 내공 겨루기 수치(설계서 §4). [가정] 실기기에서 맞춘다.
+abstract final class QiClash {
+  /// 연타 시간(초).
+  static const double seconds = 3;
+
+  /// 초당 이보다 많으면 무효(설계서 §4: 15회).
+  static const int maxRate = 15;
+
+  /// 반발 ±20%.
+  static const double maxSwing = 0.2;
+
+  /// 이 빠르기(cm/s) 넘게 부딪혀야 겨룬다(센 정면 충돌만 — 정한 값).
+  static const double minSpeed = 40;
+
+  /// 정면 판정: 20° 안.
+  static const double headOnCos = 0.94;
+
+  /// 연타 수 차이 → 반발 배수 차이. 초당 [maxRate] 를 넘긴 쪽은 0 회로 친다.
+  static double swing(int mine, int theirs) {
+    final cap = (maxRate * seconds).round();
+    final m = mine > cap ? 0 : mine;
+    final t = theirs > cap ? 0 : theirs;
+    final top = m > t ? m : t;
+    if (top == 0) return 0;
+    return maxSwing * ((m - t) / top).clamp(-1.0, 1.0);
+  }
+
+  /// 고수의 연타 수(3초): 쉬움 18 · 보통 27 · 어려움 36, ±3.
+  static int aiTaps(Difficulty d, math.Random r) =>
+      switch (d) {
+        Difficulty.easy => 18,
+        Difficulty.normal => 27,
+        Difficulty.hard => 36,
+      } +
+      r.nextInt(7) -
+      3;
+}
+
 /// 내공 칸 수(가득).
 const int maxQi = 3;
 
@@ -138,7 +176,11 @@ class MatchConfig {
     this.features = const [],
     this.civilians = const [],
     this.shiftingFloor = false,
+    this.qiClash = false,
   });
+
+  /// 내공 겨루기(설계서 §4): 고수전에서 양편 가장 무거운 돌이 정면으로 부딪히면 연타로 겨룬다.
+  final bool qiClash;
 
   /// 천기(날씨, 설계서 §9.3).
   final Weather weather;
@@ -381,6 +423,7 @@ class Match extends ChangeNotifier {
       _qi[team] = math.min(maxQi, _qi[team] + 1 + extra);
     }
     _aliveBefore = alive(1 - team);
+    _ownBefore = alive(team);
     lastCritical = critical && m == StrikeMode.plain;
     lastMode = m;
     steersLeft = m == StrikeMode.ultimate ? config.steers : 0;
@@ -435,10 +478,30 @@ class Match extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 내공 겨루기를 기다리는 중이면 (내 돌 id, 상대 돌 id). 이 동안 물리를 멈춘다.
+  (int, int)? clash;
+  bool _clashThisTurn = false;
+
+  /// [team] 의 살아 있는 돌 가운데 가장 무거운 무게. 한 편 돌은 보통 모두 같은 무게라
+  /// 「가장 무거운 두 돌」은 이 무게를 가진 양편 돌 한 쌍이다.
+  double heaviestMass(int team) {
+    var m = 0.0;
+    for (final s in table.stones) {
+      if (s.team == team && !s.out && s.mass > m) m = s.mass;
+    }
+    return m;
+  }
+
   /// 화면 프레임마다 1/60초씩 진행한다. 한 수가 끝나면 true.
   bool step() {
     if (!isMoving) return false;
+    if (clash != null) return false;
+    final watch = config.qiClash && !_clashThisTurn && !config.training;
+    final before = watch
+        ? {for (final s in table.stones) s.id: s.velocity.clone()}
+        : const <int, Vector2>{};
     final st = table.step();
+    if (watch && st == TurnStatus.moving) _checkClash(before);
     final shooterId = table.shooter?.id;
     for (final i in table.impacts) {
       if (i.a == shooterId) touchedThisTurn.add(i.b);
@@ -446,12 +509,27 @@ class Match extends ChangeNotifier {
     }
     if (st == TurnStatus.moving) return false;
     table.endTurn();
+    _clashThisTurn = false;
     _finishTurn();
     notifyListeners();
     return true;
   }
 
   int _aliveBefore = 0;
+  int _ownBefore = 0;
+
+  /// 지난 수에 쏜 편이 떨어뜨린 상대 돌 수.
+  int lastKnocked = 0;
+
+  /// 지난 수에 쏜 편이 잃은 제 돌 수(자살수).
+  int lastSelfLost = 0;
+
+  /// 지난 수를 쏜 편.
+  int lastShooter = 0;
+
+  /// 일타쌍피(설계서 §16.7): 내가 한 수에 2개 이상 떨어뜨리면 1개에 엽전 [multiKnockCoin].
+  int bonusCoins = 0;
+  static const int multiKnockCoin = 10;
 
   /// 떨어진 백성 돌 수(3장 감점).
   int get civiliansLost =>
@@ -466,6 +544,12 @@ class Match extends ChangeNotifier {
       table.floorFactor = fireFloor ? 1.3 : config.arena.floorFactor;
     }
     if (config.training) return;
+    lastShooter = _turn;
+    lastKnocked = _aliveBefore - alive(1 - _turn);
+    lastSelfLost = _ownBefore - alive(_turn);
+    if (_turn == 0 && lastKnocked >= 2 && config.mode == MatchMode.vsAi) {
+      bonusCoins += multiKnockCoin * lastKnocked;
+    }
     // 내가 상대 돌을 떨어뜨리면 내공(묵객·기인방 「장외 시 기」).
     if (_turn == 0 && config.knockoutQiChance > 0) {
       final knocked = _aliveBefore - alive(1);
@@ -498,6 +582,52 @@ class Match extends ChangeNotifier {
     } else {
       _turn = 1 - _turn;
     }
+  }
+
+  Stone? _byId(int id) {
+    for (final s in table.stones) {
+      if (s.id == id) return s;
+    }
+    return null;
+  }
+
+  void _checkClash(Map<int, Vector2> before) {
+    final m0 = heaviestMass(0), m1 = heaviestMass(1);
+    for (final i in table.impacts) {
+      if (i.speed < QiClash.minSpeed) continue;
+      final a = _byId(i.a), b = _byId(i.b);
+      if (a == null || b == null || a.phantom || b.phantom) continue;
+      if (a.team + b.team != 1) continue;
+      final mine = a.team == 0 ? a : b, theirs = a.team == 0 ? b : a;
+      if (mine.mass < m0 - 1e-9 || theirs.mass < m1 - 1e-9) continue;
+      // 정면: 더 빨리 오던 돌의 방향이 두 돌 중심을 잇는 선과 20° 안.
+      final va = before[mine.id], vb = before[theirs.id];
+      if (va == null || vb == null) continue;
+      final mover = va.length >= vb.length ? va : vb;
+      final line = theirs.position - mine.position;
+      if (mover.length < 1e-6 || line.length < 1e-6) continue;
+      final cos = mover.dot(line).abs() / (mover.length * line.length);
+      if (cos < QiClash.headOnCos) continue;
+      _clashThisTurn = true;
+      clash = (mine.id, theirs.id);
+      notifyListeners();
+      return;
+    }
+  }
+
+  /// 내공 겨루기 결과를 넣고 물리를 다시 돌린다. [myTaps]·[aiTaps] 는 [QiClash.seconds] 동안 연타 수.
+  /// 돌려주는 값은 반발 배수 차이(−0.2~+0.2, 내 쪽이 이기면 +). 초당 15회를 넘긴 연타는 무효(0).
+  double resolveClash(int myTaps, int aiTaps) {
+    final c = clash;
+    if (c == null) return 0;
+    clash = null;
+    final d = QiClash.swing(myTaps, aiTaps);
+    final mine = _byId(c.$1), theirs = _byId(c.$2);
+    if (mine == null || theirs == null) return 0;
+    mine.body.linearVelocity = mine.velocity * (1 - d);
+    theirs.body.linearVelocity = theirs.velocity * (1 + d);
+    notifyListeners();
+    return d;
   }
 
   /// 돌 중심과 손가락 사이 거리(cm).

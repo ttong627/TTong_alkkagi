@@ -75,14 +75,21 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
     if (fx.steerLeft <= 0 && match.steersLeft > 0) match.steersLeft = 0;
     if (!match.isMoving) return;
     _acc += real * fx.timeScale;
-    while (_acc >= phys.PhysicsConstants.step && match.isMoving) {
+    if (match.clash != null) {
+      _acc = 0;
+      return;
+    }
+    while (_acc >= phys.PhysicsConstants.step &&
+        match.isMoving &&
+        match.clash == null) {
       _acc -= phys.PhysicsConstants.step;
       final wasOut = {
         for (final s in match.table.stones)
           if (s.out) s.id,
       };
-      match.step();
+      final ended = match.step();
       fx.onStep(match, wasOut);
+      if (ended) fx.onTurnEnd(match);
     }
     if (!match.isMoving) _acc = 0;
   }

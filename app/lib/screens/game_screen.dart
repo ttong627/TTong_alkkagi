@@ -22,7 +22,15 @@ class GameScreen extends StatefulWidget {
     this.title,
     this.onTurnEnd,
     this.info,
+    this.quips = const [],
+    this.boss = false,
   });
+
+  /// 고수전(강호행·폐관수련동)이면 이길 때 절명기 연출(설계서 §4).
+  final bool boss;
+
+  /// 고수 한마디 6줄(설계서 §16.7 · [Stage.quips] 와 같은 순서).
+  final List<String> quips;
   final MatchConfig config;
 
   /// 한 수가 끝날 때마다(목인항 등).
@@ -44,6 +52,27 @@ class _GameScreenState extends State<GameScreen> {
   phys.Stone? _selected;
   bool _aiThinking = false;
   bool _resultShown = false;
+  final _rand = math.Random();
+
+  /// 지금 말풍선에 띄운 고수 한마디.
+  String? _quip;
+  Timer? _quipTimer;
+
+  /// 절명기 연출 중이면 그 이름(설계서 §4: 보스의 마지막 돌 장외).
+  String? _finisher;
+
+  /// 내공 겨루기 연타 화면이 떠 있나.
+  bool _clashing = false;
+
+  /// [first] 와 그다음 줄 가운데 하나를 2.6초 띄운다.
+  void _say(int first) {
+    if (widget.quips.length < first + 2) return;
+    _quipTimer?.cancel();
+    setState(() => _quip = widget.quips[first + _rand.nextInt(2)]);
+    _quipTimer = Timer(const Duration(milliseconds: 2600), () {
+      if (mounted) setState(() => _quip = null);
+    });
+  }
 
   bool get _aiTurn => widget.config.mode == MatchMode.vsAi && _match.turn == 1;
 
@@ -117,11 +146,31 @@ class _GameScreenState extends State<GameScreen> {
   void _onMatch() {
     if (!mounted) return;
     setState(() {});
-    if (_wasMoving && !_match.isMoving) widget.onTurnEnd?.call(_match);
+    if (_match.clash != null && !_clashing) {
+      _clashing = true;
+      _selected = null;
+    }
+    if (_wasMoving && !_match.isMoving) {
+      widget.onTurnEnd?.call(_match);
+      if (_match.lastKnocked >= 2) _say(_match.lastShooter == 0 ? 2 : 4);
+    }
     _wasMoving = _match.isMoving;
     if (_match.isOver && !_match.isMoving && !_resultShown) {
       _resultShown = true;
-      Future<void>.delayed(const Duration(milliseconds: 400), _showResult);
+      final boss =
+          widget.boss &&
+          widget.config.mode == MatchMode.vsAi &&
+          _match.winner == 0 &&
+          !_match.isDraw;
+      if (boss) {
+        setState(() => _finisher = finisherName(widget.config.martial));
+        Future<void>.delayed(const Duration(milliseconds: 1900), () {
+          if (mounted) setState(() => _finisher = null);
+          _showResult();
+        });
+      } else {
+        Future<void>.delayed(const Duration(milliseconds: 400), _showResult);
+      }
       return;
     }
     if (e2eFlick &&
@@ -156,6 +205,7 @@ class _GameScreenState extends State<GameScreen> {
               shot.power <= CriticalRule.maxPower),
       curl: shot.curl,
     );
+    if (_match.lastCritical) _say(0);
   }
 
   /// 고른 돌이 판 어디 있는지에 맞춰 가까이 보기 화면이 그 자리에서 커져 나온다.
@@ -232,6 +282,7 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   void dispose() {
+    _quipTimer?.cancel();
     _match
       ..removeListener(_onMatch)
       ..dispose();
@@ -356,6 +407,40 @@ class _GameScreenState extends State<GameScreen> {
                     ),
             ),
           ),
+          if (_quip != null && _selected == null)
+            Positioned(
+              top: 56,
+              left: 24,
+              right: 24,
+              child: IgnorePointer(
+                child: Container(
+                  key: const Key('boss-quip'),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.black87,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: Text(
+                    '${widget.config.opponentName ?? '상대'}: $_quip',
+                    style: t.titleSmall,
+                  ),
+                ),
+              ),
+            ),
+          if (_clashing)
+            Positioned.fill(
+              child: QiClashOverlay(
+                opponent: widget.config.opponentName ?? '상대',
+                aiTaps: QiClash.aiTaps(widget.config.difficulty, _rand),
+                onDone: (mine, theirs) {
+                  _match.resolveClash(mine, theirs);
+                  setState(() => _clashing = false);
+                },
+              ),
+            ),
+          if (_finisher != null)
+            Positioned.fill(child: FinisherOverlay(name: _finisher!)),
         ],
       ),
     );
@@ -382,4 +467,251 @@ class _Count extends StatelessWidget {
       Text('$label $n', style: Theme.of(context).textTheme.titleMedium),
     ],
   );
+}
+
+/// 절명기 이름(설계서 §4): 문파마다 결정타.
+String finisherName(phys.Technique martial) => switch (martial) {
+  phys.Technique.swordQi => '일도양단(一刀兩斷)',
+  phys.Technique.stomp => '정권 찌르기',
+  phys.Technique.taiji => '태극 회선(太極回旋)',
+  phys.Technique.clone => '만천화우(滿天花雨)',
+  _ => '탄지일격(彈指一擊)',
+};
+
+/// 절명기 컷: 화면이 어두워지고 빛줄기가 가르며 이름이 박힌다(판정과 무관).
+class FinisherOverlay extends StatefulWidget {
+  const FinisherOverlay({super.key, required this.name});
+  final String name;
+
+  @override
+  State<FinisherOverlay> createState() => _FinisherOverlayState();
+}
+
+class _FinisherOverlayState extends State<FinisherOverlay>
+    with SingleTickerProviderStateMixin {
+  late final _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1700),
+  )..forward();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: AnimatedBuilder(
+      animation: _c,
+      builder: (context, _) {
+        final t = _c.value;
+        final fade = t < 0.15 ? t / 0.15 : (t > 0.85 ? (1 - t) / 0.15 : 1.0);
+        return CustomPaint(
+          key: const Key('finisher'),
+          painter: _FinisherPainter(t, fade.clamp(0.0, 1.0), widget.name),
+        );
+      },
+    ),
+  );
+}
+
+class _FinisherPainter extends CustomPainter {
+  _FinisherPainter(this.t, this.fade, this.name);
+  final double t;
+  final double fade;
+  final String name;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()..color = Colors.black.withValues(alpha: 0.75 * fade),
+    );
+    // 대각선 빛줄기가 화면을 가른다.
+    final cut = (t / 0.35).clamp(0.0, 1.0);
+    final a = Offset(-size.width * 0.1, size.height * 0.75);
+    final b = Offset(size.width * 1.1, size.height * 0.25);
+    final end = Offset.lerp(a, b, Curves.easeOutCubic.transform(cut))!;
+    canvas.drawLine(
+      a,
+      end,
+      Paint()
+        ..color = innerColor.withValues(alpha: fade)
+        ..strokeWidth = 6 + 20 * (1 - cut)
+        ..strokeCap = StrokeCap.round
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+    );
+    canvas.drawLine(
+      a,
+      end,
+      Paint()
+        ..color = Colors.white.withValues(alpha: fade)
+        ..strokeWidth = 2,
+    );
+    if (t < 0.3) return;
+    final grow = Curves.elasticOut.transform(((t - 0.3) / 0.4).clamp(0.0, 1.0));
+    final tp = TextPainter(
+      text: TextSpan(
+        children: [
+          TextSpan(
+            text: '절명기\n',
+            style: TextStyle(
+              fontSize: 20,
+              color: Colors.white.withValues(alpha: fade),
+              letterSpacing: 8,
+            ),
+          ),
+          TextSpan(
+            text: name,
+            style: TextStyle(
+              fontSize: 40 * grow,
+              fontWeight: FontWeight.w900,
+              color: innerColor.withValues(alpha: fade),
+              shadows: const [Shadow(blurRadius: 16, color: Colors.black)],
+            ),
+          ),
+        ],
+      ),
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: size.width - 32);
+    tp.paint(
+      canvas,
+      Offset((size.width - tp.width) / 2, (size.height - tp.height) / 2),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _FinisherPainter old) => true;
+}
+
+/// 내공 겨루기(설계서 §4): 3초 동안 연타. 고수의 연타 수는 정해 두고 막대로 차오른다.
+/// 초당 15회를 넘긴 연타는 무효(0회로 친다).
+class QiClashOverlay extends StatefulWidget {
+  const QiClashOverlay({
+    super.key,
+    required this.opponent,
+    required this.aiTaps,
+    required this.onDone,
+  });
+  final String opponent;
+  final int aiTaps;
+  final void Function(int mine, int theirs) onDone;
+
+  @override
+  State<QiClashOverlay> createState() => _QiClashOverlayState();
+}
+
+class _QiClashOverlayState extends State<QiClashOverlay>
+    with SingleTickerProviderStateMixin {
+  late final _c = AnimationController(
+    vsync: this,
+    duration: Duration(milliseconds: (QiClash.seconds * 1000).round()),
+  );
+  int _taps = 0;
+  String? _result;
+
+  @override
+  void initState() {
+    super.initState();
+    _c.addStatusListener((st) {
+      if (st != AnimationStatus.completed) return;
+      final d = QiClash.swing(_taps, widget.aiTaps);
+      final cap = (QiClash.maxRate * QiClash.seconds).round();
+      setState(() {
+        _result = _taps > cap
+            ? '무효 — 초당 ${QiClash.maxRate}회를 넘겼다'
+            : (d > 0
+                  ? '이겼다! 반발 +${(d * 100).round()}%'
+                  : (d < 0 ? '밀렸다… 반발 ${(d * 100).round()}%' : '팽팽하다'));
+      });
+      Future<void>.delayed(const Duration(milliseconds: 900), () {
+        if (mounted) widget.onDone(_taps, widget.aiTaps);
+      });
+    });
+    // 기기 진동·알림 없이도 시작을 알 수 있게 0.4초 뒤 시작.
+    Future<void>.delayed(const Duration(milliseconds: 400), () {
+      if (mounted) _c.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final cap = (QiClash.maxRate * QiClash.seconds).toDouble();
+    return GestureDetector(
+      key: const Key('qi-clash'),
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) {
+        if (_c.isAnimating) setState(() => _taps++);
+      },
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.82),
+        padding: const EdgeInsets.all(24),
+        child: AnimatedBuilder(
+          animation: _c,
+          builder: (context, _) {
+            final ai = (widget.aiTaps * _c.value).round();
+            Widget bar(String who, int n, Color c) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  SizedBox(width: 90, child: Text(who, style: t.titleMedium)),
+                  Expanded(
+                    child: LinearProgressIndicator(
+                      value: (n / cap).clamp(0.0, 1.0),
+                      minHeight: 18,
+                      color: c,
+                      backgroundColor: Colors.white12,
+                    ),
+                  ),
+                  SizedBox(
+                    width: 44,
+                    child: Text('$n', textAlign: TextAlign.end),
+                  ),
+                ],
+              ),
+            );
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '내공 겨루기!',
+                  style: t.displaySmall?.copyWith(
+                    color: innerColor,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _result ??
+                      (_c.isAnimating
+                          ? '화면을 마구 두드려라! ${(QiClash.seconds * (1 - _c.value)).toStringAsFixed(1)}초'
+                          : '준비…'),
+                  style: t.titleLarge,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                bar('나', _taps, innerColor),
+                bar(widget.opponent, ai, const Color(0xFFFF6B6B)),
+                const SizedBox(height: 16),
+                Text(
+                  '연타 수가 많은 쪽 돌이 더 세게 튕겨 낸다(반발 ±${(QiClash.maxSwing * 100).round()}%)',
+                  style: t.bodySmall,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
 }

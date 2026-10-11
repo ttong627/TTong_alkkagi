@@ -112,6 +112,31 @@ class BattleFx {
     }
   }
 
+  /// 한 수가 끝났을 때: 일타쌍피(설계서 §16.7) — 한 수에 상대 돌 2개 이상.
+  void onTurnEnd(Match m) {
+    if (m.lastKnocked < 2) return;
+    final mine = m.lastShooter == 0;
+    final c = mine ? innerColor : const Color(0xFFFF6B6B);
+    final name = switch (m.lastKnocked) {
+      2 => '일타쌍피!',
+      3 => '일타삼피!',
+      _ => '일타다피!',
+    };
+    _text(const Offset(0, -3), name, c, size: 40);
+    if (mine && m.config.mode == MatchMode.vsAi) {
+      _text(
+        const Offset(0, 1.5),
+        '엽전 +${Match.multiKnockCoin * m.lastKnocked}',
+        c,
+        size: 22,
+      );
+    }
+    _rings.add(_Ring(Offset.zero, 2, 16, 0.7, c));
+    _flash = math.max(_flash, 0.4);
+    _flashColor = c;
+    _shake = math.max(_shake, 10);
+  }
+
   /// 물리 한 스텝 뒤: 충돌·무공·장외를 보고 연출을 붙인다.
   void onStep(Match m, Set<int> wasOut) {
     final t = m.table;

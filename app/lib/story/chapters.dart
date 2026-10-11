@@ -28,6 +28,7 @@ class Stage {
     this.features = const [],
     this.civilians = const [],
     this.shiftingFloor = false,
+    this.quips = const [],
   });
 
   final String id;
@@ -66,8 +67,19 @@ class Stage {
   /// 6장: 수마다 빙판(×0.6)과 불꽃(×1.3) 바닥이 바뀐다.
   final bool shiftingFloor;
 
+  /// 판 중 고수 한마디 6줄(설계서 §16.7): [0·1] 내가 회심을 터뜨렸을 때, [2·3] 내가 한 수에
+  /// 2개 넘게 떨어뜨렸을 때(일타쌍피), [4·5] 고수가 내 돌을 2개 넘게 떨어뜨렸을 때.
+  final List<String> quips;
+
   final List<Line> intro;
   final List<Line> outro;
+
+  /// 대사 화면에 나오는 이름(「숨은 자객」→「자객」, 「무림맹주」→「맹주」).
+  String get speaker => switch (boss) {
+    '숨은 자객' => '자객',
+    '무림맹주' => '맹주',
+    _ => boss,
+  };
 
   /// 이겼을 때 엽전(설계서 §16.4): 장 30 + 장×10, 숙적 50. 처음이면 ×2.
   int coins({required bool first}) {
@@ -102,6 +114,14 @@ const List<Stage> campaign = [
     difficulty: Difficulty.easy,
     style: AiStyle.teacher,
     needStage: 1,
+    quips: [
+      '허허, 그게 회심이다! 손끝이 기억하게 두어라.',
+      '가운데를 맞혔구나. 마음이 고요했지?',
+      '한 번에 둘을? 내가 가르친 적 없는 수다!',
+      '이놈, 어느새 나를 앞질렀구나.',
+      '서두르지 마라. 돌은 도망가지 않는다.',
+      '판 가장자리를 보거라. 거기가 낭떠러지다.',
+    ],
     intro: [
       ('촌장', '돌 한가운데를 알맞은 세기로 맞히면 「회심」이 터진다. 그때 내공이 한 칸 찬다.'),
       ('촌장', '내공이 차면 내공 타격으로 더 세게 칠 수 있다. 자, 덤벼 보거라.'),
@@ -123,6 +143,14 @@ const List<Stage> campaign = [
     difficulty: Difficulty.normal,
     style: AiStyle.ram,
     needStage: 2,
+    quips: [
+      '오호! 그 소리, 객잔 종소리보다 맑군!',
+      '제법이구먼! 한 그릇 서비스할까?',
+      '내 원탁이 텅 비어 가네! 이거 장사 망하겠어!',
+      '하하, 기름 바닥을 그렇게 타다니!',
+      '쿵! 이게 현철의 맛이지!',
+      '정면으로 받으면 다 날아간다니까!',
+    ],
     intro: [
       ('통통', '어서 오시게! 무림맹 대회 추천서? 있지. 내 원탁에서 날 이기면 주겠네.'),
       ('통통', '바닥에 기름이 좀 튀었네만… 핑계는 안 받네! 하하!'),
@@ -147,6 +175,14 @@ const List<Stage> campaign = [
     bossQi: 1,
     needStage: 2,
     weather: Weather.nightRain,
+    quips: [
+      '…사부의 회심이군. 그 손끝, 마음에 안 든다.',
+      '운이 아니라고 말하고 싶은 거냐.',
+      '둘을 한꺼번에…! 기명석이 돕는 건가.',
+      '…이 정도였나.',
+      '밤비 속에선 네 돌만 보이겠지. 나는 다 보인다.',
+      '검기는 멈추지 않는다.',
+    ],
     intro: [
       ('해설', '객잔 등불이 꺼지고 밤비가 들이친다. 내 돌 둘레만 겨우 보이고, 바닥은 젖어 잘 멈추지 않는다.'),
       ('묵현', '사부가 날 막았지만 오래 못 버틸 거다. 그 돌을 내놔라.'),
@@ -171,6 +207,14 @@ const List<Stage> campaign = [
       Placement(6, -1, team: 2, shape: StoneShape.flat),
       Placement(-3, 4, team: 2, shape: StoneShape.flat),
       Placement(3, -4, team: 2, shape: StoneShape.flat),
+    ],
+    quips: [
+      '(자객이 어둠 속에서 혀를 찬다)',
+      '…정확하군. 보고할 것이 늘었다.',
+      '백성 사이로 둘이나…! 겁도 없군.',
+      '물러설 때를 아는 것도 실력이다.',
+      '가장자리에 서 있으면 떨어지는 법이지.',
+      '장터는 넓고, 네 돌은 적다.',
     ],
     intro: [
       ('해설', '북적이는 거북 장터. 사람들 사이에서 차가운 기운이 느껴진다.'),
@@ -198,6 +242,14 @@ const List<Stage> campaign = [
       Feature(FeatureKind.pebble, -2, 4),
       Feature(FeatureKind.pebble, 3, -1),
     ],
+    quips: [
+      '캬! 그 회심, 우리 산채 술맛 같구나!',
+      '형님 소리 나오겠는데?',
+      '둘이나 날렸다고?! 나뭇가지도 못 막았네!',
+      '이러다 통행료를 내가 내겠구먼!',
+      '끌어치기 봤냐! 돌아오는 맛이 있지!',
+      '숲은 내 편이다! 하하하!',
+    ],
     intro: [
       ('쿠비', '이 숲을 지나려면 통행료를 내라! 없으면 돌로 내든가!'),
       ('쿠비', '내 구형 돌은 끌어치기의 왕이지. 맞고 돌아오는 걸 보면 놀랄걸?'),
@@ -222,6 +274,14 @@ const List<Stage> campaign = [
     bossQi: 2,
     needStage: 4,
     weather: Weather.gale,
+    quips: [
+      '…진각으로도 꺾이지 않는 회심인가.',
+      '사부는 왜 너에게만…',
+      '둘을…! 바람마저 네 편이냐.',
+      '아직 끝나지 않았다.',
+      '진각 한 번에 둘이다. 이게 권사의 무게다.',
+      '광풍은 공평하지. 공평하게 너를 날린다.',
+    ],
     intro: [
       ('해설', '숲 어귀에 광풍이 분다. 바람은 5초마다 방향을 바꾸며 굴러가는 돌을 옆으로 민다.'),
       ('묵현', '사부의 검기로는 안 됐지. 그래서 권사의 진각을 익혔다.'),
@@ -243,6 +303,14 @@ const List<Stage> campaign = [
       Feature(FeatureKind.bamboo, -7, 0),
       Feature(FeatureKind.bamboo, 7, 0),
       Feature(FeatureKind.gong, 0, 0),
+    ],
+    quips: [
+      '계산 밖의 회심… 기록해 두겠습니다.',
+      '오차 0.1 이내. 훌륭합니다.',
+      '확률 3% 의 수를 두셨군요.',
+      '제 계산이 틀렸습니다. 다시 계산하지요.',
+      '예상대로입니다.',
+      '청죽의 각도를 읽지 못하셨군요.',
     ],
     intro: [
       ('로직', '모든 수는 계산할 수 있습니다. 당신의 다음 수도요.'),
@@ -268,6 +336,14 @@ const List<Stage> campaign = [
     bossQi: 3,
     needStage: 5,
     weather: Weather.frost,
+    quips: [
+      '…그 회심, 사부를 닮았군.',
+      '얼어붙은 판에서도 손이 떨리지 않는구나.',
+      '분신으로도 막을 수 없는가…',
+      '이번엔… 끝을 낼 줄 알았는데.',
+      '분신은 둘이다. 너는 하나지.',
+      '혹한에선 세 번째 충돌이 마지막이다.',
+    ],
     intro: [
       ('해설', '혹한의 밤. 부딪힐수록 돌이 얼어붙어 무거워지고, 세 번째 충돌에서는 그 자리에 멈춘다.'),
       ('묵현', '대회 전날 밤이다. 살수의 분신까지 익혔다. 이번엔 끝을 내자.'),
@@ -291,6 +367,14 @@ const List<Stage> campaign = [
     bossQi: 3,
     needStage: 6,
     shiftingFloor: true,
+    quips: [
+      '좋은 회심이다. 사제가 잘 가르쳤구나.',
+      '용린석이 떨고 있다. 너 때문이다.',
+      '한 수에 둘이라… 천하제일의 자격이 있다.',
+      '허, 이 늙은이를 땀 흘리게 하는구나.',
+      '내공은 이렇게 쓰는 것이다.',
+      '불꽃 바닥에선 멈추고, 빙판에선 멀어진다. 잊지 마라.',
+    ],
     intro: [
       ('맹주', '사제의 기명석을 가진 아이로구나. 용린석이 너를 기다렸다.'),
       ('맹주', '빙판 위에서는 한 번의 실수가 판 밖이다. 내공을 아끼지 마라.'),
@@ -303,6 +387,14 @@ const List<Stage> campaign = [
     ],
   ),
 ];
+
+/// 고수의 첫 대사는 내가 고른 캐릭터에 따라 바뀐다(설계서 §16.1). 장마다 앞 대사 맨 앞에 붙는다.
+String heroGreeting(String heroLabel, String trait) {
+  final kind = trait.split(' · ').first;
+  final last = heroLabel.codeUnitAt(heroLabel.length - 1);
+  final batchim = last >= 0xAC00 && last <= 0xD7A3 && (last - 0xAC00) % 28 != 0;
+  return '「$kind」 $heroLabel${batchim ? '이라' : '라'}… 소문은 들었다. 어디 손끝을 보자.';
+}
 
 /// 장을 깨면 열리는 캐릭터 (설계서 §16.3).
 const unlockByStage = {

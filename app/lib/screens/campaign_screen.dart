@@ -39,7 +39,14 @@ class _CampaignScreenState extends State<CampaignScreen> {
     }
     await nav.push(
       MaterialPageRoute<void>(
-        builder: (_) => DialogueScreen(title: s.title, lines: s.intro),
+        builder: (_) => DialogueScreen(
+          title: s.title,
+          lines: [
+            if (p.hero case final h?)
+              (s.speaker, heroGreeting(h.label, h.trait)),
+            ...s.intro,
+          ],
+        ),
       ),
     );
     Match? last;
@@ -48,6 +55,8 @@ class _CampaignScreenState extends State<CampaignScreen> {
         builder: (_) => GameScreen(
           config: Campaign.configFor(p, s),
           title: s.title,
+          quips: s.quips,
+          boss: true,
           onTurnEnd: (m) => last = m,
         ),
       ),
@@ -58,6 +67,7 @@ class _CampaignScreenState extends State<CampaignScreen> {
       s,
       won: won,
       civiliansLost: last?.civiliansLost ?? 0,
+      bonusCoins: last?.bonusCoins ?? 0,
     );
     await _store.save();
     if (!mounted) return;
@@ -70,11 +80,13 @@ class _CampaignScreenState extends State<CampaignScreen> {
               ? [
                   '엽전 +${r.coins}${r.first ? ' (처음 깬 판 ×2)' : ''}',
                   if (r.silver > 0) '은자 +${r.silver}',
+                  if (r.bonus > 0) '일타쌍피 +${r.bonus}',
                   if (r.fine > 0) '백성 돌 배상 −${r.fine}',
                   if (r.hero != null)
                     '새 캐릭터: ${r.hero!.label} — ${r.hero!.trait}',
                 ].join('\n')
               : '${s.boss}에게 졌습니다. 목인항에서 내공을 쌓거나 다시 도전하세요.'
+                    '${r.bonus > 0 ? '\n일타쌍피 +${r.bonus}' : ''}'
                     '${r.fine > 0 ? '\n백성 돌 배상 −${r.fine}' : ''}',
         ),
         actions: [
@@ -110,6 +122,7 @@ class _CampaignScreenState extends State<CampaignScreen> {
       MaterialPageRoute(
         builder: (_) => GameScreen(
           title: '폐관수련동',
+          boss: true,
           config: Campaign.playerConfig(
             p,
             arena: Arena.murimIce,
@@ -121,6 +134,7 @@ class _CampaignScreenState extends State<CampaignScreen> {
             opponentStartQi: 3,
             opponentName: '폐관 고수(${m.label})',
             aimAssist: 0,
+            qiClash: true,
           ),
         ),
       ),

@@ -37,6 +37,7 @@ abstract final class Campaign {
     features: s.features,
     civilians: s.civilians,
     shiftingFloor: s.shiftingFloor,
+    qiClash: true,
   );
 
   /// 예상 궤적(설계서 §7.1): 1~2장 두 번째 충돌까지, 3~4장 첫 충돌까지, 5~6장 그 절반.
@@ -61,6 +62,7 @@ abstract final class Campaign {
     List<Feature> features = const [],
     List<Placement> civilians = const [],
     bool shiftingFloor = false,
+    bool qiClash = false,
   }) {
     final h = p.hero;
     final perkKnock = p.perks.contains('장외 시 기');
@@ -97,6 +99,7 @@ abstract final class Campaign {
       features: features,
       civilians: civilians,
       shiftingFloor: shiftingFloor,
+      qiClash: qiClash,
     );
   }
 
@@ -107,6 +110,7 @@ abstract final class Campaign {
     Stage s, {
     required bool won,
     int civiliansLost = 0,
+    int bonusCoins = 0,
   }) {
     p.codex.add('고수:${s.boss}');
     if (s.weather != Weather.clear) p.codex.add('천기:${s.weather.name}');
@@ -115,11 +119,12 @@ abstract final class Campaign {
     }
     final fine = civiliansLost * civilianPenalty;
     if (!won) {
-      p.coins = (p.coins - fine).clamp(0, 1 << 30);
-      return Reward(won: false, fine: fine);
+      // 일타쌍피 엽전은 져도 받는다(설계서 §16.7 은 승패 조건을 두지 않았다).
+      p.coins = (p.coins + bonusCoins - fine).clamp(0, 1 << 30);
+      return Reward(won: false, fine: fine, bonus: bonusCoins);
     }
     final first = !p.done.contains(s.id);
-    final coins = (s.coins(first: first) - fine).clamp(0, 1 << 30);
+    final coins = (s.coins(first: first) + bonusCoins - fine).clamp(0, 1 << 30);
     final silver = first && s.chapter != null ? 5 : 0;
     p.coins += coins;
     p.silver += silver;
@@ -141,6 +146,7 @@ abstract final class Campaign {
       hero: hero,
       awaken: s.id == 'c1' && p.school == null,
       fine: fine,
+      bonus: bonusCoins,
     );
   }
 }
@@ -155,6 +161,7 @@ class Reward {
     this.hero,
     this.awaken = false,
     this.fine = 0,
+    this.bonus = 0,
   });
   final bool won;
   final bool first;
@@ -167,4 +174,7 @@ class Reward {
 
   /// 백성 돌을 떨어뜨려 물어 준 엽전.
   final int fine;
+
+  /// 일타쌍피로 더 받은 엽전(이긴 판이면 [coins] 에 들어 있다).
+  final int bonus;
 }
