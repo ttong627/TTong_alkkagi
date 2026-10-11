@@ -117,4 +117,65 @@ void main() {
     final miss = scoreShot(stones, 0, 0, 20, 0, 1);
     expect(good, greaterThan(miss));
   });
+
+  group('내공 칸 · 치는 방식 (설계서 §3.9)', () {
+    test('평타 회심이면 내공 +1(최대 3), 회심 아니면 그대로', () {
+      final m = Match(const MatchConfig(mode: MatchMode.practice));
+      final s = m.table.stones.firstWhere((s) => s.team == 0);
+      m.shoot(s, -math.pi / 2, 10, 0, critical: true);
+      expect(m.qi(0), 1);
+      expect(m.lastCritical, isTrue);
+      runToRest(m);
+      m.shoot(s, -math.pi / 2, 10, 0);
+      expect(m.qi(0), 1);
+      runToRest(m);
+      for (var i = 0; i < 5; i++) {
+        m.shoot(s, -math.pi / 2, 5, 0, critical: true);
+        runToRest(m);
+      }
+      expect(m.qi(0), maxQi);
+      m.dispose();
+    });
+
+    test('내공이 모자라면 평타로 친다 · 있으면 칸 수만큼 쓰고 무공이 발동한다', () {
+      final m = Match(
+        const MatchConfig(mode: MatchMode.practice, martial: Technique.stomp),
+      );
+      final s = m.table.stones.firstWhere((s) => s.team == 0);
+      m.shoot(s, -math.pi / 2, 20, 0, mode: StrikeMode.inner);
+      expect(m.lastMode, StrikeMode.plain);
+      expect(m.table.inner, isFalse);
+      runToRest(m);
+      for (var i = 0; i < 2; i++) {
+        m.shoot(s, -math.pi / 2, 5, 0, critical: true);
+        runToRest(m);
+      }
+      expect(m.qi(0), 2);
+      m.shoot(s, -math.pi / 2, 20, 0, mode: StrikeMode.inner);
+      expect(m.lastMode, StrikeMode.inner);
+      expect(m.table.inner, isTrue);
+      expect(m.table.technique, Technique.stomp);
+      expect(m.qi(0), 1);
+      expect(m.lastCritical, isFalse, reason: '내공 타격은 회심을 세지 않는다');
+      m.dispose();
+    });
+
+    test('어기어석(3칸): 쏜 뒤 한 번 꺾을 수 있다', () {
+      final m = Match(const MatchConfig(mode: MatchMode.practice));
+      final s = m.table.stones.firstWhere((s) => s.team == 0);
+      for (var i = 0; i < 3; i++) {
+        m.shoot(s, -math.pi / 2, 5, 0, critical: true);
+        runToRest(m);
+      }
+      m.shoot(s, -math.pi / 2, 40, 0, mode: StrikeMode.ultimate);
+      expect(m.qi(0), 0);
+      expect(m.steersLeft, 1);
+      m.step();
+      m.steer(0);
+      expect(s.velocity.y.abs(), lessThan(1e-6));
+      expect(s.velocity.x, greaterThan(0));
+      expect(m.steersLeft, 0);
+      m.dispose();
+    });
+  });
 }

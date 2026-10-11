@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../e2e.dart';
 import '../game/arena.dart';
+import '../game/fx_colors.dart';
 import '../game/match.dart';
 import '../update/updater.dart';
 import '../version.dart';
@@ -22,6 +23,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   StoneMaterial _material = StoneMaterial.cheongok;
   StoneShape _shape = StoneShape.round;
   Arena _arena = Arena.dustyYard;
+  Technique _martial = Technique.swordQi;
 
   @override
   void initState() {
@@ -64,6 +66,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             myMaterial: _material,
             myShape: _shape,
             arena: _arena,
+            martial: _martial,
           ),
         ),
       ),
@@ -160,6 +163,31 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       selected: _shape == s,
                       onSelected: (_) => setState(() => _shape = s),
                     ),
+                ],
+              ),
+            ),
+            _Section(
+              title: '문파 무공 (내공 타격 때 발동)',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final (t, school) in _schools)
+                        ChoiceChip(
+                          avatar: CircleAvatar(
+                            backgroundColor: techniqueColor(t),
+                          ),
+                          label: Text('$school · ${t.label}'),
+                          selected: _martial == t,
+                          onSelected: (_) => setState(() => _martial = t),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(_martialHelp(_martial), style: t.bodySmall),
                 ],
               ),
             ),
@@ -284,4 +312,23 @@ class UpdateBanner extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 문파와 그 무공(설계서 §2.4).
+const _schools = [
+  (Technique.swordQi, '검객'),
+  (Technique.stomp, '권사'),
+  (Technique.taiji, '도사'),
+  (Technique.clone, '살수'),
+];
+
+String _martialHelp(Technique t) {
+  final what = switch (t) {
+    Technique.swordQi => '첫 충돌 뒤 1초 동안 내 돌이 덜 멈춰 일직선으로 밀고 나갑니다',
+    Technique.stomp => '첫 충돌 자리 둘레 4cm 의 다른 돌도 바깥으로 밀어냅니다',
+    Technique.taiji => '부딪히기 전까지 손끝을 쓸어 간 쪽으로 궤적이 휩니다',
+    Technique.clone => '한 수에 상대 돌 2개를 맞히면 내 돌이 둘로 나뉩니다(판당 1번)',
+    _ => '',
+  };
+  return '$what · 평타로 한가운데를 알맞은 세기로 맞히면 「회심」, 내공 1칸이 찹니다';
 }

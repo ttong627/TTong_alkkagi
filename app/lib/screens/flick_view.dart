@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import '../e2e.dart';
 import '../game/arena.dart';
 import '../game/board_paint.dart';
+import '../game/fx_colors.dart';
 import '../game/flick.dart';
 import '../game/match.dart';
 import '../input/touch_feed.dart';
@@ -38,7 +39,9 @@ class FlickView extends StatefulWidget {
 
   final Match match;
   final phys.Stone stone;
-  final void Function(FlickShot shot) onShot;
+
+  /// 쳐 냈을 때: 결과와 고른 방식(평타·내공 타격·흡성탄지·어기어석).
+  final void Function(FlickShot shot, StrikeMode mode) onShot;
   final VoidCallback onCancel;
 
   @override
@@ -69,6 +72,7 @@ class _FlickViewState extends State<FlickView>
   double? _aimAngle;
   String? _hint;
   String? _hitNote;
+  StrikeMode _mode = StrikeMode.plain;
 
   /// 쏘고 난 뒤 돌이 날아가는 연출(0~1). null 이면 아직 안 쏨.
   double? _launch;
@@ -125,7 +129,11 @@ class _FlickViewState extends State<FlickView>
             out * (25 + _power * 140),
             0.5 + _rand.nextDouble() * 0.6,
             2 + _rand.nextDouble() * (3 + _power * 5),
-            Color.lerp(_qi, const Color(0xFFFFE8A0), _rand.nextDouble() * 0.5)!,
+            Color.lerp(
+              _modeQi,
+              const Color(0xFFFFE8A0),
+              _rand.nextDouble() * 0.5,
+            )!,
           ),
         );
       }
@@ -141,7 +149,7 @@ class _FlickViewState extends State<FlickView>
       if (_launch! >= 1 && _shot != null) {
         final shot = _shot!;
         _shot = null;
-        widget.onShot(shot);
+        widget.onShot(shot, _mode);
       }
     }
     _frame.value++;
@@ -306,7 +314,11 @@ class _FlickViewState extends State<FlickView>
     _burst(shot);
     _nPoints = null;
     setState(() {
-      _hitNote = _describeHit(shot.hit);
+      _hitNote = [
+        if (shot.critical && _mode == StrikeMode.plain) '회심! 내공 +1',
+        if (_mode != StrikeMode.plain) _modeName(_mode),
+        ?_describeHit(shot.hit),
+      ].join(' · ');
       _down = false;
       _shot = shot;
       _power = shot.power;
@@ -325,11 +337,24 @@ class _FlickViewState extends State<FlickView>
           Offset(math.cos(a), math.sin(a)) * sp,
           0.4 + _rand.nextDouble() * 0.5,
           2 + _rand.nextDouble() * 6,
-          Color.lerp(_qi, const Color(0xFFFFF2C0), _rand.nextDouble())!,
+          Color.lerp(_modeQi, const Color(0xFFFFF2C0), _rand.nextDouble())!,
         ),
       );
     }
   }
+
+  String _modeName(StrikeMode m) => switch (m) {
+    StrikeMode.inner => '내공 · ${widget.match.config.martial.label}',
+    _ => m.label,
+  };
+
+  /// 지금 고른 방식의 기 빛깔.
+  Color get _modeQi => switch (_mode) {
+    StrikeMode.plain => _qi,
+    StrikeMode.inner => techniqueColor(widget.match.config.martial),
+    StrikeMode.absorb => techniqueColor(phys.Technique.absorb),
+    StrikeMode.ultimate => ultimateColor,
+  };
 
   /// 위아래 타격점을 말로.
   static String? _describeHit(double hit) {
@@ -375,6 +400,13 @@ class _FlickViewState extends State<FlickView>
                   Text(arena.label, style: t.labelLarge),
                 ],
               ),
+            ),
+            _ModeBar(
+              match: widget.match,
+              team: widget.stone.team,
+              mode: _mode,
+              enabled: _launch == null && !_down,
+              onChanged: (m) => setState(() => _mode = m),
             ),
             // 작은 지도·바닥·안내 글 전체가 손끝을 받는다(돌 아래·위 어디서 밀기 시작해도 된다).
             Expanded(
@@ -424,7 +456,7 @@ class _FlickViewState extends State<FlickView>
                                 disc: _disc!,
                                 top: miniH,
                                 stone: widget.stone,
-                                qi: _qi,
+                                qi: _modeQi,
                                 power: _power,
                                 particles: _particles,
                                 aim: _launch == null ? _aimAngle : null,
@@ -671,4 +703,71 @@ class _FloorPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+/// 내공 칸과 치는 방식 고르기(평타 · 내공 타격 · 흡성탄지 · 어기어석).
+class _ModeBar extends StatelessWidget {
+  const _ModeBar({
+    required this.match,
+    required this.team,
+    required this.mode,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final Match match;
+  final int team;
+  final StrikeMode mode;
+  final bool enabled;
+  final ValueChanged<StrikeMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final qi = match.qi(team);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+      child: Row(
+        children: [
+          for (var i = 0; i < maxQi; i++)
+            Padding(
+              padding: const EdgeInsets.only(right: 3),
+              child: Icon(
+                Icons.circle,
+                size: 14,
+                color: i < qi ? innerColor : Colors.white24,
+              ),
+            ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final m in StrikeMode.values)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: ChoiceChip(
+                        key: Key('mode-${m.name}'),
+                        visualDensity: VisualDensity.compact,
+                        label: Text(
+                          m == StrikeMode.inner
+                              ? '내공·${match.config.martial.label}'
+                              : m.cost == 0
+                              ? m.label
+                              : '${m.label} ${m.cost}',
+                        ),
+                        selected: mode == m,
+                        onSelected: enabled && match.canUse(team, m)
+                            ? (_) => onChanged(m)
+                            : null,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

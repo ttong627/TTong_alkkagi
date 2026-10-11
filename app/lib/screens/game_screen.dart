@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:alkkagi_physics/alkkagi_physics.dart' as phys;
 import 'package:flame/game.dart';
@@ -8,6 +9,7 @@ import '../e2e.dart';
 import '../game/ai.dart';
 import '../game/board_game.dart';
 import '../game/flick.dart';
+import '../game/fx_colors.dart';
 import '../game/match.dart';
 import 'flick_view.dart';
 
@@ -34,6 +36,33 @@ class _GameScreenState extends State<GameScreen> {
   void initState() {
     super.initState();
     _newMatch();
+    if (e2eDemoMode.isNotEmpty) {
+      Future<void>.delayed(const Duration(milliseconds: 1500), _demoShot);
+    }
+  }
+
+  /// 연출 확인용(E2E_DEMO): 가운데 내 돌을 위로 세게 친다.
+  void _demoShot() {
+    if (!mounted) return;
+    final s = _e2eStone();
+    if (s == null) return;
+    final mode = StrikeMode.values.firstWhere(
+      (m) => m.name == e2eDemoMode,
+      orElse: () => StrikeMode.plain,
+    );
+    // ignore: invalid_use_of_visible_for_testing_member
+    _match.grantQi(0, maxQi);
+    setState(() => _selected = null);
+    _match.shoot(
+      s,
+      -math.pi / 2,
+      110,
+      0,
+      lift: true,
+      mode: mode,
+      critical: mode == StrikeMode.plain,
+      curl: 1,
+    );
   }
 
   void _newMatch() {
@@ -46,7 +75,7 @@ class _GameScreenState extends State<GameScreen> {
     );
     _selected = null;
     _resultShown = false;
-    if (e2eFlick) _selected = _e2eStone();
+    if (e2eFlick && e2eDemoMode.isEmpty) _selected = _e2eStone();
   }
 
   /// 시험 판: 판 가운데에 가장 가까운 내 돌을 고른다.
@@ -76,7 +105,11 @@ class _GameScreenState extends State<GameScreen> {
       Future<void>.delayed(const Duration(milliseconds: 400), _showResult);
       return;
     }
-    if (e2eFlick && !_match.isMoving && _selected == null && !_match.isOver) {
+    if (e2eFlick &&
+        e2eDemoMode.isEmpty &&
+        !_match.isMoving &&
+        _selected == null &&
+        !_match.isOver) {
       setState(() => _selected = _e2eStone());
     }
     if (_aiTurn && !_match.isMoving && !_aiThinking && !_match.isOver) {
@@ -84,11 +117,20 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  void _shoot(FlickShot shot) {
+  void _shoot(FlickShot shot, StrikeMode mode) {
     final s = _selected;
     setState(() => _selected = null);
     if (s == null) return;
-    _match.shoot(s, shot.angle, shot.speed, shot.hit, lift: true);
+    _match.shoot(
+      s,
+      shot.angle,
+      shot.speed,
+      shot.hit,
+      lift: true,
+      mode: mode,
+      critical: shot.critical,
+      curl: shot.curl,
+    );
   }
 
   /// 고른 돌이 판 어디 있는지에 맞춰 가까이 보기 화면이 그 자리에서 커져 나온다.
@@ -167,6 +209,9 @@ class _GameScreenState extends State<GameScreen> {
 
   String get _status {
     if (_match.isOver) return '판이 끝났습니다';
+    if (_match.isMoving && _match.steersLeft > 0) {
+      return '어기어석! 판을 끌어 돌을 꺾으세요';
+    }
     if (_match.isMoving) return '돌이 움직이는 중…';
     switch (widget.config.mode) {
       case MatchMode.practice:
@@ -229,6 +274,13 @@ class _GameScreenState extends State<GameScreen> {
                         n: _match.alive(0),
                         dark: false,
                       ),
+                      const SizedBox(width: 8),
+                      for (var i = 0; i < maxQi; i++)
+                        Icon(
+                          Icons.circle,
+                          size: 10,
+                          color: i < _match.qi(0) ? innerColor : Colors.white24,
+                        ),
                     ],
                   ),
                 ),

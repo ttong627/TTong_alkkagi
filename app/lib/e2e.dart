@@ -10,3 +10,7 @@ const bool e2eFlick = bool.fromEnvironment('E2E_FLICK');
 void e2eLog(String message) {
   if (e2eFlick) debugPrint('[E2E] $message');
 }
+
+/// 연출 확인용: 켜자마자 내 돌 하나를 [e2eDemoMode] 방식으로 세게 쳐 본다(내공 가득).
+/// `--dart-define=E2E_DEMO=inner` 처럼 방식 이름(plain·inner·absorb·ultimate)을 준다.
+const String e2eDemoMode = String.fromEnvironment('E2E_DEMO');

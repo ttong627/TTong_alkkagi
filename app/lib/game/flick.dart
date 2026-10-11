@@ -103,7 +103,19 @@ class FlickShot {
     required this.hit,
     required this.power,
     required this.contact,
+    this.offset = 0,
+    this.curl = 0,
+    this.critical = false,
   });
+
+  /// 비껴 맞은 정도 0(한가운데)~1(끝을 스침).
+  final double offset;
+
+  /// 손끝이 돌 옆을 쓸고 간 방향과 세기 −1~+1(태극이 휘는 방향).
+  final double curl;
+
+  /// 회심 일격(크리티컬): 한가운데를 알맞은 세기로 맞혔다([CriticalRule]).
+  final bool critical;
 
   /// 판 위 방향(라디안). 화면 위쪽 = 판 위쪽.
   final double angle;
@@ -183,6 +195,23 @@ Offset? velocityAt(
   final dt = t - s[i].t;
   if (dt <= 0) return null;
   return (pos - s[i].pos) / dt;
+}
+
+/// 회심 일격(크리티컬) 규칙 (설계서 §3.9). 평타에서 터지면 내공 1칸이 찬다.
+///
+/// 한가운데(비껴 맞은 정도 ≤ [maxOffset])를 알맞은 세기([minPower]~[maxPower])로 맞혀야 한다 —
+/// 너무 세게 치면 손이 흔들려 회심이 아니다. 값은 [가정], 가상 시험(tool/flick_sim.dart)에서 터지는
+/// 비율을 재어 둔다.
+abstract final class CriticalRule {
+  static const double maxOffset = 0.15;
+  static const double minPower = 0.5;
+  static const double maxPower = 0.9;
+
+  /// 회심이면 처음 속도 배수.
+  static const double speedBonus = 1.15;
+
+  static bool test(double offset, double power) =>
+      offset <= maxOffset && power >= minPower && power <= maxPower;
 }
 
 /// 둥근 청옥 돌의 무게(기준).
@@ -300,7 +329,7 @@ class StrikeReader {
         tune,
       );
       if (v == null || v.distance < tune.minPxPerSec) return null;
-      return _fire(v, p.pos);
+      return _fire(v, p.pos, v, push: true);
     }
     final r = _enterAt(prev.pos, p.pos, disc);
     if (r == null) {
@@ -320,7 +349,7 @@ class StrikeReader {
       _pushFrom = at;
       return null;
     }
-    return _fire(u, at);
+    return _fire(u, at, v);
   }
 
   /// 손을 뗐다. 쳐 내지 못했으면 그 까닭.
@@ -347,19 +376,39 @@ class StrikeReader {
     return best;
   }
 
-  FlickShot _fire(Offset u, Offset fingerAt) {
+  /// [push] 면 돌에 손을 댄 채 민 것 — 맞힌 것이 아니라 회심이 없다.
+  FlickShot _fire(
+    Offset u,
+    Offset fingerAt,
+    Offset finger, {
+    bool push = false,
+  }) {
     final power = strikePower(u.distance, tune);
     final d = disc.center - fingerAt;
     final contact = d.distance == 0
         ? fingerAt
         : fingerAt + d / d.distance * disc.fingerRadius;
     final area = strikeArea = _areaNear(samples.last.t);
+    // 비껴 맞은 정도 = 손끝 방향과 (닿은 점 → 돌 중심) 사이 각의 사인. 부호는 쓸고 간 쪽.
+    var cross = 0.0;
+    if (d.distance > 0 && finger.distance > 0) {
+      final n = d / d.distance, f = finger / finger.distance;
+      cross = f.dx * n.dy - f.dy * n.dx;
+    }
+    final offset = cross.abs().clamp(0.0, 1.0);
+    final critical = !push && CriticalRule.test(offset, power);
     return _shot = FlickShot(
       angle: math.atan2(u.dy, u.dx),
-      speed: powerToSpeed(power, tune) * massFactor(disc.mass),
+      speed:
+          powerToSpeed(power, tune) *
+          massFactor(disc.mass) *
+          (critical ? CriticalRule.speedBonus : 1),
       hit: area == null ? 0 : (profile.hitFor(area) ?? 0),
       power: power,
       contact: contact,
+      offset: offset,
+      curl: (cross / 0.6).clamp(-1.0, 1.0),
+      critical: critical,
     );
   }
 

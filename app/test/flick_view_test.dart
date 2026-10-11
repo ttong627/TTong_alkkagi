@@ -20,7 +20,7 @@ void main() {
         home: FlickView(
           match: m,
           stone: stone,
-          onShot: shots.add,
+          onShot: (s, _) => shots.add(s),
           onCancel: () {},
         ),
       ),

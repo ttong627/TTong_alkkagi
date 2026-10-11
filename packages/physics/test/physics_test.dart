@@ -339,6 +339,159 @@ void main() {
     });
   });
 
+  group('1-11 내공 타격·무공·스킬 (설계서 §2.4·§2.6·§3.9)', () {
+    test('내공 타격: 처음 속도 ×1.3(상한 180), 첫 충돌로 맞은 돌이 더 밀린다', () {
+      final t = Table();
+      final s = t.addStone(-15, 0);
+      t.shoot(s, 0, 100, 0, inner: true);
+      expect(s.velocity.x, closeTo(130, 1e-6));
+      t.dispose();
+      final t2 = Table();
+      final s2 = t2.addStone(-15, 0);
+      t2.shoot(s2, 0, 160, 0, inner: true);
+      expect(s2.velocity.x, closeTo(180, 1e-6));
+      t2.dispose();
+
+      (double, List<TechniqueFx>) push({required bool inner}) {
+        final t = Table();
+        final me = t.addStone(-8, 0);
+        final tg = t.addStone(0, 0);
+        t.shoot(me, 0, inner ? 30 / 1.3 : 30, 0, inner: inner);
+        final fx = <TechniqueFx>[];
+        while (t.step() == TurnStatus.moving) {
+          fx.addAll(t.events.map((e) => e.fx));
+        }
+        final x = tg.position.x;
+        t.dispose();
+        return (x, fx);
+      }
+
+      final (plain, _) = push(inner: false);
+      final (strong, fx) = push(inner: true);
+      expect(fx, contains(TechniqueFx.innerImpact));
+      expect(
+        strong,
+        greaterThan(plain * 1.15),
+        reason: '같은 처음 속도에서 맞은 돌 ×1.25',
+      );
+    });
+
+    double shooterAfter(Technique tech) {
+      final t = Table();
+      final me = t.addStone(-8, 0);
+      t.addStone(0, 0.6);
+      t.shoot(me, 0, 30, 0, inner: true, technique: tech);
+      t.runTurn();
+      final x = me.position.x;
+      t.dispose();
+      return x;
+    }
+
+    test('검기: 첫 충돌 뒤 내 돌 감속 −40% 로 더 밀고 나간다', () {
+      expect(
+        shooterAfter(Technique.swordQi),
+        greaterThan(shooterAfter(Technique.none)),
+      );
+    });
+
+    test('진각: 충돌 지점 4cm 안의 다른 돌이 바깥으로 밀린다', () {
+      double side({required Technique tech}) {
+        final t = Table();
+        final me = t.addStone(-8, 0);
+        t.addStone(0, 0);
+        final near = t.addStone(-1.1, 3.0); // 충돌 지점(약 −1.1, 0)에서 3cm
+        t.shoot(me, 0, 30, 0, inner: true, technique: tech);
+        t.runTurn();
+        final y = near.position.y;
+        t.dispose();
+        return y;
+      }
+
+      expect(side(tech: Technique.none), closeTo(3.0, 1e-6));
+      expect(side(tech: Technique.stomp), greaterThan(3.2));
+    });
+
+    test('태극: 첫 충돌 전까지 궤적이 휜다(휘는 방향 = curl 부호)', () {
+      double y(double curl) {
+        final t = Table();
+        final me = t.addStone(-18, 0);
+        t.shoot(
+          me,
+          0,
+          40,
+          0,
+          inner: true,
+          technique: Technique.taiji,
+          curl: curl,
+        );
+        t.runTurn();
+        final v = me.position.y;
+        t.dispose();
+        return v;
+      }
+
+      expect(y(0), closeTo(0, 1e-6));
+      expect(y(1), greaterThan(2));
+      expect(y(-1), lessThan(-2));
+    });
+
+    test('분신: 한 수에 상대 돌 2개를 맞히면 내 돌이 둘로 나뉜다 — 판당 1회, 수가 끝나면 사라짐', () {
+      final t = Table();
+      // 무거운 현철 구형 돌이라 첫 돌을 치고도 계속 나아가 두 번째 돌을 친다.
+      final me = t.addStone(
+        -10,
+        0,
+        material: StoneMaterial.hyeoncheol,
+        shape: StoneShape.sphere,
+      );
+      t.addStone(-4, 0.5, team: 1);
+      t.addStone(2, -0.5, team: 1);
+      final n = t.stones.length;
+      t.shoot(me, 0, 90, 0, inner: true, technique: Technique.clone);
+      var cloned = 0;
+      var maxStones = n;
+      while (t.step() == TurnStatus.moving) {
+        cloned += t.events.where((e) => e.fx == TechniqueFx.clone).length;
+        maxStones = math.max(maxStones, t.stones.length);
+      }
+      expect(cloned, 1);
+      expect(maxStones, n + 1);
+      expect(t.stones.length, n, reason: '수가 끝나면 분신은 사라진다');
+      expect(t.cloneUsed, isTrue);
+      t.dispose();
+    });
+
+    test('흡성탄지: 첫 충돌 순간 6cm 안의 돌을 0.5초 끌어당긴다', () {
+      double dist({required Technique tech}) {
+        final t = Table();
+        final me = t.addStone(-8, 0);
+        t.addStone(0, 0);
+        final near = t.addStone(-1.1, 5.0);
+        t.shoot(me, 0, 30, 0, inner: true, technique: tech);
+        t.runTurn();
+        final d = (near.position - Vector2(-1.1, 0)).length;
+        t.dispose();
+        return d;
+      }
+
+      expect(dist(tech: Technique.none), closeTo(5.0, 1e-6));
+      final pulled = dist(tech: Technique.absorb);
+      expect(pulled, lessThan(4.5));
+      expect(pulled, greaterThan(1.5), reason: '끌어당기되 내던지지 않는다');
+    });
+
+    test('내공 타격이 아니면 무공은 발동하지 않는다', () {
+      final t = Table();
+      final me = t.addStone(-8, 0);
+      t.addStone(0, 0);
+      final near = t.addStone(-1.1, 3.0);
+      t.shoot(me, 0, 30, 0, technique: Technique.stomp);
+      t.runTurn();
+      expect(near.position.y, closeTo(3.0, 1e-6));
+      t.dispose();
+    });
+  });
+
   test('1-09 결정성: 같은 입력 200판 두 번 계산 → 200/200 같음', () {
     var same = 0;
     for (var i = 0; i < 200; i++) {

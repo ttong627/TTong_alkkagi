@@ -8,13 +8,15 @@ import 'package:flutter/services.dart';
 
 import 'arena.dart';
 import 'board_paint.dart';
+import 'fx.dart';
+import 'fx_colors.dart';
 import 'match.dart';
 
 /// 대전장과 돌을 그리고, 손가락으로 누른 돌을 "공격할 돌"로 고른다.
 ///
 /// 물리는 고정 1/60초로 진행하고, 화면은 그 결과를 그린다(설계서 §3.1).
 /// 쏘기는 고른 돌을 가까이 보는 화면에서 손가락으로 튕겨서 한다.
-class BoardGame extends FlameGame with TapCallbacks {
+class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
   BoardGame(
     this.match, {
     required this.canTouch,
@@ -35,6 +37,13 @@ class BoardGame extends FlameGame with TapCallbacks {
 
   double _acc = 0;
   double _scale = 1;
+
+  /// 판 위 연출(잔상·불꽃·흔들림·느린 화면·무공 효과).
+  final fx = BattleFx();
+  int _seenTurns = 0;
+
+  /// 어기어석으로 꺾는 중 손가락 자리(화면).
+  Offset? _steerTo;
   Offset _origin = Offset.zero;
 
   /// 판 둘레 여백(cm).
@@ -56,11 +65,24 @@ class BoardGame extends FlameGame with TapCallbacks {
   @override
   void update(double dt) {
     super.update(dt);
+    final real = math.min(dt, 0.1);
+    fx.update(real);
+    if (match.turnCount != _seenTurns) {
+      _seenTurns = match.turnCount;
+      final s = match.table.shooter;
+      if (s != null) fx.onShot(match, s);
+    }
+    if (fx.steerLeft <= 0 && match.steersLeft > 0) match.steersLeft = 0;
     if (!match.isMoving) return;
-    _acc += math.min(dt, 0.1);
+    _acc += real * fx.timeScale;
     while (_acc >= phys.PhysicsConstants.step && match.isMoving) {
       _acc -= phys.PhysicsConstants.step;
+      final wasOut = {
+        for (final s in match.table.stones)
+          if (s.out) s.id,
+      };
       match.step();
+      fx.onStep(match, wasOut);
     }
     if (!match.isMoving) _acc = 0;
   }
@@ -71,7 +93,11 @@ class BoardGame extends FlameGame with TapCallbacks {
   @override
   void render(Canvas canvas) {
     super.render(canvas);
+    canvas.save();
+    final shake = fx.shakeOffset();
+    canvas.translate(shake.dx, shake.dy);
     paintArena(canvas, arena, _toScreen, _scale);
+    fx.paintUnder(canvas, match, _toScreen, _scale);
     final pick = canTouch() ? selected() : null;
     const r = phys.PhysicsConstants.stoneRadius;
     // 바닥에 있는 돌 먼저, 떠 있는 돌은 그 위에 그린다.
@@ -102,6 +128,52 @@ class BoardGame extends FlameGame with TapCallbacks {
         shape: s.shape,
       );
     }
+    final shooter = match.table.shooter;
+    final to = _steerTo;
+    if (fx.steerLeft > 0 && shooter != null && to != null) {
+      canvas.drawLine(
+        _toScreen(shooter.position.x, shooter.position.y),
+        to,
+        Paint()
+          ..color = ultimateColor
+          ..strokeWidth = 3
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+    fx.paintOver(canvas, Size(size.x, size.y), _toScreen, _scale);
+    canvas.restore();
+  }
+
+  /// 어기어석: 느린 화면 동안 손가락을 끌어 놓은 쪽으로 돌을 꺾는다.
+  @override
+  void onDragStart(DragStartEvent event) {
+    super.onDragStart(event);
+    if (fx.steerLeft > 0 && match.steersLeft > 0) {
+      _steerTo = Offset(event.canvasPosition.x, event.canvasPosition.y);
+    }
+  }
+
+  @override
+  void onDragUpdate(DragUpdateEvent event) {
+    super.onDragUpdate(event);
+    if (_steerTo != null) {
+      _steerTo = Offset(event.canvasEndPosition.x, event.canvasEndPosition.y);
+    }
+  }
+
+  @override
+  void onDragEnd(DragEndEvent event) {
+    super.onDragEnd(event);
+    final to = _steerTo;
+    _steerTo = null;
+    final s = match.table.shooter;
+    if (to == null || s == null || match.steersLeft <= 0) return;
+    final wx = (to.dx - _origin.dx) / _scale,
+        wy = (to.dy - _origin.dy) / _scale;
+    final a = math.atan2(wy - s.position.y, wx - s.position.x);
+    HapticFeedback.heavyImpact();
+    match.steer(a);
+    fx.steerLeft = 0;
   }
 
   @override

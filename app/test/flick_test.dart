@@ -56,7 +56,12 @@ void main() {
       final s = swipe(const Offset(200, 740), const Offset(0, -480), 0.4);
       final shot = run(disc, s) as FlickShot;
       expect(shot.power, closeTo((1200 - 60) / (1500 - 60), 1e-6));
-      expect(shot.speed, closeTo(powerToSpeed(shot.power), 1e-9));
+      // 한가운데를 알맞은 세기(0.79)로 → 회심 일격, 처음 속도 ×1.15.
+      expect(shot.critical, isTrue);
+      expect(
+        shot.speed,
+        closeTo(powerToSpeed(shot.power) * CriticalRule.speedBonus, 1e-9),
+      );
     });
 
     test('살살(150화소/초) 밀어도 나간다 — 세게 칠 필요 없다', () {
@@ -235,6 +240,55 @@ void main() {
     test('모양이 틀린 묶음은 버린다', () {
       expect(TouchFeed.parse(null), isNull);
       expect(TouchFeed.parse(Float64List.fromList([2, 3, 1, 2])), isNull);
+    });
+  });
+
+  group('회심 일격(크리티컬) — 평타에서 터지면 내공 1칸', () {
+    test('한가운데 · 알맞은 세기면 회심', () {
+      final s = swipe(const Offset(200, 700), const Offset(0, -500), 0.5);
+      final shot = run(disc, s) as FlickShot;
+      expect(shot.offset, lessThan(1e-9));
+      expect(shot.critical, isTrue);
+    });
+
+    test('가장자리(비껴 맞음 0.3)면 회심이 아니다', () {
+      final s = swipe(const Offset(230, 700), const Offset(0, -500), 0.5);
+      final shot = run(disc, s) as FlickShot;
+      expect(shot.offset, closeTo(0.3, 1e-6));
+      expect(shot.critical, isFalse);
+    });
+
+    test('너무 세게(내공 100%) 치면 회심이 아니다 · 너무 약해도 아니다', () {
+      final hard = run(
+        disc,
+        swipe(const Offset(200, 700), const Offset(0, -1200), 0.5),
+      ) as FlickShot;
+      expect(hard.power, 1);
+      expect(hard.critical, isFalse);
+      final soft = run(
+        disc,
+        swipe(const Offset(200, 560), const Offset(0, -300), 1.0),
+      ) as FlickShot;
+      expect(soft.critical, isFalse);
+    });
+
+    test('돌에 손을 대고 민 것은 회심이 아니다', () {
+      final s = swipe(const Offset(200, 400), const Offset(0, -100), 0.1);
+      final shot = run(disc, s) as FlickShot;
+      expect(shot.critical, isFalse);
+    });
+
+    test('쓸고 간 쪽이 태극의 휘는 방향(curl 부호)', () {
+      final right = run(
+        disc,
+        swipe(const Offset(260, 700), const Offset(0, -500), 0.5),
+      ) as FlickShot;
+      final left = run(
+        disc,
+        swipe(const Offset(140, 700), const Offset(0, -500), 0.5),
+      ) as FlickShot;
+      expect(right.curl.sign, -left.curl.sign);
+      expect(right.curl.abs(), closeTo(1, 1e-9));
     });
   });
 }

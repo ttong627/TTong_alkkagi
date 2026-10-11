@@ -4,6 +4,7 @@ import 'package:forge2d/forge2d.dart';
 
 import 'constants.dart';
 import 'materials.dart';
+import 'techniques.dart';
 
 /// 물리 엔진을 한 번 준비한다. 판([Table])을 만들기 전에 반드시 기다린다.
 Future<void> initializePhysics() => initializeForge2D();
@@ -23,6 +24,9 @@ class Stone {
 
   /// 장외(판 밖으로 나가 탈락)인가.
   bool out = false;
+
+  /// 분신으로 잠깐 생긴 돌인가(한 수가 끝나면 사라진다).
+  bool phantom = false;
 
   double _spin = 0;
   bool _spinUsed = true;
@@ -140,6 +144,34 @@ class Table {
   int _turnSteps = 0;
   TurnStatus _status = TurnStatus.idle;
 
+  /// 이번 스텝에 일어난 충돌(연출용). 스텝마다 새로 채운다.
+  final List<Impact> impacts = [];
+
+  /// 이번 스텝에 발동한 무공·스킬(연출용). 스텝마다 새로 채운다.
+  final List<TechniqueEvent> events = [];
+
+  Technique _technique = Technique.none;
+  bool _inner = false;
+  double _curl = 0;
+  bool _firstHit = false;
+  int _swordQiLeft = 0;
+  int _absorbLeft = 0;
+  Vector2? _absorbAt;
+  final Set<int> _enemiesHit = {};
+  bool _cloneUsed = false;
+
+  /// 지금 수에서 쏜 돌.
+  Stone? get shooter => _shooter;
+
+  /// 지금 수의 무공·스킬.
+  Technique get technique => _technique;
+
+  /// 지금 수가 내공 타격인가.
+  bool get inner => _inner;
+
+  /// 이번 판에 분신을 썼는가(판당 1회).
+  bool get cloneUsed => _cloneUsed;
+
   /// 지금 한 수의 상태.
   TurnStatus get status => _status;
 
@@ -196,15 +228,32 @@ class Table {
   ///
   /// [lift] 면 [hit] 이 [PhysicsConstants.liftThreshold] 를 넘을 때 돌이 뜬다([liftOf]).
   /// 끄면(기본) 예전처럼 회전만 준다 — 측정 재현 시험과 AI 가 쓴다.
+  ///
+  /// [inner] 면 내공 타격: 처음 속도 ×[TechniqueConstants.innerSpeed], 첫 충돌로 맞은 돌이 더 세게
+  /// 밀리고, [technique] 무공·스킬이 발동한다. [curl] 은 태극의 휘는 방향·세기(−1~+1).
   void shoot(
     Stone stone,
     double angle,
     double speed,
     double hit, {
     bool lift = false,
+    bool inner = false,
+    Technique technique = Technique.none,
+    double curl = 0,
   }) {
     if (stone.out) throw StateError('장외된 돌은 쏠 수 없다');
-    final s = speed.clamp(0.0, PhysicsConstants.maxShotSpeed);
+    _inner = inner;
+    _technique = technique;
+    _curl = curl.clamp(-1.0, 1.0);
+    _firstHit = false;
+    _swordQiLeft = 0;
+    _absorbLeft = 0;
+    _absorbAt = null;
+    _enemiesHit.clear();
+    final s = (inner ? speed * TechniqueConstants.innerSpeed : speed).clamp(
+      0.0,
+      PhysicsConstants.maxShotSpeed,
+    );
     final h = hit.clamp(-1.0, 1.0);
     stone._spin = h * stone.shape.spinEfficiency;
     stone._spinUsed = false;
@@ -218,6 +267,14 @@ class Table {
     _shooter = stone;
     _turnSteps = 0;
     _status = TurnStatus.moving;
+  }
+
+  /// 궁극기 어기어석: 지금 쏜 돌을 [angle] 쪽으로 꺾는다. 빠르기는 그대로(설계서 §3.7).
+  void redirect(double angle) {
+    final s = _shooter;
+    if (s == null || s.out || _status != TurnStatus.moving) return;
+    final sp = s.velocity.length;
+    s.body.linearVelocity = Vector2(math.cos(angle) * sp, math.sin(angle) * sp);
   }
 
   /// 처음 빠르기 [speed] · 타격점 [hit] → (옆 빠르기, 위로 빠르기) cm/s.
@@ -247,18 +304,22 @@ class Table {
         _setGhost(s, s._z > PhysicsConstants.clearHeight);
       }
     }
+    _beforeStep(shooter);
     world.step(PhysicsConstants.step);
     _turnSteps++;
+    _collectImpacts();
     for (final s in stones) {
       if (!s.out && s.airborne) _fall(s);
     }
+    final shooterImpact = _impactOf(shooter);
+    if (shooterImpact != null) _afterShooterHit(shooter, shooterImpact, pre);
 
     if (!shooter._spinUsed) {
       // 굴러가며 회전이 풀린다.
       shooter._spin *= math.exp(
         -PhysicsConstants.step / PhysicsConstants.spinDecaySeconds,
       );
-      if (_shooterHit(shooter)) {
+      if (shooterImpact != null) {
         // 첫 충돌 직후: 충돌 직전 진행 방향으로 0.5 × 회전 × 직전 속도.
         final sp = pre.length;
         if (sp > 0 && shooter._spin != 0) {
@@ -288,8 +349,10 @@ class Table {
       if (s.velocity.length > PhysicsConstants.restSpeed) moving = true;
     }
 
+    if (_absorbLeft > 0 || _swordQiLeft > 0) moving = true;
     if (!moving) {
       _status = TurnStatus.rested;
+      _clearPhantoms();
     } else if (_turnSteps >= PhysicsConstants.maxTurnSteps) {
       for (final s in stones) {
         if (s.out) continue;
@@ -302,8 +365,150 @@ class Table {
         }
       }
       _status = TurnStatus.timedOut;
+      _clearPhantoms();
     }
     return _status;
+  }
+
+  /// 한 스텝 앞: 태극으로 휘고, 흡성탄지로 끌어당긴다.
+  void _beforeStep(Stone shooter) {
+    impacts.clear();
+    events.clear();
+    const dt = PhysicsConstants.step;
+    if (_inner &&
+        _technique == Technique.taiji &&
+        !_firstHit &&
+        _curl != 0 &&
+        !shooter.out) {
+      final v = shooter.velocity;
+      final sp = v.length;
+      if (sp > PhysicsConstants.restSpeed) {
+        final side = Vector2(-v.y, v.x)..scale(1 / sp);
+        final a = TechniqueConstants.taijiCurl * sp * _curl;
+        shooter.body.linearVelocity = v + side * (a * dt);
+      }
+    }
+    final at = _absorbAt;
+    if (_absorbLeft > 0 && at != null) {
+      _absorbLeft--;
+      for (final s in stones) {
+        if (s.out || identical(s, shooter)) continue;
+        final d = at - s.position;
+        final len = d.length;
+        // 닿을 만큼 가까우면(돌 지름) 더 끌지 않는다.
+        if (len <= PhysicsConstants.stoneRadius * 2 ||
+            len > TechniqueConstants.absorbRadius) {
+          continue;
+        }
+        // 그 지점 쪽으로 가는 빠르기를 [TechniqueConstants.absorbPull] 만큼씩 키운다(가까울수록 약하게).
+        final want = d..scale(TechniqueConstants.absorbPull * dt / len);
+        s.body.linearVelocity = s.velocity * 0.9 + want;
+      }
+    }
+    if (_swordQiLeft > 0) {
+      _swordQiLeft--;
+      if (_swordQiLeft == 0 && !shooter.airborne && !shooter.out) {
+        shooter.body.linearDamping = dampingOf(shooter.material, shooter.shape);
+      }
+    }
+  }
+
+  /// 이번 스텝 충돌을 모은다.
+  void _collectImpacts() {
+    for (final h in world.contactEvents.hit) {
+      final a = h.shapeA.body.userData, b = h.shapeB.body.userData;
+      if (a is! Stone || b is! Stone) continue;
+      impacts.add(Impact(a.id, b.id, h.point.x, h.point.y, h.approachSpeed));
+    }
+  }
+
+  Impact? _impactOf(Stone s) {
+    for (final i in impacts) {
+      if (i.a == s.id || i.b == s.id) return i;
+    }
+    return null;
+  }
+
+  /// 쏜 돌이 부딪힌 스텝: 내공 타격·무공·스킬을 발동한다.
+  void _afterShooterHit(Stone shooter, Impact hit, Vector2 pre) {
+    final otherId = hit.a == shooter.id ? hit.b : hit.a;
+    final other = stones[otherId];
+    if (other.team != shooter.team) _enemiesHit.add(otherId);
+    final point = Vector2(hit.x, hit.y);
+    if (!_firstHit) {
+      _firstHit = true;
+      if (_inner) {
+        other.body.linearVelocity = other.velocity
+          ..scale(TechniqueConstants.innerImpact);
+        events.add(TechniqueEvent(TechniqueFx.innerImpact, hit.x, hit.y));
+        switch (_technique) {
+          case Technique.swordQi:
+            _swordQiLeft = TechniqueConstants.swordQiSteps;
+            if (!shooter.airborne) {
+              shooter.body.linearDamping =
+                  dampingOf(shooter.material, shooter.shape) *
+                  TechniqueConstants.swordQiDamping;
+            }
+            events.add(
+              TechniqueEvent(
+                TechniqueFx.swordQi,
+                hit.x,
+                hit.y,
+                stoneId: shooter.id,
+              ),
+            );
+          case Technique.stomp:
+            for (final s in stones) {
+              if (s.out || identical(s, shooter) || identical(s, other)) {
+                continue;
+              }
+              final d = s.position - point;
+              final len = d.length;
+              if (len <= 0.01 || len > TechniqueConstants.stompRadius) continue;
+              d.scale(TechniqueConstants.stompPush / len);
+              s.body.linearVelocity = s.velocity + d;
+            }
+            events.add(TechniqueEvent(TechniqueFx.stomp, hit.x, hit.y));
+          case Technique.absorb:
+            _absorbLeft = TechniqueConstants.absorbSteps;
+            _absorbAt = point;
+            events.add(TechniqueEvent(TechniqueFx.absorb, hit.x, hit.y));
+          case Technique.none || Technique.taiji || Technique.clone:
+            break;
+        }
+      }
+    }
+    if (_inner &&
+        _technique == Technique.clone &&
+        !_cloneUsed &&
+        _enemiesHit.length >= 2) {
+      _cloneUsed = true;
+      final v = shooter.velocity.length > 1 ? shooter.velocity : pre;
+      final a =
+          math.atan2(v.y, v.x) +
+          TechniqueConstants.cloneDegrees * math.pi / 180;
+      final sp = v.length * TechniqueConstants.cloneSpeed;
+      final side = Vector2(-math.sin(a), math.cos(a))
+        ..scale(PhysicsConstants.stoneRadius * 2.1);
+      final p = shooter.position + side;
+      final twin = addStone(
+        p.x,
+        p.y,
+        material: shooter.material,
+        shape: shooter.shape,
+        team: shooter.team,
+      )..phantom = true;
+      twin.body.linearVelocity = Vector2(math.cos(a) * sp, math.sin(a) * sp);
+      events.add(TechniqueEvent(TechniqueFx.clone, p.x, p.y, stoneId: twin.id));
+    }
+  }
+
+  /// 분신으로 생긴 돌은 한 수가 끝나면 사라진다(맨 뒤에만 붙는다).
+  void _clearPhantoms() {
+    while (stones.isNotEmpty && stones.last.phantom) {
+      final s = stones.removeLast();
+      s.body.destroy();
+    }
   }
 
   /// 한 수를 멈출 때까지 한 번에 계산한다(서버 판정·AI 미리 보기용).
@@ -361,15 +566,6 @@ class Table {
       s.body.linearVelocity = Vector2.zero();
       s.body.isEnabled = false;
     }
-  }
-
-  bool _shooterHit(Stone shooter) {
-    for (final h in world.contactEvents.hit) {
-      if (h.shapeA.body == shooter.body || h.shapeB.body == shooter.body) {
-        return true;
-      }
-    }
-    return false;
   }
 
   /// 물리 세계를 정리한다. 다 쓴 판은 반드시 부른다.

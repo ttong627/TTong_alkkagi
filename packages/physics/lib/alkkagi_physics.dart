@@ -9,3 +9,4 @@ export 'src/constants.dart';
 export 'src/materials.dart';
 export 'src/scenes.dart';
 export 'src/table.dart';
+export 'src/techniques.dart';

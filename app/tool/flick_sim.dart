@@ -167,6 +167,7 @@ double cut(StrikeTuning tune, double frac) {
 }
 
 void main() {
+  test('회심 비율', criticalRate);
   test(
     '확인 시험: 상위 구성 다시 보기',
     confirm,
@@ -344,5 +345,29 @@ void confirm() {
       '${e.key}: 오차 중앙 ${p50.toStringAsFixed(2)}° 90% ${p90.toStringAsFixed(2)}° '
       '내공흔들림 ${(cv * 100).toStringAsFixed(1)}% 비껴치기 0.6→${cut(e.value, 0.6).toStringAsFixed(1)}° 0.8→${cut(e.value, 0.8).toStringAsFixed(1)}°',
     );
+  }
+}
+
+/// 회심 일격이 터지는 비율: 한가운데를 노리고 알맞은 세기(닿을 때 900~1,300화소/초)로 친다고 볼 때.
+void criticalRate() {
+  const noises = [Noise(6, 2, 0), Noise(12, 4, 3), Noise(18, 6, 6)];
+  for (final n in noises) {
+    final r = math.Random(4242);
+    var crit = 0, shots = 0;
+    for (var i = 0; i < 4000; i++) {
+      final pts = swipe(
+        r,
+        dir: -math.pi / 2 + gauss(r) * n.sa * math.pi / 180,
+        b: gauss(r) * n.sb,
+        bow: gauss(r) * n.sc,
+        vc: 900 + r.nextDouble() * 400,
+      );
+      final s = play(StrikeTuning.standard, pts);
+      if (s == null) continue;
+      shots++;
+      if (s.critical) crit++;
+    }
+    // ignore: avoid_print
+    print('$n: 회심 ${(crit / shots * 100).toStringAsFixed(1)}% ($crit/$shots)');
   }
 }
