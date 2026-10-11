@@ -1,0 +1,12 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 시험판만: 새 판을 내려받아 스스로 업데이트한다(스토어 판에는 없음). -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <!-- 안드로이드 12 이상: 자기 자신을 업데이트할 때 「설치」를 누르지 않아도 된다. -->
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION"/>
+    <application>
+        <receiver
+            android:name=".InstallResultReceiver"
+            android:exported="false"/>
+    </application>
+</manifest>

@@ -111,14 +111,15 @@ jobs:
           flutter pub get
           DEFS="--build-number $BUILD_NUMBER --dart-define=APP_VERSION=$VERSION_NAME --dart-define=APP_BUILD=$BUILD_NUMBER"
           mkdir -p "$RUNNER_TEMP/out"
-          flutter build apk --release $DEFS
-          cp build/app/outputs/flutter-apk/app-release.apk "$RUNNER_TEMP/out/tanji-murim-$BUILD_NUMBER.apk"
-          # 휴대폰(arm64) 전용 APK: 크기가 절반쯤이라 시험판으로 주고받기 쉽다.
+          # 스토어 판(play): 업데이트 기능·인터넷 권한 없음. 모든 기기용 APK 와 AAB.
+          flutter build apk --release --flavor play $DEFS --dart-define=APP_CHANNEL=play
+          cp build/app/outputs/flutter-apk/app-play-release.apk "$RUNNER_TEMP/out/tanji-murim-$BUILD_NUMBER.apk"
+          flutter build appbundle --release --flavor play $DEFS --dart-define=APP_CHANNEL=play
+          cp build/app/outputs/bundle/playRelease/app-play-release.aab "$RUNNER_TEMP/out/tanji-murim-$BUILD_NUMBER.aab"
+          # 휴대폰 시험판(sideload): arm64 전용, 켤 때 스스로 업데이트한다.
           # versionCode = 2000 + 빌드 번호(Flutter 의 ABI 배수). 시험판은 늘 이 파일로 업데이트한다.
-          flutter build apk --release --split-per-abi $DEFS
-          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "$RUNNER_TEMP/out/tanji-murim-$BUILD_NUMBER-arm64.apk"
-          flutter build appbundle --release $DEFS
-          cp build/app/outputs/bundle/release/app-release.aab "$RUNNER_TEMP/out/tanji-murim-$BUILD_NUMBER.aab"
+          flutter build apk --release --flavor sideload --split-per-abi $DEFS --dart-define=APP_CHANNEL=sideload
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-sideload-release.apk "$RUNNER_TEMP/out/tanji-murim-$BUILD_NUMBER-arm64.apk"
           ls -la "$RUNNER_TEMP/out"
       - name: APK 점검(권한·물리 엔진 포함 여부)
         run: |
@@ -138,6 +139,11 @@ jobs:
           "$AAPT2" dump badging "$ARM" | grep -E "^package:"
           unzip -l "$ARM" | grep '\.so$'
           unzip -l "$ARM" | grep -q 'arm64-v8a/libbox2d' || { echo "::error::arm64 전용 APK 에 물리 엔진이 없습니다"; exit 1; }
+          echo "--- 시험판 권한(스스로 업데이트) ---"
+          "$AAPT2" dump permissions "$ARM" | tee arm-perm.txt
+          for p in android.permission.INTERNET android.permission.REQUEST_INSTALL_PACKAGES android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION; do
+            grep -q "$p" arm-perm.txt || { echo "::error::시험판에 $p 권한이 없습니다(자동 업데이트 불가)"; exit 1; }
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: android-${{ env.BUILD_NUMBER }}
@@ -210,6 +216,17 @@ jobs:
             echo "::error::업로드 키가 아닌 키로 서명됨($GOT). 고정 링크에 올리지 않습니다."; exit 1
           fi
           cp "$APK" tanji-murim-test.apk
+      - name: 바뀐 점 한 줄 · version.json
+        env:
+          BUILD_NUMBER: ${{ needs.android.outputs.build_number }}
+          HEAD_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          # 병합 커밋이면 첫 줄(Merge pull request …) 대신 PR 제목 줄을 쓴다.
+          WHAT=$(printf '%s\n' "$HEAD_MSG" | awk 'NF && !/^Merge pull request/ {print; exit}')
+          printf '%s' "$WHAT" > what.txt
+          LINK="https://github.com/$GITHUB_REPOSITORY/releases/download/test-latest/tanji-murim-test.apk"
+          python3 -c "import json,sys; json.dump({'build': int(sys.argv[1]), 'apk': sys.argv[2], 'notes': open('what.txt', encoding='utf-8').read()}, open('version.json', 'w', encoding='utf-8'), ensure_ascii=False)" "$BUILD_NUMBER" "$LINK"
+          cat version.json
       - name: 고정 링크에 올리기
         env:
           GH_TOKEN: ${{ github.token }}
@@ -220,22 +237,22 @@ jobs:
             gh release create test-latest --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
               --prerelease --title "시험판 (늘 최신)" --notes "$NOTES"
           fi
+          # APK 먼저, version.json 나중에: 앱이 새 번호를 본 순간 APK 는 이미 새것이다.
           gh release upload test-latest tanji-murim-test.apk --clobber --repo "$GITHUB_REPOSITORY"
+          gh release upload test-latest version.json --clobber --repo "$GITHUB_REPOSITORY"
           gh release edit test-latest --repo "$GITHUB_REPOSITORY" --notes "$NOTES"
       - name: 텔레그램 알림
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
           BUILD_NUMBER: ${{ needs.android.outputs.build_number }}
-          HEAD_MSG: ${{ github.event.head_commit.message }}
         run: |
           if [ -z "$TG_TOKEN" ] || [ -z "$TG_CHAT" ]; then
             echo "텔레그램 비밀값이 없어 알림은 건너뜁니다."; exit 0
           fi
           LINK="https://github.com/$GITHUB_REPOSITORY/releases/download/test-latest/tanji-murim-test.apk"
-          # 병합 커밋이면 첫 줄(Merge pull request …) 대신 PR 제목 줄을 쓴다.
-          WHAT=$(printf '%s\n' "$HEAD_MSG" | awk 'NF && !/^Merge pull request/ {print; exit}')
-          TEXT=$(printf '탄지 무림 시험판 빌드 %s\n%s\n\n받기: %s\n깔려 있는 앱 위에 그대로 설치하면 업데이트됩니다.' "$BUILD_NUMBER" "$WHAT" "$LINK")
+          WHAT=$(cat what.txt)
+          TEXT=$(printf '탄지 무림 시험판 빌드 %s\n%s\n\n받기: %s\n이미 깔려 있으면 앱을 켤 때 저절로 업데이트됩니다.' "$BUILD_NUMBER" "$WHAT" "$LINK")
           curl -sS -o resp.json "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" --data-urlencode "text=${TEXT}"
           python3 -c "import json,sys; r=json.load(open('resp.json')); print('텔레그램 보냄' if r.get('ok') else '텔레그램 실패: '+str(r.get('description'))); sys.exit(0 if r.get('ok') else 1)"
