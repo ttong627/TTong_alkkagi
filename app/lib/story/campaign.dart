@@ -51,30 +51,67 @@ abstract final class Campaign {
     AiStyle? aiStyle,
     int? bossQi,
     StoneMaterial? bossMaterial,
-  }) => playerConfig(
-    p,
-    arena: s.arena,
-    difficulty: s.difficulty,
-    aiErrorScale: aiErrorScale ?? aiTuning(s, easy: easy).$1,
-    aiPowerScale: aiPowerScale ?? aiTuning(s, easy: easy).$2,
-    aiBlunder: aiBlunder ?? aiTuning(s, easy: easy).$3,
-    opponentMaterial: bossMaterial ?? s.material,
-    opponentShape: s.shape,
-    opponentMartial: rivalMartial(s, p.rebirths),
-    aiStyle: aiStyle ?? s.style,
-    opponentStartQi: bossQi ?? s.bossQi,
-    opponentName: s.boss,
-    aimAssist: aimAssistFor(s),
-    weather: s.weather,
-    features: [...s.features, if (p.rebirths > 0) ...rebirthFeatures],
-    civilians: s.civilians,
-    shiftingFloor: s.shiftingFloor,
-    qiClash: true,
-  );
+  }) {
+    final t = tune(s, easy: easy);
+    return playerConfig(
+      p,
+      arena: s.arena,
+      difficulty: s.difficulty,
+      aiErrorScale: aiErrorScale ?? t.errorScale,
+      aiPowerScale: aiPowerScale ?? t.powerScale,
+      aiBlunder: aiBlunder ?? t.blunder,
+      opponentMaterial: bossMaterial ?? t.bossMaterial ?? s.material,
+      myMaterial: t.myMaterial,
+      opponentShape: s.shape,
+      opponentMartial: rivalMartial(s, p.rebirths),
+      aiStyle: aiStyle ?? s.style,
+      opponentStartQi: bossQi ?? t.bossQi ?? s.bossQi,
+      opponentName: s.boss,
+      aimAssist: aimAssistFor(s),
+      weather: s.weather,
+      features: [...s.features, if (p.rebirths > 0) ...rebirthFeatures],
+      civilians: s.civilians,
+      shiftingFloor: s.shiftingFloor,
+      qiClash: true,
+    );
+  }
 
-  /// 판마다 고수의 (손 오차 배수, 세기 배수, 실수 확률) — 가상 대전으로 맞춘다(설계서 §16.16 · tool/campaign_sim.dart).
-  static (double, double, double) aiTuning(Stage s, {bool easy = false}) =>
-      (1, 1, 0);
+  /// 판마다 고수를 얼마나 누그러뜨리나(설계서 §16.16 · 가상 대전 tool/campaign_sim.dart 로 맞춘 값 [가정]).
+  ///
+  /// 2026-10-11 형 「단계별 차이가 너무 많이 나지 않게 · 쉬움은 2막 보스 전까지 쉽게 깰 수 있게」.
+  /// 실측(보통 사람 손 흉내 · 평타만): 예전엔 1장 53% → 2장 통통 8% → 숙적1 61% → 3장 18% … 숙적3·6장 0%.
+  /// 가장 큰 벽은 고수의 **현철 돌**(밀도 2.5배)이었다 — 같은 AI 라도 통통이 청옥이면 58%.
+  static AiTune tune(Stage s, {bool easy = false}) =>
+      (easy ? _easy : _normal)[s.id] ?? const AiTune();
+
+  static const _easy = <String, AiTune>{
+    'c1': AiTune(errorScale: 3),
+    'c2': AiTune(
+      errorScale: 3,
+      bossMaterial: StoneMaterial.cheongok,
+      note: ('통통', '허허, 처음 왔구먼. 오늘은 가벼운 청옥 돌로 상대해 주지!'),
+    ),
+    'r1': AiTune(errorScale: 3),
+    'c3': AiTune(errorScale: 3),
+    'c4': AiTune(errorScale: 3),
+    'r2': AiTune(errorScale: 3),
+    'c5': AiTune(errorScale: 3),
+    'r3': AiTune(errorScale: 3, bossQi: 1),
+    'c6': AiTune(errorScale: 3, bossQi: 1),
+  };
+
+  static const _normal = <String, AiTune>{
+    'c1': AiTune(errorScale: 1.5),
+    'c2': AiTune(
+      errorScale: 1.5,
+      myMaterial: StoneMaterial.hyeoncheol,
+      note: ('통통', '현철엔 현철이지! 내 돌 한 벌 빌려줄 테니 공평하게 붙어 보세.'),
+    ),
+    'c3': AiTune(errorScale: 1.5),
+    'c4': AiTune(errorScale: 1.5),
+    'r3': AiTune(errorScale: 2, bossQi: 2),
+    'c6': AiTune(errorScale: 1.5, bossQi: 2),
+  };
 
   /// 예상 궤적(설계서 §7.1): 1~2장 두 번째 충돌까지, 3~4장 첫 충돌까지, 5~6장 그 절반.
   static double aimAssistFor(Stage s) {
@@ -102,13 +139,14 @@ abstract final class Campaign {
     double aiErrorScale = 1,
     double aiPowerScale = 1,
     double aiBlunder = 0,
+    StoneMaterial? myMaterial,
   }) {
     final h = p.hero;
     final perkKnock = p.perks.contains('장외 시 기');
     return MatchConfig(
       mode: MatchMode.vsAi,
       difficulty: difficulty,
-      myMaterial: p.material,
+      myMaterial: myMaterial ?? p.material,
       myShape: p.shape,
       arena: arena,
       martial: p.school ?? Technique.none,
@@ -198,6 +236,32 @@ abstract final class Campaign {
       bonus: bonusCoins,
     );
   }
+}
+
+/// 판 하나의 고수 누그러뜨리기([Campaign.tune]).
+class AiTune {
+  const AiTune({
+    this.errorScale = 1,
+    this.powerScale = 1,
+    this.blunder = 0,
+    this.bossMaterial,
+    this.myMaterial,
+    this.bossQi,
+    this.note,
+  });
+
+  /// 손 오차 배수 · 세기 배수 · 실수 확률([MatchConfig.aiErrorScale] 등).
+  final double errorScale;
+  final double powerScale;
+  final double blunder;
+
+  /// 고수 돌 재질·내 돌 재질(이 판만)·고수 시작 내공(null 이면 판 그대로).
+  final StoneMaterial? bossMaterial;
+  final StoneMaterial? myMaterial;
+  final int? bossQi;
+
+  /// 바뀐 것을 알려 주는 대사 한 줄(판 앞 대사 끝에 붙는다).
+  final (String, String)? note;
 }
 
 /// 한 판의 보상.

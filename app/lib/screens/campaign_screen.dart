@@ -74,6 +74,7 @@ class _CampaignScreenState extends State<CampaignScreen> {
               if (p.hero case final h?)
                 (s.speaker, heroGreeting(h.label, h.trait)),
               ...s.intro,
+              ?Campaign.tune(s, easy: p.easyMode).note,
             ],
           ),
         ),

@@ -92,6 +92,7 @@ void main() {
     final mat = matOf('MAT');
     final myMat = matOf('MYMAT');
     final powerLv = int.tryParse(Platform.environment['POWERLV'] ?? '') ?? 0;
+    final prog = Platform.environment['PROG'] == '1';
     final (ae, se) = hand == 'novice'
         ? (11.5 * math.pi / 180, 0.35)
         : (7.9 * math.pi / 180, 0.25);
@@ -103,6 +104,15 @@ void main() {
         p.material = myMat;
       }
       p.stats[Stat.power] = powerLv;
+      if (prog) {
+        // [가정] 그 판에 온 보통 사람의 진행: 세기 단계는 판마다 조금씩, 숙적2(r2)부터 현철 돌.
+        final k = campaign.indexOf(s);
+        p.stats[Stat.power] = const [0, 2, 3, 5, 7, 8, 10, 12, 14][k];
+        if (k >= 5) {
+          p.materials.add(StoneMaterial.hyeoncheol);
+          p.material = StoneMaterial.hyeoncheol;
+        }
+      }
       for (final sc in scales) {
         final cfg = Campaign.configFor(
           p,
