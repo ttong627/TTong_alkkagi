@@ -50,6 +50,7 @@ abstract final class Campaign {
     double? aiBlunder,
     AiStyle? aiStyle,
     int? bossQi,
+    StoneMaterial? bossMaterial,
   }) => playerConfig(
     p,
     arena: s.arena,
@@ -57,7 +58,7 @@ abstract final class Campaign {
     aiErrorScale: aiErrorScale ?? aiTuning(s, easy: easy).$1,
     aiPowerScale: aiPowerScale ?? aiTuning(s, easy: easy).$2,
     aiBlunder: aiBlunder ?? aiTuning(s, easy: easy).$3,
-    opponentMaterial: s.material,
+    opponentMaterial: bossMaterial ?? s.material,
     opponentShape: s.shape,
     opponentMartial: rivalMartial(s, p.rebirths),
     aiStyle: aiStyle ?? s.style,

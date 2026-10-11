@@ -86,12 +86,23 @@ void main() {
         .where((x) => x.name == Platform.environment['STYLE'])
         .firstOrNull;
     final qi = int.tryParse(Platform.environment['QI'] ?? '');
+    StoneMaterial? matOf(String k) => StoneMaterial.values
+        .where((x) => x.name == Platform.environment[k])
+        .firstOrNull;
+    final mat = matOf('MAT');
+    final myMat = matOf('MYMAT');
+    final powerLv = int.tryParse(Platform.environment['POWERLV'] ?? '') ?? 0;
     final (ae, se) = hand == 'novice'
         ? (11.5 * math.pi / 180, 0.35)
         : (7.9 * math.pi / 180, 0.25);
     for (final s in campaign) {
       if (want.first.isNotEmpty && !want.contains(s.id)) continue;
       final p = Profile()..tutorialDone = true;
+      if (myMat != null) {
+        p.materials.add(myMat);
+        p.material = myMat;
+      }
+      p.stats[Stat.power] = powerLv;
       for (final sc in scales) {
         final cfg = Campaign.configFor(
           p,
@@ -102,6 +113,7 @@ void main() {
           aiBlunder: blunder,
           aiStyle: style,
           bossQi: qi,
+          bossMaterial: mat,
         );
         final sw = Stopwatch()..start();
         var wins = 0;
@@ -113,7 +125,7 @@ void main() {
         print(
           '${s.id}\t${s.boss}\t${easy ? '쉬움' : '보통'}\t$hand\t'
           '이김 $wins/$n = ${(100 * wins / n).toStringAsFixed(0)}%\t'
-          '(내 돌 잃음: 내가 친 수 ${(selfOuts / n).toStringAsFixed(1)} · 상대 ${(foeOuts / n).toStringAsFixed(1)} · 오차 ×${cfg.aiErrorScale.toStringAsFixed(2)} · 세기 ×${cfg.aiPowerScale.toStringAsFixed(2)} · 실수 ${cfg.aiBlunder.toStringAsFixed(2)} · ${cfg.aiStyle.name} 내공${cfg.opponentStartQi} · ${sw.elapsed.inSeconds}초)',
+          '(내 돌 잃음: 내가 친 수 ${(selfOuts / n).toStringAsFixed(1)} · 상대 ${(foeOuts / n).toStringAsFixed(1)} · 오차 ×${cfg.aiErrorScale.toStringAsFixed(2)} · 세기 ×${cfg.aiPowerScale.toStringAsFixed(2)} · 실수 ${cfg.aiBlunder.toStringAsFixed(2)} · ${cfg.aiStyle.name} 내공${cfg.opponentStartQi} · ${cfg.opponentMaterial.name} 대 ${cfg.myMaterial.name} · ×${cfg.powerScale.toStringAsFixed(2)} · ${sw.elapsed.inSeconds}초)',
         );
       }
     }
