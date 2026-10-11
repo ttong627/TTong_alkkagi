@@ -4,3 +4,6 @@
 *.p12
 secrets.txt
 key.properties
+
+# 재미나이 결과(브랜치 gemini-out/* 에만 올린다)
+gen_out/
