@@ -1,4 +1,4 @@
-# 탄지 무림 — 앱 (Flutter + Flame + Forge2D)
+# 탄지무림 — 앱 (Flutter + Flame + Forge2D)
 
 - 물리: `../packages/physics` (앱·서버 공용)
 - 실행: `flutter run` · 시험: `flutter test` · 웹 미리보기: `flutter build web --no-web-resources-cdn`

@@ -73,16 +73,33 @@ class BoardGame extends FlameGame with TapCallbacks {
     super.render(canvas);
     paintArena(canvas, arena, _toScreen, _scale);
     final pick = canTouch() ? selected() : null;
+    const r = phys.PhysicsConstants.stoneRadius;
+    // 바닥에 있는 돌 먼저, 떠 있는 돌은 그 위에 그린다.
     for (final s in match.table.stones) {
-      if (s.out) continue;
+      if (s.out || s.airborne) continue;
       paintTopStone(
         canvas,
         _toScreen(s.position.x, s.position.y),
-        phys.PhysicsConstants.stoneRadius * _scale,
+        r * _scale,
         s.team,
         s.material,
+        shape: s.shape,
         ring: canTouch() && match.canShoot(s),
         selected: identical(s, pick),
+      );
+    }
+    for (final s in match.table.stones) {
+      if (s.out || !s.airborne) continue;
+      final ground = _toScreen(s.position.x, s.position.y);
+      paintAirShadow(canvas, ground, r * _scale, s.z);
+      // 위에서 비스듬히 본 것처럼, 뜬 만큼 화면 위로 올리고 조금 크게.
+      paintTopStone(
+        canvas,
+        ground.translate(0, -s.z * _scale),
+        r * _scale * (1 + s.z * 0.08),
+        s.team,
+        s.material,
+        shape: s.shape,
       );
     }
   }

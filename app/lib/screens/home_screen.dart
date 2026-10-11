@@ -1,6 +1,7 @@
 import 'package:alkkagi_physics/alkkagi_physics.dart';
 import 'package:flutter/material.dart';
 
+import '../e2e.dart';
 import '../game/arena.dart';
 import '../game/match.dart';
 import '../update/updater.dart';
@@ -28,6 +29,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _updater.addListener(_onUpdate);
     _updater.run();
+    if (e2eFlick) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _start(MatchMode.practice),
+      );
+    }
   }
 
   @override
@@ -74,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           children: [
             UpdateBanner(updater: _updater),
             Text(
-              '탄지 무림',
+              '탄지무림 알까기',
               textAlign: TextAlign.center,
               style: t.displaySmall?.copyWith(fontWeight: FontWeight.w800),
             ),

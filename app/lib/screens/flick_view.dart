@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:alkkagi_physics/alkkagi_physics.dart' as phys;
@@ -5,10 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
+import '../e2e.dart';
 import '../game/arena.dart';
 import '../game/board_paint.dart';
 import '../game/flick.dart';
 import '../game/match.dart';
+import '../input/touch_feed.dart';
 
 /// 재질마다 기(氣) 빛깔.
 const _qiColors = {
@@ -18,11 +21,12 @@ const _qiColors = {
   phys.StoneMaterial.ice: Color(0xFF8FE8FF),
 };
 
-/// 고른 돌을 가까이 보며 손가락으로 튕기는 화면.
+/// 고른 돌 둘레의 대전장 바닥을 크게 내려다보며 손끝으로 돌을 치는 화면.
 ///
-/// - 손끝이 돌에 닿은 **높이**가 타격점(위 = 밀어치기, 가운데 = 강타, 아래 = 끌어치기)
-/// - 튕긴 **방향**이 판 위 방향(화면 위 = 판 위)
-/// - 튕긴 **빠르기**가 세기(내공)
+/// 폰을 바닥에 눕혀 놓은 대전장으로 본다. 손끝이 화면 위를 미끄러지다 돌에 닿는 순간
+/// 부딪힌 자리와 빠르기로 돌이 밀려 나간다([StrikeReader]).
+/// - 돌 **가운데**를 맞히면 손끝 방향 그대로, **가장자리**를 맞히면 비스듬히 나간다.
+/// - 닿을 때 손끝이 **빠를수록** 세다(내공). 살살 밀어도 나간다.
 class FlickView extends StatefulWidget {
   const FlickView({
     super.key,
@@ -57,28 +61,47 @@ class _FlickViewState extends State<FlickView>
   final _frame = ValueNotifier<int>(0);
   final _rand = math.Random();
   final _particles = <_Particle>[];
-  final _samples = <FlickSample>[];
 
-  StoneFace? _face;
-  Offset? _contact;
+  StrikeReader? _reader;
+  StoneDisc? _disc;
+  bool _down = false;
   double _power = 0;
-  int _powerStep = 0;
   double? _aimAngle;
   String? _hint;
+  String? _hitNote;
 
   /// 쏘고 난 뒤 돌이 날아가는 연출(0~1). null 이면 아직 안 쏨.
   double? _launch;
   FlickShot? _shot;
   Duration _last = Duration.zero;
 
+  // 안드로이드에서 따로 받은 촘촘한 손끝 점(TouchFeed). Flutter 포인터와 시각으로 짝짓는다.
+  StreamSubscription<NativeTouch>? _nativeSub;
+  bool _useNative = false;
+  List<NativePoint>? _nPoints;
+  bool _nEnded = false;
+  Offset? _lDownLocal;
+  double? _lDownT;
+  Offset? _delta;
+  int _fed = 0;
+  double _dpr = 1;
+
+  final _padKey = GlobalKey();
+  String? _e2eLast;
+
+  /// 짝이 안 맞을 때를 대비해 Flutter 포인터 점도 모아 둔다.
+  final _lSamples = <FlickSample>[];
+
   @override
   void initState() {
     super.initState();
     _ticker = createTicker(_tick)..start();
+    _nativeSub = TouchFeed.instance.events.listen(_onNative);
   }
 
   @override
   void dispose() {
+    _nativeSub?.cancel();
     _ticker.dispose();
     _frame.dispose();
     super.dispose();
@@ -89,24 +112,18 @@ class _FlickViewState extends State<FlickView>
   void _tick(Duration now) {
     final dt = math.min(0.05, (now - _last).inMicroseconds / 1e6);
     _last = now;
-    final face = _face;
-    if (face != null) {
-      // 손을 대고 있으면 내공만큼, 아니면 은은하게 기가 피어오른다.
-      final rate = _launch != null
-          ? 0
-          : (_samples.isEmpty ? 1 : 2 + _power * 14);
+    final disc = _disc;
+    if (disc != null && _launch == null) {
+      // 손을 대고 있으면 겨눈 내공만큼, 아니면 은은하게 기가 피어오른다.
+      final rate = _down ? 2 + _power * 12 : 1;
       for (var i = 0; i < rate; i++) {
         final a = _rand.nextDouble() * math.pi * 2;
-        final from = Offset(
-          face.center.dx + math.cos(a) * face.rx,
-          face.center.dy + face.thickness / 2 + math.sin(a) * face.ry,
-        );
-        final out = Offset(math.cos(a), math.sin(a) * 0.6);
+        final out = Offset(math.cos(a), math.sin(a));
         _particles.add(
           _Particle(
-            from,
-            out * (20 + _power * 120) + Offset(0, -30 - _power * 90),
-            0.6 + _rand.nextDouble() * 0.6,
+            disc.center + out * disc.radius,
+            out * (25 + _power * 140),
+            0.5 + _rand.nextDouble() * 0.6,
             2 + _rand.nextDouble() * (3 + _power * 5),
             Color.lerp(_qi, const Color(0xFFFFE8A0), _rand.nextDouble() * 0.5)!,
           ),
@@ -133,67 +150,169 @@ class _FlickViewState extends State<FlickView>
   /// 이벤트가 실제로 일어난 시각(초). 화면이 바빠 처리가 늦어도 빠르기가 틀어지지 않는다.
   static double _at(PointerEvent e) => e.timeStamp.inMicroseconds / 1e6;
 
-  void _down(PointerDownEvent e) {
-    if (_launch != null) return;
-    _samples
+  /// Flutter 포인터가 알려 주는 닿은 넓이(닿은 길이, 없으면 넓이 비율).
+  static double? _area(PointerEvent e) =>
+      e.radiusMajor > 0 ? e.radiusMajor : (e.size > 0 ? e.size : null);
+
+  FlickSample _sample(PointerEvent e) =>
+      FlickSample(e.localPosition, _at(e), area: _area(e));
+
+  void _onDown(PointerDownEvent e) {
+    final disc = _disc;
+    if (_launch != null || disc == null) return;
+    _reader = null;
+    _lSamples
       ..clear()
-      ..add(FlickSample(e.localPosition, _at(e)));
-    _contact = null;
-    _hint = null;
-    _powerStep = 0;
-    _checkContact();
-    setState(() {});
-  }
-
-  void _move(PointerMoveEvent e) {
-    if (_launch != null || _samples.isEmpty) return;
-    _samples.add(FlickSample(e.localPosition, _at(e)));
-    _checkContact();
-    final v = flickVelocity(_samples);
-    if (v != null && v.$2 > 1) {
-      _power = flickPower(v.$2);
-      _aimAngle = flickDirection(_samples, _contact);
-      // 내공이 25% 칸을 넘을 때마다 손끝에 가볍게 알린다.
-      final step = (_power * 4).floor();
-      if (step > _powerStep) HapticFeedback.selectionClick();
-      _powerStep = step;
-    }
-  }
-
-  void _checkContact() {
-    final face = _face;
-    if (_contact != null || face == null) return;
-    final c = firstContact(_samples, face);
-    if (c == null) return;
-    _contact = c;
-    HapticFeedback.lightImpact();
-  }
-
-  void _up(PointerUpEvent e) {
-    if (_launch != null || _samples.isEmpty || _face == null) return;
-    // 뗀 자리가 마지막 움직임과 다를 때만 점으로 넣는다(같은 자리면 빠르기를 깎는다).
-    if (e.localPosition != _samples.last.pos) {
-      _samples.add(FlickSample(e.localPosition, _at(e)));
-    }
-    final r = readFlick(_samples, _face!, releaseAt: _at(e));
-    _samples.clear();
-    if (r is FlickShot) {
-      HapticFeedback.heavyImpact();
-      _burst(r);
-      setState(() {
-        _shot = r;
-        _power = r.power;
-        _aimAngle = r.angle;
-        _launch = 0;
-      });
+      ..add(_sample(e));
+    _useNative = TouchFeed.instance.active;
+    if (_useNative) {
+      _lDownLocal = e.localPosition;
+      _lDownT = _at(e);
+      _delta = null;
+      _tryPair();
     } else {
-      setState(() {
-        _hint = (r as FlickMiss).hint;
-        _power = 0;
-        _aimAngle = null;
-        _contact = null;
-      });
+      TouchProfile.shared.add(_area(e));
+      _start(_lSamples.first);
     }
+    setState(() {
+      _down = true;
+      _hint = null;
+      _hitNote = null;
+      _power = 0;
+      _aimAngle = null;
+    });
+  }
+
+  void _onMove(PointerMoveEvent e) {
+    if (_launch != null || !_down) return;
+    final s = _sample(e);
+    _lSamples.add(s);
+    if (_useNative) return;
+    TouchProfile.shared.add(s.area);
+    _feed(s);
+  }
+
+  void _onUp(PointerUpEvent e) {
+    if (_launch != null || !_down) return;
+    if (e.localPosition != _lSamples.last.pos) _lSamples.add(_sample(e));
+    if (_useNative && _delta != null) {
+      // 안드로이드 점의 「뗌」에서 끝낸다. 그 점이 끝내 안 오면 0.3초 뒤 여기서 끝낸다.
+      final reader = _reader;
+      Future<void>.delayed(const Duration(milliseconds: 300), () {
+        if (mounted && _down && _launch == null && identical(reader, _reader)) {
+          _end();
+        }
+      });
+      return;
+    }
+    if (_useNative) {
+      // 짝을 못 지었다 → Flutter 포인터 점으로 끝까지 읽는다.
+      _useNative = false;
+      _start(_lSamples.first);
+      for (final s in _lSamples.skip(1)) {
+        if (_feed(s)) return;
+      }
+    }
+    _end();
+  }
+
+  /// 안드로이드 점 묶음이 왔다.
+  void _onNative(NativeTouch e) {
+    if (e.isDown) {
+      _nPoints = [...e.points];
+      _nEnded = false;
+      _delta = null;
+      _fed = 0;
+      _tryPair();
+      return;
+    }
+    final pts = _nPoints;
+    if (pts == null) return;
+    pts.addAll(e.points);
+    if (e.isEnd) _nEnded = true;
+    _feedNative();
+  }
+
+  /// 같은 손대기인지 시각으로 확인하고(같은 이벤트 시각), 화면 위치를 맞춘다.
+  void _tryPair() {
+    final pts = _nPoints, lt = _lDownT, ll = _lDownLocal;
+    if (!_useNative || pts == null || lt == null || ll == null) return;
+    if (_delta != null || _launch != null) return;
+    if ((pts.first.t - lt).abs() > 0.002) return;
+    _delta = ll - pts.first.px / _dpr;
+    _start(_toLocal(pts.first));
+    _fed = 1;
+    _feedNative();
+  }
+
+  FlickSample _toLocal(NativePoint p) =>
+      FlickSample(p.px / _dpr + _delta!, p.t, area: p.area);
+
+  void _feedNative() {
+    final pts = _nPoints;
+    if (_delta == null || pts == null || _reader == null) return;
+    while (_fed < pts.length) {
+      if (_feed(_toLocal(pts[_fed++]))) return;
+    }
+    if (_nEnded && _launch == null) _end();
+  }
+
+  void _start(FlickSample first) {
+    final reader = _reader = StrikeReader(_disc!);
+    reader.down(first);
+    if (reader.touched) HapticFeedback.selectionClick();
+  }
+
+  /// 점 하나를 넣는다. 쳐 냈으면 참.
+  bool _feed(FlickSample s) {
+    final reader = _reader;
+    if (reader == null || _launch != null) return false;
+    final wasTouched = reader.touched;
+    final shot = reader.move(s);
+    if (shot != null) {
+      _fire(shot);
+      return true;
+    }
+    if (!wasTouched && reader.touched) HapticFeedback.selectionClick();
+    final guess = reader.predict();
+    _aimAngle = guess?.$1;
+    _power = guess?.$2 ?? 0;
+    return false;
+  }
+
+  void _end() {
+    if (!mounted) return;
+    final miss = _reader?.up();
+    e2eLog('miss native=$_useNative why=${miss?.name}');
+    _reader = null;
+    _nPoints = null;
+    setState(() {
+      _down = false;
+      _hint = miss?.hint;
+      _power = 0;
+      _aimAngle = null;
+    });
+  }
+
+  void _fire(FlickShot shot) {
+    e2eLog(
+      'shot native=$_useNative points=${_reader?.samples.length} '
+      'angle=${(shot.angle * 180 / math.pi).toStringAsFixed(1)} '
+      'power=${shot.power.toStringAsFixed(3)} speed=${shot.speed.toStringAsFixed(1)} '
+      'hit=${shot.hit.toStringAsFixed(2)} area=${_reader?.strikeArea} '
+      'profile=${TouchProfile.shared.count}',
+    );
+    HapticFeedback.heavyImpact();
+    _burst(shot);
+    _nPoints = null;
+    setState(() {
+      _hitNote = _describeHit(shot.hit);
+      _down = false;
+      _shot = shot;
+      _power = shot.power;
+      _aimAngle = shot.angle;
+      _launch = 0;
+    });
   }
 
   void _burst(FlickShot r) {
@@ -212,11 +331,32 @@ class _FlickViewState extends State<FlickView>
     }
   }
 
+  /// 위아래 타격점을 말로.
+  static String? _describeHit(double hit) {
+    if (TouchProfile.shared.range == null) return null;
+    if (hit <= -phys.PhysicsConstants.liftThreshold) return '아래를 맞아 떠서 날아감';
+    if (hit >= phys.PhysicsConstants.liftThreshold) return '위를 맞아 튀어 오름';
+    if (hit < -0.15) return '조금 아래(끌어치기)';
+    if (hit > 0.15) return '조금 위(밀어치기)';
+    return '가운데';
+  }
+
+  String get _status {
+    if (_launch != null) {
+      final note = _hitNote;
+      final pct = '내공 ${(_power * 100).round()}%';
+      return note == null ? pct : '$pct · $note';
+    }
+    if (_down && _aimAngle != null) {
+      return '내공 ${(_power * 100).round()}%';
+    }
+    return _hint ?? '손끝을 미끄러뜨려 돌을 맞히세요';
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final arena = widget.match.config.arena;
-    final pct = (_power * 100).round();
     return Material(
       color: arena.outside,
       child: SafeArea(
@@ -236,79 +376,124 @@ class _FlickViewState extends State<FlickView>
                 ],
               ),
             ),
-            SizedBox(
-              height: MediaQuery.sizeOf(context).height * 0.27,
-              child: ValueListenableBuilder<int>(
-                valueListenable: _frame,
-                builder: (_, _, _) => CustomPaint(
-                  size: Size.infinite,
-                  painter: _MiniBoardPainter(
-                    widget.match,
-                    widget.stone,
-                    _aimAngle,
-                    _power,
-                  ),
-                ),
-              ),
-            ),
+            // 작은 지도·바닥·안내 글 전체가 손끝을 받는다(돌 아래·위 어디서 밀기 시작해도 된다).
             Expanded(
               child: LayoutBuilder(
                 builder: (context, box) {
-                  final r = math.min(box.maxWidth * 0.30, box.maxHeight * 0.28);
-                  _face = StoneFace.of(
-                    widget.stone.shape,
-                    Offset(box.maxWidth / 2, box.maxHeight * 0.48),
-                    r,
-                  );
+                  final w = box.maxWidth, h = box.maxHeight;
+                  final miniH = h * 0.3;
+                  const textH = 78.0;
+                  final floorH = h - miniH - textH;
+                  final r = math.min(w * 0.28, floorH * 0.3);
+                  final c = Offset(w / 2, miniH + floorH * 0.5);
+                  _dpr = MediaQuery.devicePixelRatioOf(context);
+                  if (_disc == null ||
+                      _disc!.center != c ||
+                      _disc!.radius != r) {
+                    _disc = StoneDisc(c, r, mass: widget.stone.mass);
+                  }
+                  if (e2eFlick) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      final box = _padKey.currentContext?.findRenderObject();
+                      if (box is! RenderBox || !box.attached) return;
+                      final g = box.localToGlobal(_disc!.center) * _dpr;
+                      final line =
+                          'disc cx=${g.dx.round()} cy=${g.dy.round()} '
+                          'r=${(_disc!.radius * _dpr).round()}';
+                      if (line != _e2eLast) e2eLog(_e2eLast = line);
+                    });
+                  }
                   return Listener(
                     key: const Key('flick-pad'),
                     behavior: HitTestBehavior.opaque,
-                    onPointerDown: _down,
-                    onPointerMove: _move,
-                    onPointerUp: _up,
-                    onPointerCancel: (_) => _samples.clear(),
+                    onPointerDown: _onDown,
+                    onPointerMove: _onMove,
+                    onPointerUp: _onUp,
+                    onPointerCancel: (_) {
+                      if (_launch == null && _down) _end();
+                    },
                     child: ValueListenableBuilder<int>(
+                      key: _padKey,
                       valueListenable: _frame,
-                      builder: (_, _, _) => CustomPaint(
-                        size: Size.infinite,
-                        painter: _CloseUpPainter(
-                          face: _face!,
-                          arena: arena,
-                          stone: widget.stone,
-                          qi: _qi,
-                          power: _power,
-                          particles: _particles,
-                          contact: _contact,
-                          launch: _launch,
-                          launchAngle: _aimAngle ?? -math.pi / 2,
-                        ),
+                      builder: (_, _, _) => Stack(
+                        children: [
+                          Positioned.fill(
+                            child: CustomPaint(
+                              painter: _FloorPainter(
+                                match: widget.match,
+                                disc: _disc!,
+                                top: miniH,
+                                stone: widget.stone,
+                                qi: _qi,
+                                power: _power,
+                                particles: _particles,
+                                aim: _launch == null ? _aimAngle : null,
+                                launch: _launch,
+                                launchAngle: _aimAngle ?? -math.pi / 2,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            top: 0,
+                            height: miniH,
+                            child: CustomPaint(
+                              painter: _MiniBoardPainter(
+                                widget.match,
+                                widget.stone,
+                                _aimAngle,
+                                _power,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: Container(
+                              color: const Color(0x99000000),
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _status,
+                                    style: t.titleLarge?.copyWith(
+                                      color:
+                                          _hint != null &&
+                                              !_down &&
+                                              _launch == null
+                                          ? const Color(0xFFFFB0A0)
+                                          : Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '폰이 대전장 바닥이에요. 가운데를 맞히면 곧게, 가장자리를 맞히면 비스듬히 나가요',
+                                    style: t.bodySmall?.copyWith(
+                                      color: Colors.white70,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          // 손끝 자국은 맨 위에.
+                          Positioned.fill(
+                            child: CustomPaint(
+                              painter: _TrailPainter(
+                                _down ? _reader?.samples : null,
+                                _disc!.radius,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   );
                 },
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-              child: Column(
-                children: [
-                  Text(
-                    _samples.isNotEmpty || _launch != null
-                        ? '내공 $pct%'
-                        : (_hint ?? '손끝으로 돌을 튕기세요'),
-                    style: t.titleLarge?.copyWith(
-                      color: _hint != null && _samples.isEmpty
-                          ? const Color(0xFFFFB0A0)
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '돌 윗부분을 치면 밀고 나가고, 아랫부분을 치면 끌려옵니다',
-                    style: t.bodySmall,
-                    textAlign: TextAlign.center,
-                  ),
-                ],
               ),
             ),
           ],
@@ -318,7 +503,36 @@ class _FlickViewState extends State<FlickView>
   }
 }
 
-/// 위쪽 작은 지도: 판 전체 + 고른 돌 + 지금 튕기는 방향.
+/// 손끝 자국.
+class _TrailPainter extends CustomPainter {
+  _TrailPainter(this.trail, this.radius);
+  final List<FlickSample>? trail;
+  final double radius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final tr = trail;
+    if (tr == null || tr.length < 2) return;
+    final n = tr.length;
+    for (var i = math.max(1, n - 24); i < n; i++) {
+      final k = (i - (n - 24)) / 24;
+      canvas.drawLine(
+        tr[i - 1].pos,
+        tr[i].pos,
+        Paint()
+          ..color = const Color(0xFFFFF2C0)
+              .withValues(alpha: (0.15 + 0.5 * k).clamp(0.0, 1.0))
+          ..strokeWidth = radius * 0.1 * (0.4 + k)
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+/// 위쪽 작은 지도: 판 전체 + 고른 돌 + 지금 겨눈 방향.
 class _MiniBoardPainter extends CustomPainter {
   _MiniBoardPainter(this.match, this.stone, this.angle, this.power);
   final Match match;
@@ -341,6 +555,7 @@ class _MiniBoardPainter extends CustomPainter {
         phys.PhysicsConstants.stoneRadius * scale,
         s.team,
         s.material,
+        shape: s.shape,
         selected: identical(s, stone),
       );
     }
@@ -354,58 +569,83 @@ class _MiniBoardPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
-/// 가까이 본 입체 돌 + 기(氣) 연출.
-class _CloseUpPainter extends CustomPainter {
-  _CloseUpPainter({
-    required this.face,
-    required this.arena,
+/// 고른 돌 둘레의 대전장 바닥을 크게 내려다본 그림 + 기(氣)·손끝 자국.
+class _FloorPainter extends CustomPainter {
+  _FloorPainter({
+    required this.match,
+    required this.disc,
+    required this.top,
     required this.stone,
     required this.qi,
     required this.power,
     required this.particles,
-    required this.contact,
+    required this.aim,
     required this.launch,
     required this.launchAngle,
   });
 
-  final StoneFace face;
-  final Arena arena;
+  final Match match;
+  final StoneDisc disc;
+
+  /// 바닥이 시작하는 높이(그 위는 작은 지도).
+  final double top;
   final phys.Stone stone;
   final Color qi;
   final double power;
   final List<_Particle> particles;
-  final Offset? contact;
+  final double? aim;
   final double? launch;
   final double launchAngle;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
+    final rect = Rect.fromLTRB(0, top, size.width, size.height);
     canvas.clipRect(rect);
-    // 바닥: 대전장 바닥색에 가운데 빛, 가장자리 어둠.
-    canvas.drawRect(
-      rect,
-      Paint()
-        ..shader = RadialGradient(
-          center: const Alignment(0, 0.1),
-          radius: 0.9,
-          colors: [arena.floor, Color.lerp(arena.floor, Colors.black, 0.75)!],
-        ).createShader(rect),
-    );
+    final arena = match.config.arena;
+    canvas.drawRect(rect, Paint()..color = arena.outside);
 
-    // 날아가는 연출: 튕긴 방향으로 빠르게 멀어지며 작아진다.
+    // 판 좌표 → 화면: 고른 돌이 [disc] 자리에 오도록 크게 키운다.
+    final scale = disc.radius / phys.PhysicsConstants.stoneRadius;
+    final sx = stone.position.x, sy = stone.position.y;
+    Offset at(double x, double y) =>
+        disc.center + Offset(x - sx, y - sy) * scale;
+    paintArena(canvas, arena, at, scale);
+    for (final s in match.table.stones) {
+      if (s.out || identical(s, stone)) continue;
+      paintTopStone(
+        canvas,
+        at(s.position.x, s.position.y),
+        disc.radius,
+        s.team,
+        s.material,
+        shape: s.shape,
+      );
+    }
+
+    // 겨눈 방향: 돌에서 나갈 길을 옅게.
+    final a = aim;
+    if (a != null) {
+      final dir = Offset(math.cos(a), math.sin(a));
+      canvas.drawLine(
+        disc.center + dir * disc.radius,
+        disc.center + dir * disc.radius * (2.2 + power * 3),
+        Paint()
+          ..color = qi.withValues(alpha: 0.55)
+          ..strokeWidth = disc.radius * 0.08
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+
+    // 날아가는 연출: 맞은 방향으로 빠르게 멀어지며 작아진다.
     final l = launch ?? 0;
     final shift =
         Offset(math.cos(launchAngle), math.sin(launchAngle)) *
         (l * l * size.longestSide);
-    final sc = 1 - 0.5 * l;
-
-    // 기 둘레 빛. 돌 한가운데(pivot)를 기준으로 옮기고 줄인다.
-    final pivot = face.center.translate(0, face.thickness / 2);
-    final glowC = pivot + shift;
-    final glowR = face.rx * (1.5 + power * 0.9);
+    final c = disc.center + shift;
+    final r = disc.radius * (1 - 0.4 * l);
+    final glowR = r * (1.5 + power * 0.9);
     canvas.drawCircle(
-      glowC,
+      c,
       glowR,
       Paint()
         ..shader = RadialGradient(
@@ -413,132 +653,20 @@ class _CloseUpPainter extends CustomPainter {
             qi.withValues(alpha: 0.25 + power * 0.45),
             qi.withValues(alpha: 0),
           ],
-        ).createShader(Rect.fromCircle(center: glowC, radius: glowR)),
+        ).createShader(Rect.fromCircle(center: c, radius: glowR)),
     );
-
-    canvas.save();
-    canvas.translate(glowC.dx, glowC.dy);
-    canvas.scale(sc);
-    canvas.translate(-pivot.dx, -pivot.dy);
-    _paintStone(canvas);
-    canvas.restore();
+    paintTopStone(canvas, c, r, stone.team, stone.material, shape: stone.shape);
 
     for (final p in particles) {
-      final a = (p.life / p.maxLife).clamp(0.0, 1.0);
+      final al = (p.life / p.maxLife).clamp(0.0, 1.0);
       canvas.drawCircle(
         p.pos,
-        p.size * (0.5 + a * 0.5),
+        p.size * (0.5 + al * 0.5),
         Paint()
-          ..color = p.color.withValues(alpha: a * 0.9)
+          ..color = p.color.withValues(alpha: al * 0.9)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
       );
     }
-
-    final c = contact;
-    if (c != null && launch == null) {
-      canvas.drawCircle(
-        c,
-        face.rx * 0.18,
-        Paint()
-          ..color = const Color(0x99FFF2C0)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
-      );
-    }
-  }
-
-  void _paintStone(Canvas canvas) {
-    final f = face;
-    final team = stone.team;
-    final base = stoneBase(team);
-    final shine = stoneShine(team);
-    final side = Color.lerp(base, Colors.black, team == 0 ? 0.28 : 0.35)!;
-    final ring = materialColors[stone.material]!;
-
-    // 바닥 그림자.
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(f.center.dx + f.rx * 0.1, f.bottom - f.ry * 0.25),
-        width: f.rx * 2.3,
-        height: f.ry * 1.3 + f.rx * 0.15,
-      ),
-      Paint()
-        ..color = const Color(0x77000000)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
-    );
-
-    if (f.thickness <= 0) {
-      // 구형 돌.
-      final c = f.center;
-      canvas.drawCircle(
-        c,
-        f.rx,
-        Paint()
-          ..shader = RadialGradient(
-            center: const Alignment(-0.35, -0.45),
-            radius: 1.0,
-            colors: [shine, base, side],
-            stops: const [0, 0.55, 1],
-          ).createShader(Rect.fromCircle(center: c, radius: f.rx)),
-      );
-      canvas.drawOval(
-        Rect.fromCenter(center: c, width: f.rx * 2, height: f.rx * 0.55),
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = f.rx * 0.12
-          ..color = ring,
-      );
-      return;
-    }
-
-    final top = Rect.fromCenter(
-      center: f.center,
-      width: f.rx * 2,
-      height: f.ry * 2,
-    );
-    final bottom = top.shift(Offset(0, f.thickness));
-    // 옆면: 윗면 가운데 줄 ~ 아랫면 타원의 아래 반.
-    final sidePath = Path()
-      ..moveTo(top.left, f.center.dy)
-      ..lineTo(bottom.left, f.center.dy + f.thickness)
-      ..arcTo(bottom, math.pi, -math.pi, false)
-      ..lineTo(top.right, f.center.dy)
-      ..close();
-    canvas.drawPath(
-      sidePath,
-      Paint()
-        ..shader =
-            LinearGradient(
-              colors: [side, Color.lerp(side, shine, 0.35)!, side],
-              stops: const [0, 0.35, 1],
-            ).createShader(
-              Rect.fromLTRB(top.left, top.top, top.right, bottom.bottom),
-            ),
-    );
-    canvas.drawOval(
-      top,
-      Paint()
-        ..shader = RadialGradient(
-          center: const Alignment(-0.3, -0.5),
-          radius: 1.1,
-          colors: [shine, base],
-        ).createShader(top),
-    );
-    canvas.drawOval(
-      top.deflate(f.rx * 0.12),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = f.rx * 0.16
-        ..color = ring,
-    );
-    // 반짝임.
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: f.center.translate(-f.rx * 0.35, -f.ry * 0.35),
-        width: f.rx * 0.6,
-        height: f.ry * 0.35,
-      ),
-      Paint()..color = Colors.white.withValues(alpha: team == 0 ? 0.6 : 0.18),
-    );
   }
 
   @override

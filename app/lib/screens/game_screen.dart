@@ -4,6 +4,7 @@ import 'package:alkkagi_physics/alkkagi_physics.dart' as phys;
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
+import '../e2e.dart';
 import '../game/ai.dart';
 import '../game/board_game.dart';
 import '../game/flick.dart';
@@ -45,6 +46,17 @@ class _GameScreenState extends State<GameScreen> {
     );
     _selected = null;
     _resultShown = false;
+    if (e2eFlick) _selected = _e2eStone();
+  }
+
+  /// 시험 판: 판 가운데에 가장 가까운 내 돌을 고른다.
+  phys.Stone? _e2eStone() {
+    phys.Stone? best;
+    for (final s in _match.table.stones) {
+      if (!_match.canShoot(s)) continue;
+      if (best == null || s.position.length < best.position.length) best = s;
+    }
+    return best;
   }
 
   void _restart() {
@@ -64,6 +76,9 @@ class _GameScreenState extends State<GameScreen> {
       Future<void>.delayed(const Duration(milliseconds: 400), _showResult);
       return;
     }
+    if (e2eFlick && !_match.isMoving && _selected == null && !_match.isOver) {
+      setState(() => _selected = _e2eStone());
+    }
     if (_aiTurn && !_match.isMoving && !_aiThinking && !_match.isOver) {
       unawaited(_playAi());
     }
@@ -73,7 +88,7 @@ class _GameScreenState extends State<GameScreen> {
     final s = _selected;
     setState(() => _selected = null);
     if (s == null) return;
-    _match.shoot(s, shot.angle, shot.speed, shot.hit);
+    _match.shoot(s, shot.angle, shot.speed, shot.hit, lift: true);
   }
 
   /// 고른 돌이 판 어디 있는지에 맞춰 가까이 보기 화면이 그 자리에서 커져 나온다.

@@ -29,9 +29,9 @@ void main() {
     return (m, shots);
   }
 
-  testWidgets('가까이 보기: 돌을 아래에서 위로 튕기면 위쪽으로 쏜다', (tester) async {
+  testWidgets('가까이 보기: 아래에서 손끝을 밀어 돌 가운데를 맞히면 위쪽으로 쏜다', (tester) async {
     final (m, shots) = await open(tester);
-    expect(find.text('손끝으로 돌을 튕기세요'), findsOneWidget);
+    expect(find.text('손끝을 미끄러뜨려 돌을 맞히세요'), findsOneWidget);
     final pad = tester.getRect(find.byKey(const Key('flick-pad')));
     await tester.flingFrom(
       Offset(pad.center.dx, pad.bottom - 8),
@@ -49,7 +49,7 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('돌을 비껴 튕기면 쏘지 않고 다시 하라고 알려 준다', (tester) async {
+  testWidgets('돌을 비껴가면 쏘지 않고 다시 하라고 알려 준다', (tester) async {
     final (m, shots) = await open(tester);
     final pad = tester.getRect(find.byKey(const Key('flick-pad')));
     await tester.flingFrom(

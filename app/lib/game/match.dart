@@ -126,10 +126,16 @@ class Match extends ChangeNotifier {
   /// 지금 차례에 쏠 수 있는 돌인가.
   bool canShoot(Stone s) => !isOver && !isMoving && !s.out && s.team == _turn;
 
-  /// 한 수를 쏜다.
-  void shoot(Stone s, double angle, double speed, double hit) {
+  /// 한 수를 쏜다. [lift] 면 타격점이 위·아래 끝에 가까울 때 돌이 뜬다(손으로 친 수).
+  void shoot(
+    Stone s,
+    double angle,
+    double speed,
+    double hit, {
+    bool lift = false,
+  }) {
     if (!canShoot(s)) return;
-    table.shoot(s, angle, speed, hit);
+    table.shoot(s, angle, speed, hit, lift: lift);
     _turnCount++;
     notifyListeners();
   }
