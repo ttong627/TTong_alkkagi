@@ -3,6 +3,7 @@
 # 사용: flick-e2e.sh <시험판.apk>
 # 확인: ① 안드로이드 손끝 점(TouchFeed)으로 읽었는가(native=true) ② 가운데를 위로 밀면 −90° 근처
 #       ③ 오른쪽 가장자리를 밀면 왼쪽으로 꺾임(< −100°) ④ 살살 밀어도 나감
+#       ⑤ 돌 0.4R 앞에서 손을 떼는 튕기기도 맞음(flick=true, −90° 근처)
 set -u
 PKG=TTong.alkkagi
 # adb 명령마다 시간 제한을 둔다 — 하나가 멈추면 단계 전체가 45분 시간 초과까지 기다린다(2026-10-11 첫 실행).
@@ -80,12 +81,15 @@ B=$((R * 8 / 10))
 a shell input swipe $((CX + B)) "$(low 3)" $((CX + B)) $((CY - 3 * R)) 250; wait_shot 1
 # 3) 살살: 돌 아래 2R 에서 1.5초 동안 위로.
 a shell input swipe "$CX" "$(low 2)" "$CX" $((CY - R)) 1500; wait_shot 2
+# 4) 검지로 튕기기: 돌 가장자리 0.4R 앞에서 손을 뗀다(25ms 짧게) — 화면에서는 돌에 안 닿음.
+#    에뮬레이터 화면이 작아(640) 시작은 아래 가장자리 70화소 위까지만 내려간다.
+a shell input swipe "$CX" "$(low 3)" "$CX" $((CY + R + R * 2 / 5)) 25; wait_shot 3
 
 LOG=$(a logcat -d -s flutter:I | grep '\[E2E\]')
 echo "$LOG"
 mapfile -t S < <(echo "$LOG" | grep '\] shot')
 fail=0
-[ "${#S[@]}" -ge 3 ] || { echo "실패: 쏜 수 ${#S[@]} (3 이어야)"; fail=1; }
+[ "${#S[@]}" -ge 4 ] || { echo "실패: 쏜 수 ${#S[@]} (4 여야)"; fail=1; }
 ang() { echo "$1" | sed -E 's/.*angle=(-?[0-9.]+).*/\1/'; }
 for s in "${S[@]}"; do echo "$s" | grep -q 'native=true' || { echo "실패: 안드로이드 손끝 점으로 읽지 않음: $s"; fail=1; }; done
 if [ "${#S[@]}" -ge 3 ]; then
@@ -93,6 +97,12 @@ if [ "${#S[@]}" -ge 3 ]; then
   awk -v a="$A1" 'BEGIN{exit !(a > -95 && a < -85)}' || { echo "실패: 가운데 위로 → $A1°"; fail=1; }
   awk -v a="$A2" 'BEGIN{exit !(a < -100)}' || { echo "실패: 오른쪽 가장자리 → $A2° (−100° 보다 왼쪽이어야)"; fail=1; }
   echo "가운데 → $A1° · 오른쪽 가장자리(0.8R) → $A2° · 살살 → $(ang "${S[2]}")°"
+fi
+if [ "${#S[@]}" -ge 4 ]; then
+  A4=$(ang "${S[3]}")
+  echo "${S[3]}" | grep -q 'flick=true' || { echo "실패: 돌 앞에서 튕긴 것이 튕기기로 안 잡힘: ${S[3]}"; fail=1; }
+  awk -v a="$A4" 'BEGIN{exit !(a > -95 && a < -85)}' || { echo "실패: 튕기기 → $A4°"; fail=1; }
+  echo "돌 앞에서 튕기기 → $A4°"
 fi
 if [ "$fail" = 0 ]; then echo "통과"; fi
 exit "$fail"

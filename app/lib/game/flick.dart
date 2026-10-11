@@ -104,10 +104,10 @@ class StoneDisc {
 /// 손끝이 돌을 쳐 내지 못한 까닭.
 enum FlickMiss {
   /// 손끝이 돌에 닿지 않았다.
-  missed('돌을 향해 손끝을 쓱 밀어 보세요'),
+  missed('검지로 돌을 향해 튕겨 보세요'),
 
   /// 돌에 대기만 하고 밀지 않았다.
-  tooWeak('손끝을 조금만 더 밀어 보세요');
+  tooWeak('조금 더 세게 튕겨 보세요');
 
   const FlickMiss(this.hint);
   final String hint;
@@ -116,6 +116,7 @@ enum FlickMiss {
 /// 손끝이 돌을 친 결과.
 class FlickShot {
   const FlickShot({
+    this.flick = false,
     required this.angle,
     required this.speed,
     required this.hit,
@@ -150,6 +151,9 @@ class FlickShot {
 
   /// 손끝이 돌에 닿은 점(손끝 원과 돌 원이 맞닿은 곳, 화면 좌표).
   final Offset contact;
+
+  /// 튕기기: 손을 뗀 뒤 날아간 손끝이 돌을 맞혔다(화면에 안 닿은 채 맞음 → 위쪽).
+  final bool flick;
 }
 
 /// 맞히기 → 방향·세기 환산 기준. 기본값은 가상 시험(tool/flick_sim.dart)으로 골랐다.
@@ -168,6 +172,8 @@ class StrikeTuning {
     this.fullPxPerSec = 1500,
     this.minShotSpeed = 8,
     this.pushTravel = 0.15,
+    this.flickReach = 2.5,
+    this.flickMinPxPerSec = 300,
   });
 
   /// 지금 쓰는 값.
@@ -196,6 +202,13 @@ class StrikeTuning {
 
   /// 돌에 손을 댄 채 밀 때, 이만큼(돌 반지름 비율) 움직여야 민 것으로 본다.
   final double pushTravel;
+
+  /// 튕기기(2026-10-11 형 「검지로 가상의 돌을 튕기는 것」): 손을 뗀 뒤에도 손끝은 그 빠르기로
+  /// 날아간다고 본다. 뗀 자리에서 돌 둘레까지 이 거리(돌 반지름 배수) 안이면 떠서 맞힌다. [가정]
+  final double flickReach;
+
+  /// 이보다 느리게 떼면 튕긴 것이 아니라 그냥 손을 뗀 것(화소/초).
+  final double flickMinPxPerSec;
 }
 
 /// 마지막 [StrikeTuning.velocityWindow] 초 동안의 움직임으로 빠르기(화소/초)를 잰다.
@@ -370,6 +383,31 @@ class StrikeReader {
     return _fire(u, at, v);
   }
 
+  /// 손을 뗀 순간: 손끝이 그 빠르기로 계속 날아가 [StrikeTuning.flickReach] 안에서 돌을 맞히면
+  /// 튕긴 것으로 쳐 낸다(검지로 튕기기 — 손끝이 화면을 스치다 돌 앞에서 떠도 맞는다).
+  /// 화면에 안 닿은 채 맞으니 위아래 타격점은 뗀 뒤 날아간 거리만큼 위쪽: 반지름 하나면 +1(맨 위).
+  FlickShot? release() {
+    if (_shot != null || _pushFrom != null || samples.length < 2) return null;
+    final p = samples.last;
+    final v = velocityAt(
+      samples.sublist(0, samples.length - 1),
+      p.pos,
+      p.t,
+      tune,
+    );
+    if (v == null || v.distance < tune.flickMinPxPerSec) return null;
+    final reach = disc.radius * tune.flickReach;
+    final far = p.pos + v / v.distance * reach;
+    final r = _enterAt(p.pos, far, disc);
+    if (r == null) return null;
+    final at = Offset.lerp(p.pos, far, r)!;
+    final u = strikeVelocity(disc, at, v);
+    if (u == null || u.distance < tune.minPxPerSec) return null;
+    _touched = true;
+    final gap = (at - p.pos).distance;
+    return _fire(u, at, v, flickHit: (gap / disc.radius).clamp(0.0, 1.0));
+  }
+
   /// 손을 뗐다. 쳐 내지 못했으면 그 까닭.
   FlickMiss? up() {
     if (_shot != null) return null;
@@ -400,6 +438,7 @@ class StrikeReader {
     Offset fingerAt,
     Offset finger, {
     bool push = false,
+    double? flickHit,
   }) {
     final power = strikePower(u.distance, tune);
     final d = disc.center - fingerAt;
@@ -421,7 +460,10 @@ class StrikeReader {
           powerToSpeed(power, tune) *
           massFactor(disc.mass) *
           (critical ? CriticalRule.speedBonus : 1),
-      hit: area == null ? 0 : (profile.hitFor(area) ?? 0),
+      hit: flickHit != null
+          ? math.max(flickHit, area == null ? 0 : (profile.hitFor(area) ?? 0))
+          : (area == null ? 0 : (profile.hitFor(area) ?? 0)),
+      flick: flickHit != null,
       power: power,
       contact: contact,
       offset: offset,

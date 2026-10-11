@@ -301,4 +301,69 @@ void main() {
       expect(right.curl.abs(), closeTo(1, 1e-9));
     });
   });
+
+  group('검지로 튕기기 — 손끝이 돌 앞에서 화면을 떠나도 그 빠르기로 날아가 맞는다', () {
+    const disc = StoneDisc(Offset(200, 400), 74);
+
+    /// 아래에서 위로 [speed] 화소/초로 1.5R 스치고, 돌 가장자리 앞 [gapR]·R 에서 손을 뗀다.
+    (FlickShot?, FlickMiss?) flick(
+      double gapR, {
+      double speed = 1500,
+      double dx = 0,
+    }) {
+      final r = StrikeReader(disc, profile: TouchProfile.off);
+      final yEnd = 400 + 74 * (1 + gapR);
+      final y0 = yEnd + 74 * 1.5;
+      final dur = (y0 - yEnd) / speed;
+      r.down(FlickSample(Offset(200 + dx, y0), 0));
+      FlickShot? s;
+      for (var i = 1; i <= 10 && s == null; i++) {
+        s = r.move(
+          FlickSample(
+            Offset(200 + dx, y0 + (yEnd - y0) * i / 10),
+            dur * i / 10,
+          ),
+        );
+      }
+      s ??= r.release();
+      return (s, s == null ? r.up() : null);
+    }
+
+    test('가장자리 앞 0.3R~2.4R 에서 떼도 위로 곧게 나가고, 일찍 뗄수록 위쪽(+1)을 맞는다', () {
+      for (final g in [0.3, 0.6, 1.0, 2.0, 2.4]) {
+        final (s, _) = flick(g);
+        expect(s, isNotNull, reason: 'gap $g');
+        expect(s!.flick, isTrue);
+        expect(s.angle, closeTo(-math.pi / 2, 1e-6));
+        expect(s.hit, closeTo(math.min(1, g), 1e-6));
+      }
+      // 닿은 채로 가장자리까지 오면 예전처럼(튕김 아님).
+      expect(flick(0).$1!.flick, isFalse);
+    });
+
+    test('3R 넘게 떨어져 떼거나, 천천히 떼거나, 돌을 비껴 가면 쏘지 않는다', () {
+      expect(flick(3.0).$1, isNull);
+      expect(flick(1.0, speed: 200).$1, isNull); // 그냥 손을 뗀 것
+      expect(flick(1.0, dx: 120).$1, isNull); // 돌 옆으로 지나감
+      expect(flick(1.0, dx: 120).$2, FlickMiss.missed);
+    });
+
+    test('가장자리 쪽으로 튕기면 꺾인다(닿은 채 친 것과 같은 법칙)', () {
+      final (s, _) = flick(1.0, dx: 55);
+      expect(s, isNotNull);
+      expect(s!.angle, lessThan(-math.pi / 2 - 0.2)); // 오른쪽을 맞아 왼쪽 위로
+    });
+
+    test('아주 짧게(점 2개·10ms) 스치고 떠도 맞는다', () {
+      final r = StrikeReader(disc, profile: TouchProfile.off);
+      r.down(const FlickSample(Offset(200, 400 + 74 * 2.0 + 20), 0));
+      expect(
+        r.move(const FlickSample(Offset(200, 400 + 74 * 2.0), 0.01)),
+        isNull,
+      );
+      final s = r.release();
+      expect(s, isNotNull);
+      expect(s!.angle, closeTo(-math.pi / 2, 1e-6));
+    });
+  });
 }

@@ -365,6 +365,12 @@ class _FlickViewState extends State<FlickView>
   void _end() {
     if (!mounted) return;
     _path = const [];
+    // 검지로 튕기면 손끝이 돌 앞에서 화면을 떠난다 → 그 빠르기로 날아가 맞는지 본다.
+    final flick = _launch == null ? _reader?.release() : null;
+    if (flick != null) {
+      _fire(flick);
+      return;
+    }
     final miss = _reader?.up();
     e2eLog('miss native=$_useNative why=${miss?.name}');
     _reader = null;
@@ -382,7 +388,7 @@ class _FlickViewState extends State<FlickView>
       'shot native=$_useNative points=${_reader?.samples.length} '
       'angle=${(shot.angle * 180 / math.pi).toStringAsFixed(1)} '
       'power=${shot.power.toStringAsFixed(3)} speed=${shot.speed.toStringAsFixed(1)} '
-      'hit=${shot.hit.toStringAsFixed(2)} area=${_reader?.strikeArea} '
+      'hit=${shot.hit.toStringAsFixed(2)} flick=${shot.flick} area=${_reader?.strikeArea} '
       'profile=${TouchProfile.shared.count}',
     );
     Buzz.heavy();
@@ -393,7 +399,12 @@ class _FlickViewState extends State<FlickView>
       _hitNote = [
         if (shot.critical && _mode == StrikeMode.plain) '회심! 내공 +1',
         if (_mode != StrikeMode.plain) _modeName(_mode),
-        if (hover) '안 닿고 스침 — 돌 위쪽을 맞아 튀어 오름' else ?_describeHit(shot.hit),
+        if (hover)
+          '안 닿고 스침 — 돌 위쪽을 맞아 튀어 오름'
+        else if (shot.flick)
+          '튕겨 맞힘 — ${_describeFlick(shot.hit)}'
+        else
+          ?_describeHit(shot.hit),
       ].join(' · ');
       _down = false;
       _shot = shot;
@@ -432,6 +443,13 @@ class _FlickViewState extends State<FlickView>
     StrikeMode.ultimate => ultimateColor,
   };
 
+  /// 튕겨 맞힌 위아래 타격점을 말로(떠서 맞으니 가운데~위).
+  static String _describeFlick(double hit) {
+    if (hit >= phys.PhysicsConstants.liftThreshold) return '돌 위쪽을 맞아 튀어 오름';
+    if (hit > 0.15) return '조금 위(밀어치기)';
+    return '가운데';
+  }
+
   /// 위아래 타격점을 말로.
   static String? _describeHit(double hit) {
     if (Settings.instance.touchProfile.range == null) return null;
@@ -451,7 +469,7 @@ class _FlickViewState extends State<FlickView>
     if (_down && _aimAngle != null) {
       return '내공 ${(_power * 100).round()}%';
     }
-    return _hint ?? '손끝을 미끄러뜨려 돌을 맞히세요';
+    return _hint ?? '검지로 돌을 튕기세요';
   }
 
   @override
@@ -589,7 +607,7 @@ class _FlickViewState extends State<FlickView>
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    '폰이 대전장 바닥이에요. 가운데를 맞히면 곧게, 가장자리를 맞히면 비스듬히 나가요',
+                                    '검지로 돌을 튕기세요. 화면을 스치며 맞혀도, 돌 바로 앞에서 튕겨도 맞아요. 가운데는 곧게, 가장자리는 비스듬히',
                                     style: t.bodySmall?.copyWith(
                                       color: Colors.white70,
                                     ),
