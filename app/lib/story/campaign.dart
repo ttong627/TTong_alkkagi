@@ -84,22 +84,25 @@ abstract final class Campaign {
   static AiTune tune(Stage s, {bool easy = false}) =>
       (easy ? _easy : _normal)[s.id] ?? const AiTune();
 
+  /// 쉬움 — 실측(PROG=1, 60판): 보통 사람 손 1장 ~90% · 2장 ~80% … 6장 40% / 초보 손 1장 85% · 2장 70% · 숙적1 57%.
   static const _easy = <String, AiTune>{
-    'c1': AiTune(errorScale: 3),
+    'c1': AiTune(errorScale: 4, blunder: 0.3),
     'c2': AiTune(
-      errorScale: 3,
+      errorScale: 4,
+      blunder: 0.3,
       bossMaterial: StoneMaterial.cheongok,
       note: ('통통', '허허, 처음 왔구먼. 오늘은 가벼운 청옥 돌로 상대해 주지!'),
     ),
-    'r1': AiTune(errorScale: 3),
+    'r1': AiTune(errorScale: 3, blunder: 0.3),
     'c3': AiTune(errorScale: 3),
     'c4': AiTune(errorScale: 3),
     'r2': AiTune(errorScale: 3),
-    'c5': AiTune(errorScale: 3),
+    'c5': AiTune(errorScale: 2),
     'r3': AiTune(errorScale: 3, bossQi: 1),
-    'c6': AiTune(errorScale: 3, bossQi: 1),
+    'c6': AiTune(errorScale: 4, blunder: 0.3, bossQi: 0),
   };
 
+  /// 보통 — 실측(보통 사람 손): 65 · 43 · 58 · 50 · 50 · 58 · 87 · 28 · 28%(예전 53 · 8 · 61 · 18 · 42 · 31 · 43 · 0 · 0%).
   static const _normal = <String, AiTune>{
     'c1': AiTune(errorScale: 1.5),
     'c2': AiTune(
@@ -107,9 +110,9 @@ abstract final class Campaign {
       myMaterial: StoneMaterial.hyeoncheol,
       note: ('통통', '현철엔 현철이지! 내 돌 한 벌 빌려줄 테니 공평하게 붙어 보세.'),
     ),
-    'c3': AiTune(errorScale: 1.5),
+    'c3': AiTune(errorScale: 2.2),
     'c4': AiTune(errorScale: 1.5),
-    'r3': AiTune(errorScale: 2, bossQi: 2),
+    'r3': AiTune(errorScale: 2.5, bossQi: 1),
     'c6': AiTune(errorScale: 1.5, bossQi: 2),
   };
 
