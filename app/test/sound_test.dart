@@ -14,9 +14,11 @@ void main() {
       for (final t in Technique.values)
         if (t != Technique.none) 'tech_${t.name}',
       for (final a in Arena.values) 'bgm_${a.name}',
+      'bgm_lobby',
+      'bgm_boss',
     };
     for (final n in want) {
-      final f = File('assets/sounds/$n.wav');
+      final f = File('assets/sounds/$n.ogg');
       expect(f.existsSync(), isTrue, reason: n);
       expect(f.lengthSync(), greaterThan(1000), reason: n);
     }
@@ -27,5 +29,7 @@ void main() {
     Sound.hit(StoneMaterial.ice, 50);
     Sound.slide(1);
     Sound.music(Arena.oilyTable);
+    Sound.lobby();
+    Sound.track(null);
   });
 }

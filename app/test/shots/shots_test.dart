@@ -44,28 +44,34 @@ Future<void> _fonts() async {
   await mi.load().catchError((_) {});
 }
 
+bool _cached = false;
+
 Future<void> _shot(WidgetTester t, Widget w, String name, {int settleMs = 1600}) async {
   final key = GlobalKey();
+  // 그림을 먼저 모두 풀어 캐시에 넣는다(화면이 그리기 전에 — 시험 환경은 늦게 읽은 그림을 다시 안 그린다).
+  if (!_cached) {
+    await t.pumpWidget(MaterialApp(home: SizedBox(key: key)));
+    await t.runAsync(() async {
+      final ctx = key.currentContext!;
+      for (final e in [
+        ...Art.characterIds.map((id) => Art.character(id)),
+        ...Art.characterIds.map((id) => Art.character(id, attack: true)),
+        ...Art.iconNames.map(Art.icon),
+        for (final a in Arena.values) Art.arenaBackground(a),
+        Art.background('lobby'),
+      ]) {
+        await precacheImage(AssetImage(e), ctx);
+      }
+      await Art.preload();
+    });
+    _cached = true;
+  }
   await t.pumpWidget(
     RepaintBoundary(
       key: key,
       child: MaterialApp(debugShowCheckedModeBanner: false, theme: buildTheme(), home: w),
     ),
   );
-  // 그림을 실제로 풀어 화면에 올린다.
-  await t.runAsync(() async {
-    final ctx = key.currentContext!;
-    for (final e in [
-      ...Art.characterIds.map((id) => Art.character(id)),
-      ...Art.characterIds.map((id) => Art.character(id, attack: true)),
-      ...Art.iconNames.map(Art.icon),
-      for (final a in Arena.values) Art.arenaBackground(a),
-      Art.background('lobby'),
-    ]) {
-      await precacheImage(AssetImage(e), ctx);
-    }
-    await Art.preload();
-  });
   for (var i = 0; i < settleMs ~/ 100; i++) {
     await t.pump(const Duration(milliseconds: 100));
   }
@@ -85,6 +91,8 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     await initializePhysics();
     await _fonts();
+    // 그림 42장(장마다 3.6MB 풀림)이 기본 캐시 100MB 를 넘어 밀려나지 않게.
+    PaintingBinding.instance.imageCache.maximumSizeBytes = 800 << 20;
   });
 
   testWidgets('화면 사진', (t) async {
@@ -98,6 +106,14 @@ void main() {
       ..naegong = 180
       ..attendDay = today();
     p.done.add('c1');
+    await _shot(
+      t,
+      Scaffold(
+        body: ResultOverlay(title: '승리!', won: true, stars: 2, coins: 20, character: 'yonga', onDone: () {}, onAgain: () {}),
+      ),
+      'result',
+      settleMs: 2200,
+    );
     await _shot(t, const CampaignScreen(), 'campaign');
     await _shot(t, DialogueScreen(title: campaign[1].title, lines: campaign[1].intro, scene: 'oilyTable'), 'dialogue', settleMs: 2800);
     await _shot(t, const ShopScreen(), 'shop');

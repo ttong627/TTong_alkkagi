@@ -29,7 +29,7 @@ abstract final class Sound {
     'out_thud': 3,
   };
 
-  /// 미리 읽어 두는 효과음 이름(assets/sounds/이름.wav).
+  /// 미리 읽어 두는 효과음 이름(assets/sounds/이름.ogg · `tool/make_audio.py` 로 합성).
   static const effects = [
     'touch',
     'hit_cheongok',
@@ -50,6 +50,25 @@ abstract final class Sound {
     'finisher',
     'terrain_gong',
     'terrain_mine',
+    // 화면·보상(설계서 §16.5).
+    'ui_tap',
+    'ui_back',
+    'ui_open',
+    'coin',
+    'reward',
+    'star',
+    'unlock',
+    'error',
+    'tutorial_ok',
+    'whoosh',
+    'countdown',
+    'go',
+    // 짧은 곡(한 번만).
+    'jingle_win',
+    'jingle_lose',
+    'jingle_levelup',
+    'jingle_reward',
+    'jingle_chapter',
   ];
 
   static Future<void> init() async {
@@ -61,17 +80,18 @@ abstract final class Sound {
       );
       for (final n in effects) {
         _pools[n] = await AudioPool.createFromAsset(
-          path: 'sounds/$n.wav',
+          path: 'sounds/$n.ogg',
           maxPlayers: _voices[n] ?? 2,
           playerMode: PlayerMode.lowLatency,
         );
       }
       _music = AudioPlayer()..setReleaseMode(ReleaseMode.loop);
       _slide = AudioPlayer()..setReleaseMode(ReleaseMode.loop);
-      await _slide!.setSource(AssetSource('sounds/slide.wav'));
+      await _slide!.setSource(AssetSource('sounds/slide.ogg'));
       await _slide!.setVolume(0);
       _ready = true;
       Settings.instance.addListener(_applyVolumes);
+      if (_pending != null) track(_pending);
     } catch (e) {
       debugPrint('소리 준비 실패: $e');
     }
@@ -124,10 +144,18 @@ abstract final class Sound {
   }
 
   /// 대전장 배경 음악(장마다 다름). null 이면 끈다.
-  static void music(Arena? arena) {
+  static void music(Arena? arena) => track(arena == null ? null : 'bgm_${arena.name}');
+
+  /// 로비 음악.
+  static void lobby() => track('bgm_lobby');
+
+  /// 배경 음악 하나(assets/sounds/이름.ogg, 이어서 되풀이). null 이면 끈다.
+  static void track(String? name) {
     final p = _music;
-    if (!_ready || p == null) return;
-    final name = arena == null ? null : 'bgm_${arena.name}';
+    if (!_ready || p == null) {
+      _pending = name;
+      return;
+    }
     if (name == _track) return;
     _track = name;
     unawaited(() async {
@@ -138,8 +166,11 @@ abstract final class Sound {
         }
         await p.stop();
         await p.setVolume(Settings.instance.music);
-        await p.play(AssetSource('sounds/$name.wav'));
+        await p.play(AssetSource('sounds/$name.ogg'));
       } catch (_) {}
     }());
   }
+
+  /// 소리가 준비되기 전에 부른 음악(준비되면 튼다).
+  static String? _pending;
 }
