@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'audio/sound.dart';
+import 'e2e.dart';
 import 'game/arena.dart';
 import 'input/touch_feed.dart';
 import 'progress/settings.dart';
@@ -21,7 +22,11 @@ Future<void> main() async {
   await Settings.load();
   // 소리(효과음·장마다 배경 음악). 준비에 실패해도 게임은 소리 없이 간다.
   // 첫 화면을 기다리게 하지 않도록 뒤에서 준비한다.
-  unawaited(Sound.init().then((_) => Sound.music(Arena.dustyYard)));
+  // 손끝 시험판(E2E_FLICK)은 소리를 켜지 않는다 — 소리 장치 없는 CI 에뮬레이터(-noaudio)가 앱이 소리를
+  // 해독·재생하는 순간 꺼졌다(2026-10-11 안드로이드 30 기록). 손끝 시험에는 소리가 필요 없다.
+  if (!e2eFlick) {
+    unawaited(Sound.init().then((_) => Sound.music(Arena.dustyYard)));
+  }
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(const AlkkagiApp());
 }
