@@ -240,6 +240,7 @@ class Table {
     bool inner = false,
     Technique technique = Technique.none,
     double curl = 0,
+    double spinScale = 1,
   }) {
     if (stone.out) throw StateError('장외된 돌은 쏠 수 없다');
     _inner = inner;
@@ -255,7 +256,7 @@ class Table {
       PhysicsConstants.maxShotSpeed,
     );
     final h = hit.clamp(-1.0, 1.0);
-    stone._spin = h * stone.shape.spinEfficiency;
+    stone._spin = h * stone.shape.spinEfficiency * spinScale;
     stone._spinUsed = false;
     final (along, up) = lift ? liftOf(s, h) : (s, 0.0);
     stone.body.linearVelocity = Vector2(

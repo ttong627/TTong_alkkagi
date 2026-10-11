@@ -83,17 +83,18 @@ class BattleFx {
         break;
       case StrikeMode.inner:
       case StrikeMode.absorb:
+        final martial = s.team == 0
+            ? m.config.martial
+            : m.config.opponentMartial;
         final c = m.lastMode == StrikeMode.absorb
             ? techniqueColor(phys.Technique.absorb)
-            : techniqueColor(m.config.martial);
+            : techniqueColor(martial);
         _glow[s.id] = (c, 2.5);
         _rings.add(_Ring(at, 0.5, 5, 0.4, c));
         _burst(at, c, 30, 25);
         _text(
           at.translate(0, -2.5),
-          m.lastMode == StrikeMode.absorb
-              ? '흡성탄지'
-              : '내공 · ${m.config.martial.label}',
+          m.lastMode == StrikeMode.absorb ? '흡성탄지' : '내공 · ${martial.label}',
           c,
         );
         _shake = 6;
@@ -104,7 +105,7 @@ class BattleFx {
         _text(at.translate(0, -2.5), '어기어석!', ultimateColor, size: 34);
         _flash = 0.5;
         _flashColor = ultimateColor;
-        steerLeft = 2.5;
+        steerLeft = m.config.steerSeconds;
     }
   }
 

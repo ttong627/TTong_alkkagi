@@ -62,6 +62,30 @@ enum StrikeMode {
 /// 내공 칸 수(가득).
 const int maxQi = 3;
 
+/// 고수(보스)의 버릇 — AI 가 치는 방식 (설계서 §16.1).
+enum AiStyle {
+  /// 보통 AI.
+  plain,
+
+  /// 촌장: 가르치는 사람. 가장 좋은 수를 일부러 자주 피한다.
+  teacher,
+
+  /// 통통: 늘 가장 센 힘으로 정면 강타.
+  ram,
+
+  /// 숨은 자객: 판 가장자리에 가까운 내 돌만 노린다.
+  assassin,
+
+  /// 쿠비: 끌어치기와 여러 돌을 한 번에 노리는 수를 즐긴다.
+  spinner,
+
+  /// 로직: 후보를 두 배로 읽고 계산한다.
+  calculator,
+
+  /// 무림맹주·숙적: 내공 타격과 무공을 쓴다.
+  master,
+}
+
 /// 판 설정.
 class MatchConfig {
   const MatchConfig({
@@ -71,7 +95,47 @@ class MatchConfig {
     this.myShape = StoneShape.round,
     this.arena = Arena.dustyYard,
     this.martial = Technique.swordQi,
+    this.opponentMaterial = StoneMaterial.cheongok,
+    this.opponentShape = StoneShape.round,
+    this.opponentMartial = Technique.none,
+    this.aiStyle = AiStyle.plain,
+    this.myStartQi = 0,
+    this.opponentStartQi = 0,
+    this.powerScale = 1,
+    this.spinScale = 1,
+    this.steers = 1,
+    this.steerSeconds = 2.5,
+    this.opponentName,
+    this.training = false,
   });
+
+  /// 목인항: 내 돌 하나와 목각 더미 하나만 놓는다(설계서 §5.2·§8.1).
+  final bool training;
+
+  /// 상대 돌 재질·모양(보스마다 다름).
+  final StoneMaterial opponentMaterial;
+  final StoneShape opponentShape;
+
+  /// 상대 무공(내공 타격 때). 둘이 하기에서는 위 편 사람의 무공.
+  final Technique opponentMartial;
+
+  /// AI 버릇(설계서 §16.1).
+  final AiStyle aiStyle;
+
+  /// 판 시작 내공 칸.
+  final int myStartQi;
+  final int opponentStartQi;
+
+  /// 내 능력치(설계서 §2.3): 처음 속도 배수(탄지 파워 ÷ 120), 회전 배수(탄지 묘수).
+  final double powerScale;
+  final double spinScale;
+
+  /// 어기어석 꺾기 횟수와 느린 화면 시간(초).
+  final int steers;
+  final double steerSeconds;
+
+  /// 상대 이름(강호행 고수). 없으면 「상대」.
+  final String? opponentName;
 
   final MatchMode mode;
 
@@ -104,6 +168,16 @@ class Match extends ChangeNotifier {
         floorFactor: config.arena.floorFactor,
         boundary: config.arena.boundary,
       ) {
+    if (config.training) {
+      table.addStone(
+        0,
+        startRow,
+        material: config.myMaterial,
+        shape: config.myShape,
+      );
+      table.addStone(0, 0, team: 1, shape: StoneShape.sphere);
+      return;
+    }
     for (var i = 0; i < stonesPerTeam; i++) {
       final x = (i - (stonesPerTeam - 1) / 2) * startGap;
       table.addStone(
@@ -116,7 +190,13 @@ class Match extends ChangeNotifier {
     }
     for (var i = 0; i < stonesPerTeam; i++) {
       final x = (i - (stonesPerTeam - 1) / 2) * startGap;
-      table.addStone(x, -startRow, team: 1);
+      table.addStone(
+        x,
+        -startRow,
+        material: config.opponentMaterial,
+        shape: config.opponentShape,
+        team: 1,
+      );
     }
   }
 
@@ -124,7 +204,10 @@ class Match extends ChangeNotifier {
   final Table table;
 
   int _turn = 0;
-  final _qi = [0, 0];
+  late final _qi = [
+    math.min(maxQi, config.myStartQi),
+    math.min(maxQi, config.opponentStartQi),
+  ];
 
   /// 마지막 수가 회심 일격이었나(연출용).
   bool lastCritical = false;
@@ -186,6 +269,7 @@ class Match extends ChangeNotifier {
     double curl = 0,
   }) {
     if (!canShoot(s)) return;
+    touchedThisTurn.clear();
     final team = s.team;
     final m = canUse(team, mode) ? mode : StrikeMode.plain;
     _qi[team] -= m.cost;
@@ -194,11 +278,12 @@ class Match extends ChangeNotifier {
     }
     lastCritical = critical && m == StrikeMode.plain;
     lastMode = m;
-    steersLeft = m == StrikeMode.ultimate ? 1 : 0;
+    steersLeft = m == StrikeMode.ultimate ? config.steers : 0;
     final technique = switch (m) {
       StrikeMode.plain => Technique.none,
       StrikeMode.absorb => Technique.absorb,
-      StrikeMode.inner || StrikeMode.ultimate => config.martial,
+      StrikeMode.inner || StrikeMode.ultimate =>
+        team == 0 ? config.martial : config.opponentMartial,
     };
     table.shoot(
       s,
@@ -209,6 +294,7 @@ class Match extends ChangeNotifier {
       inner: m != StrikeMode.plain,
       technique: technique,
       curl: curl,
+      spinScale: team == 0 ? config.spinScale : 1,
     );
     _turnCount++;
     notifyListeners();
@@ -222,10 +308,35 @@ class Match extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 이번 수에 쏜 돌과 부딪힌 돌(목인항·연출용).
+  final touchedThisTurn = <int>{};
+
+  /// 목인항: 내 돌을 제자리로, 더미를 [x],[y] 로 옮긴다.
+  void resetTraining(double x, double y) {
+    void place(Stone s, double px, double py) {
+      s.out = false;
+      s.body.isEnabled = true;
+      s.body.setTransform(Vector2(px, py), s.body.rotation);
+      s.body.linearVelocity = Vector2.zero();
+      s.body.angularVelocity = 0;
+    }
+
+    place(table.stones[0], 0, startRow);
+    place(table.stones[1], x, y);
+    _winner = null;
+    _turn = 0;
+    notifyListeners();
+  }
+
   /// 화면 프레임마다 1/60초씩 진행한다. 한 수가 끝나면 true.
   bool step() {
     if (!isMoving) return false;
     final st = table.step();
+    final shooterId = table.shooter?.id;
+    for (final i in table.impacts) {
+      if (i.a == shooterId) touchedThisTurn.add(i.b);
+      if (i.b == shooterId) touchedThisTurn.add(i.a);
+    }
     if (st == TurnStatus.moving) return false;
     table.endTurn();
     _finishTurn();
@@ -234,6 +345,7 @@ class Match extends ChangeNotifier {
   }
 
   void _finishTurn() {
+    if (config.training) return;
     if (config.mode == MatchMode.practice) {
       if (alive(1) == 0 || alive(0) == 0) _winner = alive(0) > 0 ? 0 : 1;
       return;

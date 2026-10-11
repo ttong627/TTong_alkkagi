@@ -173,7 +173,7 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
     final a = math.atan2(wy - s.position.y, wx - s.position.x);
     HapticFeedback.heavyImpact();
     match.steer(a);
-    fx.steerLeft = 0;
+    if (match.steersLeft <= 0) fx.steerLeft = 0;
   }
 
   @override

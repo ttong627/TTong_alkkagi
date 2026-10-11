@@ -16,8 +16,23 @@ import 'flick_view.dart';
 /// 한 판 화면: 위에 차례·남은 돌, 가운데 대전장.
 /// 내 돌을 누르면 그 돌을 가까이 보는 화면으로 바뀌고, 거기서 손끝으로 튕긴다.
 class GameScreen extends StatefulWidget {
-  const GameScreen({super.key, required this.config});
+  const GameScreen({
+    super.key,
+    required this.config,
+    this.title,
+    this.onTurnEnd,
+    this.info,
+  });
   final MatchConfig config;
+
+  /// 한 수가 끝날 때마다(목인항 등).
+  final void Function(Match match)? onTurnEnd;
+
+  /// 판 아래 안내 글(목인항 수련 수 등). 없으면 대전장 이름.
+  final String Function()? info;
+
+  /// 강호행 판이면 제목(예: 「1장 · 하산의 길」). 이때는 판이 끝나면 이겼는지(bool)를 돌려주고 닫는다.
+  final String? title;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -97,9 +112,13 @@ class _GameScreenState extends State<GameScreen> {
     });
   }
 
+  bool _wasMoving = false;
+
   void _onMatch() {
     if (!mounted) return;
     setState(() {});
+    if (_wasMoving && !_match.isMoving) widget.onTurnEnd?.call(_match);
+    _wasMoving = _match.isMoving;
     if (_match.isOver && !_match.isMoving && !_resultShown) {
       _resultShown = true;
       Future<void>.delayed(const Duration(milliseconds: 400), _showResult);
@@ -124,7 +143,7 @@ class _GameScreenState extends State<GameScreen> {
     _match.shoot(
       s,
       shot.angle,
-      shot.speed,
+      shot.speed * widget.config.powerScale,
       shot.hit,
       lift: true,
       mode: mode,
@@ -156,6 +175,7 @@ class _GameScreenState extends State<GameScreen> {
       shot.angle,
       shot.speed,
       shot.hit,
+      mode: shot.mode,
     );
   }
 
@@ -170,6 +190,11 @@ class _GameScreenState extends State<GameScreen> {
       title = _match.winner == 0 ? '이겼습니다!' : '졌습니다';
     } else {
       title = _match.winner == 0 ? '흰 돌 승리' : '검은 돌 승리';
+    }
+    if (widget.title != null) {
+      // 강호행: 결과는 부른 화면이 보여 준다(보상·대사).
+      Navigator.of(context).pop(_match.winner == 0 && !_match.isDraw);
+      return;
     }
     final again = await showDialog<bool>(
       context: context,
@@ -231,9 +256,10 @@ class _GameScreenState extends State<GameScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.config.mode == MatchMode.vsAi
-              ? '${widget.config.mode.label} · ${widget.config.difficulty.label}'
-              : widget.config.mode.label,
+          widget.title ??
+              (widget.config.mode == MatchMode.vsAi
+                  ? '${widget.config.mode.label} · ${widget.config.difficulty.label}'
+                  : widget.config.mode.label),
         ),
         actions: [
           IconButton(
@@ -256,9 +282,9 @@ class _GameScreenState extends State<GameScreen> {
                   child: Row(
                     children: [
                       _Count(
-                        label: widget.config.mode == MatchMode.vsAi
-                            ? '상대'
-                            : '검',
+                        label:
+                            widget.config.opponentName ??
+                            (widget.config.mode == MatchMode.vsAi ? '상대' : '검'),
                         n: _match.alive(1),
                         dark: true,
                       ),
@@ -270,7 +296,11 @@ class _GameScreenState extends State<GameScreen> {
                         ),
                       ),
                       _Count(
-                        label: widget.config.mode == MatchMode.vsAi ? '나' : '흰',
+                        label:
+                            widget.config.mode == MatchMode.vsAi ||
+                                widget.config.opponentName != null
+                            ? '나'
+                            : '흰',
                         n: _match.alive(0),
                         dark: false,
                       ),
@@ -288,7 +318,8 @@ class _GameScreenState extends State<GameScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   child: Text(
-                    '${widget.config.arena.chapter} · ${widget.config.arena.label}',
+                    widget.info?.call() ??
+                        '${widget.config.arena.chapter} · ${widget.config.arena.label}',
                     style: t.bodySmall,
                   ),
                 ),
