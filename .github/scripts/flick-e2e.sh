@@ -15,8 +15,19 @@ ok=0
 for i in 1 2 3; do T=180 a install -r "$1" && { ok=1; break; }; echo "설치 다시 ($i)"; sleep 5; done
 [ "$ok" = 1 ] || { echo "실패: 설치가 끝나지 않음"; exit 1; }
 a logcat -c
+# 원인 증거: 기기 기록을 끊길 때까지 파일로 받고, 실패하면 호스트 쪽(메모리 부족·에뮬레이터 프로세스)도 찍는다.
+LOGF="${RUNNER_TEMP:-/tmp}/logcat.txt"
+adb logcat -v time > "$LOGF" 2>&1 &
+evidence() {
+  echo "----- 기기 기록 마지막 120줄 -----"; tail -120 "$LOGF"
+  echo "----- 에뮬레이터 프로세스 -----"; ps aux | grep -E "qemu|emulator" | grep -v grep | head
+  echo "----- 호스트 메모리 -----"; free -m
+  echo "----- 호스트 커널 기록(메모리 부족·강제 종료) -----"; sudo dmesg 2>/dev/null | grep -iE "oom|killed process|qemu" | tail -20
+}
+trap 'st=$?; [ "$st" != 0 ] && evidence; exit $st' EXIT
 echo "[단계] 앱 켜기"
 a shell am start -n "$PKG/.MainActivity"
+a shell dumpsys meminfo | head -5
 
 disc() { a logcat -d -s flutter:I | grep -o 'disc cx=[0-9]* cy=[0-9]* r=[0-9]*' | tail -1; }
 # 에뮬레이터가 끊기면(첫 실행: 앱을 켜고 72초 뒤 「waiting for device」) 바로 실패로 끝낸다.
@@ -30,7 +41,7 @@ while [ "$SECONDS" -lt "$END" ]; do
 done
 sleep 3; D=$(disc) # 화면이 커지는 연출(0.38초) 동안 찍힌 자리가 아니라 다 커진 뒤 자리.
 if [ -z "$D" ]; then
-  echo "실패: 가까이 보기 화면이 뜨지 않음"; a logcat -d | grep -iE "flutter|AndroidRuntime" | tail -60; exit 1
+  echo "실패: 가까이 보기 화면이 뜨지 않음"; exit 1
 fi
 CX=$(echo "$D" | sed -E 's/.*cx=([0-9]+).*/\1/'); CY=$(echo "$D" | sed -E 's/.*cy=([0-9]+).*/\1/'); R=$(echo "$D" | sed -E 's/.*r=([0-9]+).*/\1/')
 echo "돌 자리(화소): 가운데 ($CX, $CY), 반지름 $R"
@@ -63,5 +74,5 @@ if [ "${#S[@]}" -ge 3 ]; then
   awk -v a="$A2" 'BEGIN{exit !(a < -100)}' || { echo "실패: 오른쪽 가장자리 → $A2° (−100° 보다 왼쪽이어야)"; fail=1; }
   echo "가운데 → $A1° · 오른쪽 가장자리(0.8R) → $A2° · 살살 → $(ang "${S[2]}")°"
 fi
-if [ "$fail" = 0 ]; then echo "통과"; else a logcat -d | grep -iE "AndroidRuntime|FATAL" | tail -30; fi
+if [ "$fail" = 0 ]; then echo "통과"; fi
 exit "$fail"
