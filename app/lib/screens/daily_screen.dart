@@ -17,8 +17,13 @@ class DailyScreen extends StatefulWidget {
   State<DailyScreen> createState() => _DailyScreenState();
 }
 
-class _DailyScreenState extends State<DailyScreen> with SingleTickerProviderStateMixin {
-  late final _tabs = TabController(length: 3, vsync: this, initialIndex: widget.tab);
+class _DailyScreenState extends State<DailyScreen>
+    with SingleTickerProviderStateMixin {
+  late final _tabs = TabController(
+    length: 3,
+    vsync: this,
+    initialIndex: widget.tab,
+  );
   final _store = ProfileStore.instance;
 
   /// 방금 받은 보상(위로 떠오르는 연출).
@@ -57,23 +62,41 @@ class _DailyScreenState extends State<DailyScreen> with SingleTickerProviderStat
                 indicatorColor: Palette.gold,
                 labelColor: Palette.gold,
                 unselectedLabelColor: Palette.dim,
-                labelStyle: const TextStyle(fontFamily: titleFont, fontSize: 18),
+                labelStyle: const TextStyle(
+                  fontFamily: titleFont,
+                  fontSize: 18,
+                ),
                 tabs: [
-                  Tab(icon: _badge('attendance', Attendance.canClaim(p, day)), text: '출석'),
-                  Tab(icon: _badge('mission', Missions.hasClaimable(p, day)), text: '임무'),
-                  Tab(icon: _badge('medal', Achievements.hasClaimable(p)), text: '업적'),
+                  Tab(
+                    icon: _badge('attendance', Attendance.canClaim(p, day)),
+                    text: '출석',
+                  ),
+                  Tab(
+                    icon: _badge('mission', Missions.hasClaimable(p, day)),
+                    text: '임무',
+                  ),
+                  Tab(
+                    icon: _badge('medal', Achievements.hasClaimable(p)),
+                    text: '업적',
+                  ),
                 ],
               ),
               Expanded(
                 child: TabBarView(
                   controller: _tabs,
-                  children: [_attendance(p, day), _missions(p, day), _achievements(p)],
+                  children: [
+                    _attendance(p, day),
+                    _missions(p, day),
+                    _achievements(p),
+                  ],
                 ),
               ),
             ],
           ),
           if (_flash case final r?)
-            Positioned.fill(child: IgnorePointer(child: _RewardBurst(reward: r))),
+            Positioned.fill(
+              child: IgnorePointer(child: _RewardBurst(reward: r)),
+            ),
         ],
       ),
     );
@@ -106,7 +129,9 @@ class _DailyScreenState extends State<DailyScreen> with SingleTickerProviderStat
                 day: i + 1,
                 reward: attendanceRewards[i],
                 // 이번 7일 묶음에서 이미 받은 칸.
-                taken: i < next || (!can && i == (next - 1) % attendanceRewards.length),
+                taken:
+                    i < next ||
+                    (!can && i == (next - 1) % attendanceRewards.length),
                 today: can && i == next,
                 big: i == attendanceRewards.length - 1,
               ),
@@ -122,7 +147,12 @@ class _DailyScreenState extends State<DailyScreen> with SingleTickerProviderStat
           onTap: can ? () => _got(Attendance.claim(p, day)) : null,
         ),
         const SizedBox(height: 8),
-        Center(child: Text('출석 ${p.attendCount}일', style: const TextStyle(color: Palette.dim))),
+        Center(
+          child: Text(
+            '출석 ${p.attendCount}일',
+            style: const TextStyle(color: Palette.dim),
+          ),
+        ),
       ],
     );
   }
@@ -149,8 +179,11 @@ class _DailyScreenState extends State<DailyScreen> with SingleTickerProviderStat
             children: [
               Image.asset(Art.icon('chest'), width: 56),
               const SizedBox(width: 10),
-              const Expanded(child: Text('셋 다 끝내면 덤!', style: TextStyle(fontSize: 18))),
-              for (final (ic, n) in missionBonus.items) _RewardChip(icon: ic, n: n),
+              const Expanded(
+                child: Text('셋 다 끝내면 덤!', style: TextStyle(fontSize: 18)),
+              ),
+              for (final (ic, n) in missionBonus.items)
+                _RewardChip(icon: ic, n: n),
               const SizedBox(width: 8),
               SizedBox(
                 width: 84,
@@ -159,7 +192,9 @@ class _DailyScreenState extends State<DailyScreen> with SingleTickerProviderStat
                   height: 44,
                   fontSize: 18,
                   color: Palette.red,
-                  onTap: allDone && !p.missionClaimed.contains(99) ? () => _got(Missions.claimBonus(p, day)) : null,
+                  onTap: allDone && !p.missionClaimed.contains(99)
+                      ? () => _got(Missions.claimBonus(p, day))
+                      : null,
                 ),
               ),
             ],
@@ -172,7 +207,9 @@ class _DailyScreenState extends State<DailyScreen> with SingleTickerProviderStat
   Widget _achievements(Profile p) => ListView(
     padding: const EdgeInsets.all(14),
     children: [
-      for (final a in [...achievements]..sort((x, y) => _rank(p, x) - _rank(p, y)))
+      for (final a in [
+        ...achievements,
+      ]..sort((x, y) => _rank(p, x) - _rank(p, y)))
         _TaskCard(
           icon: 'medal',
           title: a.title,
@@ -200,7 +237,13 @@ class _DailyScreenState extends State<DailyScreen> with SingleTickerProviderStat
 }
 
 class _DayCell extends StatelessWidget {
-  const _DayCell({required this.day, required this.reward, required this.taken, required this.today, required this.big});
+  const _DayCell({
+    required this.day,
+    required this.reward,
+    required this.taken,
+    required this.today,
+    required this.big,
+  });
   final int day;
   final Reward reward;
   final bool taken;
@@ -215,8 +258,18 @@ class _DayCell extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         color: today ? const Color(0xFF5A3A12) : Palette.panel,
-        border: Border.all(color: today ? Palette.gold : Colors.white24, width: today ? 3 : 1),
-        boxShadow: today ? [BoxShadow(color: Palette.gold.withValues(alpha: 0.5), blurRadius: 14)] : null,
+        border: Border.all(
+          color: today ? Palette.gold : Colors.white24,
+          width: today ? 3 : 1,
+        ),
+        boxShadow: today
+            ? [
+                BoxShadow(
+                  color: Palette.gold.withValues(alpha: 0.5),
+                  blurRadius: 14,
+                ),
+              ]
+            : null,
       ),
       child: Stack(
         children: [
@@ -224,17 +277,34 @@ class _DayCell extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text('$day일', style: const TextStyle(fontFamily: titleFont, fontSize: 14, color: Palette.dim)),
+                Text(
+                  '$day일',
+                  style: const TextStyle(
+                    fontFamily: titleFont,
+                    fontSize: 14,
+                    color: Palette.dim,
+                  ),
+                ),
                 Image.asset(Art.icon(big ? 'chest' : icon), width: 42),
-                Text('×$n', style: const TextStyle(fontFamily: titleFont, fontSize: 16)),
+                Text(
+                  '×$n',
+                  style: const TextStyle(fontFamily: titleFont, fontSize: 16),
+                ),
               ],
             ),
           ),
           if (taken)
             Positioned.fill(
               child: DecoratedBox(
-                decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(14)),
-                child: const Icon(Icons.check_circle, color: Palette.jade, size: 40),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.check_circle,
+                  color: Palette.jade,
+                  size: 40,
+                ),
               ),
             ),
         ],
@@ -276,7 +346,10 @@ class _TaskCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontFamily: titleFont, fontSize: 17)),
+                  Text(
+                    title,
+                    style: const TextStyle(fontFamily: titleFont, fontSize: 17),
+                  ),
                   const SizedBox(height: 5),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(6),
@@ -290,9 +363,16 @@ class _TaskCard extends StatelessWidget {
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      Text('${now.clamp(0, goal)} / $goal', style: const TextStyle(fontSize: 13, color: Palette.dim)),
+                      Text(
+                        '${now.clamp(0, goal)} / $goal',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Palette.dim,
+                        ),
+                      ),
                       const Spacer(),
-                      for (final (ic, n) in reward.items) _RewardChip(icon: ic, n: n),
+                      for (final (ic, n) in reward.items)
+                        _RewardChip(icon: ic, n: n),
                     ],
                   ),
                 ],
@@ -342,7 +422,9 @@ class _RewardBurst extends StatelessWidget {
     duration: const Duration(milliseconds: 1300),
     builder: (_, v, _) {
       final pop = Curves.elasticOut.transform((v / 0.5).clamp(0, 1));
-      final fly = v > 0.7 ? Curves.easeIn.transform(((v - 0.7) / 0.3).clamp(0.0, 1.0)) : 0.0;
+      final fly = v > 0.7
+          ? Curves.easeIn.transform(((v - 0.7) / 0.3).clamp(0.0, 1.0))
+          : 0.0;
       return Container(
         color: Colors.black.withValues(alpha: 0.5 * (1 - fly)),
         alignment: Alignment(0, -0.1 - fly * 1.1),
@@ -355,7 +437,12 @@ class _RewardBurst extends StatelessWidget {
               children: [
                 for (final (ic, n) in reward.items) ...[
                   Image.asset(Art.icon(ic), width: 84),
-                  OutlinedText('+$n', size: 40, title: true, color: Palette.gold),
+                  OutlinedText(
+                    '+$n',
+                    size: 40,
+                    title: true,
+                    color: Palette.gold,
+                  ),
                   const SizedBox(width: 12),
                 ],
               ],

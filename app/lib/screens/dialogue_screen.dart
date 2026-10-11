@@ -22,7 +22,12 @@ Color speakerColor(String who) => switch (who) {
 /// 대사 화면(설계서 §16.11): 말하는 사람이 그림으로 서서 말한다. 글자는 한 자씩 나온다.
 /// 누르면 다음 줄(글자가 다 안 나왔으면 먼저 다 보여 준다). 건너뛰기 가능.
 class DialogueScreen extends StatefulWidget {
-  const DialogueScreen({super.key, required this.title, required this.lines, this.scene = 'lobby'});
+  const DialogueScreen({
+    super.key,
+    required this.title,
+    required this.lines,
+    this.scene = 'lobby',
+  });
   final String title;
   final List<Line> lines;
 
@@ -33,7 +38,8 @@ class DialogueScreen extends StatefulWidget {
   State<DialogueScreen> createState() => _DialogueScreenState();
 }
 
-class _DialogueScreenState extends State<DialogueScreen> with SingleTickerProviderStateMixin {
+class _DialogueScreenState extends State<DialogueScreen>
+    with SingleTickerProviderStateMixin {
   int _i = 0;
   late final _type = AnimationController(vsync: this);
   final _strike = ValueNotifier<int>(0);
@@ -121,7 +127,12 @@ class _DialogueScreenState extends State<DialogueScreen> with SingleTickerProvid
                         offset: Offset((left ? -1 : 1) * 60 * (1 - k), 0),
                         child: Opacity(opacity: k.clamp(0, 1), child: child),
                       ),
-                      child: CharacterSprite(id: face, height: 360, attack: _strike, flip: !left),
+                      child: CharacterSprite(
+                        id: face,
+                        height: 360,
+                        attack: _strike,
+                        flip: !left,
+                      ),
                     ),
                   ),
                 Align(
@@ -133,10 +144,23 @@ class _DialogueScreenState extends State<DialogueScreen> with SingleTickerProvid
                       constraints: const BoxConstraints(minHeight: 150),
                       padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
                       decoration: BoxDecoration(
-                        color: narrator ? Colors.black.withValues(alpha: 0.7) : Palette.paper,
+                        color: narrator
+                            ? Colors.black.withValues(alpha: 0.7)
+                            : Palette.paper,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: narrator ? Palette.gold : const Color(0xFF2A1A12), width: 3),
-                        boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 12, offset: Offset(0, 6))],
+                        border: Border.all(
+                          color: narrator
+                              ? Palette.gold
+                              : const Color(0xFF2A1A12),
+                          width: 3,
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black54,
+                            blurRadius: 12,
+                            offset: Offset(0, 6),
+                          ),
+                        ],
                       ),
                       child: AnimatedBuilder(
                         animation: _type,
@@ -148,9 +172,22 @@ class _DialogueScreenState extends State<DialogueScreen> with SingleTickerProvid
                             children: [
                               if (!narrator)
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                                  decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(8)),
-                                  child: Text(who, style: const TextStyle(fontFamily: titleFont, fontSize: 16, color: Color(0xFF2A1A12))),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: c,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    who,
+                                    style: const TextStyle(
+                                      fontFamily: titleFont,
+                                      fontSize: 16,
+                                      color: Color(0xFF2A1A12),
+                                    ),
+                                  ),
                                 ),
                               if (!narrator) const SizedBox(height: 8),
                               Text(
@@ -159,7 +196,9 @@ class _DialogueScreenState extends State<DialogueScreen> with SingleTickerProvid
                                   fontFamily: bodyFont,
                                   fontSize: 21,
                                   height: 1.45,
-                                  color: narrator ? Palette.text : const Color(0xFF2A1A12),
+                                  color: narrator
+                                      ? Palette.text
+                                      : const Color(0xFF2A1A12),
                                 ),
                               ),
                               Align(
@@ -168,7 +207,11 @@ class _DialogueScreenState extends State<DialogueScreen> with SingleTickerProvid
                                   opacity: _type.isAnimating ? 0 : 1,
                                   child: Text(
                                     '${_i + 1}/${widget.lines.length} ▼',
-                                    style: TextStyle(color: narrator ? Palette.dim : const Color(0x992A1A12)),
+                                    style: TextStyle(
+                                      color: narrator
+                                          ? Palette.dim
+                                          : const Color(0x992A1A12),
+                                    ),
                                   ),
                                 ),
                               ),

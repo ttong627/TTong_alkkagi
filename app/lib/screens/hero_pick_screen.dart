@@ -53,7 +53,8 @@ class _HeroPickScreenState extends State<HeroPickScreen> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: !widget.fromTutorial && ProfileStore.instance.profile.hero != null,
+      canPop:
+          !widget.fromTutorial && ProfileStore.instance.profile.hero != null,
       child: Scaffold(
         body: SceneBackground(
           asset: Art.background('lobby'),
@@ -63,7 +64,12 @@ class _HeroPickScreenState extends State<HeroPickScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 16),
-                const OutlinedText('누구로 강호에 나설까?', size: 28, title: true, color: Palette.gold),
+                const OutlinedText(
+                  '누구로 강호에 나설까?',
+                  size: 28,
+                  title: true,
+                  color: Palette.gold,
+                ),
                 Expanded(
                   child: PageView.builder(
                     key: const Key('hero-pages'),
@@ -96,14 +102,22 @@ class _HeroPickScreenState extends State<HeroPickScreen> {
                               OutlinedText(h.label, size: 40, title: true),
                               const SizedBox(height: 8),
                               GlassPanel(
-                                padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  10,
+                                  16,
+                                  12,
+                                ),
                                 child: Column(
                                   children: [
                                     _Bar(icon: 'stats', value: pw),
                                     _Bar(icon: 'free', value: fi),
                                     _Bar(icon: 'naegong', value: fo),
                                     const SizedBox(height: 6),
-                                    Text(h.trait.split(' · ').last, style: const TextStyle(fontSize: 16)),
+                                    Text(
+                                      h.trait.split(' · ').last,
+                                      style: const TextStyle(fontSize: 16),
+                                    ),
                                   ],
                                 ),
                               ),

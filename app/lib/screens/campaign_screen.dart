@@ -35,7 +35,13 @@ class _CampaignScreenState extends State<CampaignScreen> {
     final nav = Navigator.of(context);
     if (!p.codex.contains('서장')) {
       await nav.push(
-        gameRoute<void>(const DialogueScreen(title: '서장 · 기명석', lines: prologue, scene: 'lobby')),
+        gameRoute<void>(
+          const DialogueScreen(
+            title: '서장 · 기명석',
+            lines: prologue,
+            scene: 'lobby',
+          ),
+        ),
       );
       p.codex.add('서장');
       await _store.save();
@@ -92,7 +98,9 @@ class _CampaignScreenState extends State<CampaignScreen> {
     );
     if (!won || !mounted) return;
     await nav.push(
-      gameRoute<void>(DialogueScreen(title: s.title, lines: s.outro, scene: s.arena.name)),
+      gameRoute<void>(
+        DialogueScreen(title: s.title, lines: s.outro, scene: s.arena.name),
+      ),
     );
     if (r.awaken && mounted) await _awaken();
     if (mounted) setState(() {});
@@ -185,7 +193,10 @@ class _CampaignScreenState extends State<CampaignScreen> {
             children: [
               Image.asset(Art.icon('star'), width: 26),
               const SizedBox(width: 4),
-              Text('${p.totalStars}', style: const TextStyle(fontFamily: titleFont, fontSize: 18)),
+              Text(
+                '${p.totalStars}',
+                style: const TextStyle(fontFamily: titleFont, fontSize: 18),
+              ),
             ],
           ),
         ),
@@ -265,17 +276,33 @@ class _StageCard extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: locked ? Colors.white24 : Palette.gold, width: 2),
-            boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 10, offset: Offset(0, 5))],
+            border: Border.all(
+              color: locked ? Colors.white24 : Palette.gold,
+              width: 2,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black54,
+                blurRadius: 10,
+                offset: Offset(0, 5),
+              ),
+            ],
           ),
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image.asset(Art.background(scene), fit: BoxFit.cover, alignment: const Alignment(0, 0.3)),
+              Image.asset(
+                Art.background(scene),
+                fit: BoxFit.cover,
+                alignment: const Alignment(0, 0.3),
+              ),
               DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Colors.black.withValues(alpha: locked ? 0.8 : 0.65), Colors.black.withValues(alpha: 0.1)],
+                    colors: [
+                      Colors.black.withValues(alpha: locked ? 0.8 : 0.65),
+                      Colors.black.withValues(alpha: 0.1),
+                    ],
                   ),
                 ),
               ),
@@ -284,7 +311,11 @@ class _StageCard extends StatelessWidget {
                   const SizedBox(width: 10),
                   Opacity(
                     opacity: locked ? 0.45 : 1,
-                    child: Portrait(id: face, size: 86, ring: locked ? Colors.white24 : Palette.gold),
+                    child: Portrait(
+                      id: face,
+                      size: 86,
+                      ring: locked ? Colors.white24 : Palette.gold,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -295,20 +326,31 @@ class _StageCard extends StatelessWidget {
                         FittedBox(
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
-                          child: OutlinedText(title, size: 20, title: true, align: TextAlign.start),
+                          child: OutlinedText(
+                            title,
+                            size: 20,
+                            title: true,
+                            align: TextAlign.start,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           sub,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 15, color: Palette.text),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: Palette.text,
+                          ),
                         ),
                         const SizedBox(height: 6),
                         Row(
                           children: [
                             for (var k = 0; k < 3; k++)
-                              Image.asset(Art.icon(k < stars ? 'star' : 'star_empty'), width: 24),
+                              Image.asset(
+                                Art.icon(k < stars ? 'star' : 'star_empty'),
+                                width: 24,
+                              ),
                           ],
                         ),
                       ],
@@ -319,8 +361,16 @@ class _StageCard extends StatelessWidget {
                     child: locked
                         ? Image.asset(Art.icon('lock'), width: 40)
                         : (done
-                              ? const Icon(Icons.check_circle, color: Palette.jade, size: 40)
-                              : const Icon(Icons.play_circle_fill, color: Palette.gold, size: 46)),
+                              ? const Icon(
+                                  Icons.check_circle,
+                                  color: Palette.jade,
+                                  size: 40,
+                                )
+                              : const Icon(
+                                  Icons.play_circle_fill,
+                                  color: Palette.gold,
+                                  size: 46,
+                                )),
                   ),
                 ],
               ),
@@ -351,7 +401,12 @@ Future<void> showRewardDialog(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            OutlinedText(title, size: 40, title: true, color: won ? Palette.gold : const Color(0xFFB0B8C8)),
+            OutlinedText(
+              title,
+              size: 40,
+              title: true,
+              color: won ? Palette.gold : const Color(0xFFB0B8C8),
+            ),
             const SizedBox(height: 12),
             for (final (icon, text) in items)
               Padding(
@@ -361,22 +416,41 @@ Future<void> showRewardDialog(
                   children: [
                     Image.asset(Art.icon(icon), width: 40),
                     const SizedBox(width: 8),
-                    Text(text, style: const TextStyle(fontFamily: titleFont, fontSize: 22)),
+                    Text(
+                      text,
+                      style: const TextStyle(
+                        fontFamily: titleFont,
+                        fontSize: 22,
+                      ),
+                    ),
                   ],
                 ),
               ),
             if (newHero != null) ...[
               const SizedBox(height: 8),
               CharacterSprite(id: newHero.name, height: 180),
-              OutlinedText('새 동료: ${newHero.label}', size: 22, color: Palette.gold),
+              OutlinedText(
+                '새 동료: ${newHero.label}',
+                size: 22,
+                color: Palette.gold,
+              ),
               Text(newHero.trait, textAlign: TextAlign.center),
             ],
             if (note != null) ...[
               const SizedBox(height: 8),
-              Text(note, textAlign: TextAlign.center, style: const TextStyle(fontSize: 17)),
+              Text(
+                note,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 17),
+              ),
             ],
             const SizedBox(height: 16),
-            GameButton(label: '확인', color: Palette.red, onTap: () => Navigator.pop(c), width: 180),
+            GameButton(
+              label: '확인',
+              color: Palette.red,
+              onTap: () => Navigator.pop(c),
+              width: 180,
+            ),
           ],
         ),
       ),

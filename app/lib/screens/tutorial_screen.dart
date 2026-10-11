@@ -48,7 +48,11 @@ const lessons = [
       mode: MatchMode.practice,
       arena: Arena.dustyYard,
       // 표적을 판 끝 가까이(측정: 곧게 ±10° 친 수의 23%가 한 번에 둘 다 · 2026-10-11).
-      layout: [Placement(0, 0, team: 0), Placement(-1.15, -18), Placement(1.15, -18)],
+      layout: [
+        Placement(0, 0, team: 0),
+        Placement(-1.15, -18),
+        Placement(1.15, -18),
+      ],
       shotLimit: 3,
     ),
   ),
@@ -112,7 +116,8 @@ class _TutorialScreenState extends State<TutorialScreen> {
       var won = false;
       // 입문 판은 이길 때까지(GameScreen coach 가 지면 저절로 다시 둔다).
       while (!won && mounted) {
-        won = await nav.push<bool>(
+        won =
+            await nav.push<bool>(
               gameRoute(
                 GameScreen(
                   key: ValueKey('lesson-$i'),
@@ -158,7 +163,12 @@ class _TutorialScreenState extends State<TutorialScreen> {
               child: Column(
                 children: [
                   const SizedBox(height: 18),
-                  const OutlinedText('입문 수련', size: 34, title: true, color: Palette.gold),
+                  const OutlinedText(
+                    '입문 수련',
+                    size: 34,
+                    title: true,
+                    color: Palette.gold,
+                  ),
                   const SizedBox(height: 6),
                   // 진행: 수련 넷 중 몇 개.
                   Row(
@@ -167,7 +177,10 @@ class _TutorialScreenState extends State<TutorialScreen> {
                       for (var i = 0; i < lessons.length; i++)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Image.asset(Art.icon(i < _done ? 'star' : 'star_empty'), width: 34),
+                          child: Image.asset(
+                            Art.icon(i < _done ? 'star' : 'star_empty'),
+                            width: 34,
+                          ),
                         ),
                     ],
                   ),
@@ -183,15 +196,29 @@ class _TutorialScreenState extends State<TutorialScreen> {
                       decoration: BoxDecoration(
                         color: Palette.paper,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFF2A1A12), width: 3),
+                        border: Border.all(
+                          color: const Color(0xFF2A1A12),
+                          width: 3,
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('사부', style: TextStyle(fontFamily: titleFont, fontSize: 16, color: Palette.redDeep)),
+                          const Text(
+                            '사부',
+                            style: TextStyle(
+                              fontFamily: titleFont,
+                              fontSize: 16,
+                              color: Palette.redDeep,
+                            ),
+                          ),
                           Text(
                             busy ? '좋다. 다음 수련이다!' : _intro[_line],
-                            style: const TextStyle(fontFamily: bodyFont, fontSize: 22, color: Color(0xFF2A1A12)),
+                            style: const TextStyle(
+                              fontFamily: bodyFont,
+                              fontSize: 22,
+                              color: Color(0xFF2A1A12),
+                            ),
                           ),
                         ],
                       ),
@@ -207,7 +234,12 @@ class _TutorialScreenState extends State<TutorialScreen> {
                               width: 140,
                               height: 100,
                               child: Ghost(
-                                builder: (t) => GhostTapPainter(at: const Offset(60, 36), t: t, size: 60, ring: 26),
+                                builder: (t) => GhostTapPainter(
+                                  at: const Offset(60, 36),
+                                  t: t,
+                                  size: 60,
+                                  ring: 26,
+                                ),
                               ),
                             ),
                           ),

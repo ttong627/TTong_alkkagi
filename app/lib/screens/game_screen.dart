@@ -139,13 +139,17 @@ class _GameScreenState extends State<GameScreen> {
   bool get _aiTurn => widget.config.mode == MatchMode.vsAi && _match.turn == 1;
 
   bool get _showIntro =>
-      !widget.coach && !widget.config.training && e2eDemoMode.isEmpty && !e2eFlick;
+      !widget.coach &&
+      !widget.config.training &&
+      e2eDemoMode.isEmpty &&
+      !e2eFlick;
 
   @override
   void initState() {
     super.initState();
     // 숙적(묵현)·폐관 고수와는 긴박한 고수전 곡, 나머지는 대전장 곡.
-    final rival = widget.config.opponentName == '묵현' ||
+    final rival =
+        widget.config.opponentName == '묵현' ||
         (widget.config.opponentName?.startsWith('폐관') ?? false);
     if (rival) {
       Sound.track('bgm_boss');
@@ -252,7 +256,11 @@ class _GameScreenState extends State<GameScreen> {
       }
       if (_match.lastKnocked >= 2) _say(_match.lastShooter == 0 ? 2 : 4);
       if (widget.coach && _match.lastShooter == 0 && _match.lastKnocked > 0) {
-        _show(_match.lastKnocked >= 2 ? '일타쌍피! 훌륭하다!' : '좋다! 바로 그거다!', 'sabu', 1600);
+        _show(
+          _match.lastKnocked >= 2 ? '일타쌍피! 훌륭하다!' : '좋다! 바로 그거다!',
+          'sabu',
+          1600,
+        );
       }
     }
     _wasMoving = _match.isMoving;
@@ -282,7 +290,11 @@ class _GameScreenState extends State<GameScreen> {
         !_match.isOver) {
       setState(() => _selected = _e2eStone());
     }
-    if (_aiTurn && !_match.isMoving && !_aiThinking && !_match.isOver && !_intro) {
+    if (_aiTurn &&
+        !_match.isMoving &&
+        !_aiThinking &&
+        !_match.isOver &&
+        !_intro) {
       unawaited(_playAi());
     }
   }
@@ -331,7 +343,8 @@ class _GameScreenState extends State<GameScreen> {
     for (final o in _match.table.stones) {
       if (o.out || o.team == s.team) continue;
       if (best == null ||
-          (o.position - s.position).length < (best.position - s.position).length) {
+          (o.position - s.position).length <
+              (best.position - s.position).length) {
         best = o;
       }
     }
@@ -387,7 +400,9 @@ class _GameScreenState extends State<GameScreen> {
       title = '비김';
     } else if (widget.config.mode == MatchMode.twoPlayer) {
       title = _match.winner == 0 ? '흰 돌 승리' : '검은 돌 승리';
-    } else if (widget.config.mode == MatchMode.practice && widget.title == null && !widget.coach) {
+    } else if (widget.config.mode == MatchMode.practice &&
+        widget.title == null &&
+        !widget.coach) {
       title = '연습 끝';
     } else {
       title = won ? '승리!' : '패배';
@@ -437,7 +452,12 @@ class _GameScreenState extends State<GameScreen> {
 
   /// 입문: 아직 돌을 안 골랐으면 눌러야 할 내 돌 위에 톡톡 손.
   phys.Stone? get _tapHint {
-    if (!widget.coach || _selected != null || _match.isMoving || _match.isOver) return null;
+    if (!widget.coach ||
+        _selected != null ||
+        _match.isMoving ||
+        _match.isOver) {
+      return null;
+    }
     for (final s in _match.table.stones) {
       if (_match.canShoot(s)) return s;
     }
@@ -450,7 +470,13 @@ class _GameScreenState extends State<GameScreen> {
     final vsAi = widget.config.mode == MatchMode.vsAi;
     final foeName =
         widget.config.opponentName ??
-        (widget.coach ? '사부' : (vsAi ? '상대' : (widget.config.mode == MatchMode.twoPlayer ? '검은 돌' : '표적')));
+        (widget.coach
+            ? '사부'
+            : (vsAi
+                  ? '상대'
+                  : (widget.config.mode == MatchMode.twoPlayer
+                        ? '검은 돌'
+                        : '표적')));
     final hint = _tapHint;
     return PopScope(
       canPop: !widget.coach,
@@ -501,7 +527,12 @@ class _GameScreenState extends State<GameScreen> {
                         Expanded(
                           child: _Fighter(
                             id: _myId,
-                            name: vsAi || widget.config.opponentName != null || widget.coach ? '나' : '흰 돌',
+                            name:
+                                vsAi ||
+                                    widget.config.opponentName != null ||
+                                    widget.coach
+                                ? '나'
+                                : '흰 돌',
                             left: _match.alive(0),
                             dark: false,
                             active: _match.turn == 0 && !_match.isOver,
@@ -515,7 +546,11 @@ class _GameScreenState extends State<GameScreen> {
                   if (widget.title != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
-                      child: OutlinedText(widget.title!, size: 16, color: Palette.gold),
+                      child: OutlinedText(
+                        widget.title!,
+                        size: 16,
+                        color: Palette.gold,
+                      ),
                     ),
                   Expanded(
                     child: Stack(
@@ -525,7 +560,10 @@ class _GameScreenState extends State<GameScreen> {
                           Positioned.fill(
                             child: Ghost(
                               builder: (tt) => GhostTapPainter(
-                                at: _game.screenOf(hint.position.x, hint.position.y),
+                                at: _game.screenOf(
+                                  hint.position.x,
+                                  hint.position.y,
+                                ),
                                 t: tt,
                                 size: 70,
                                 ring: _game.stoneRadiusPx * 1.6,
@@ -545,7 +583,9 @@ class _GameScreenState extends State<GameScreen> {
                           children: [
                             for (var i = 0; i < maxQi; i++)
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 3),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 3,
+                                ),
                                 child: _QiOrb(full: i < _match.qi(0)),
                               ),
                           ],
@@ -587,7 +627,9 @@ class _GameScreenState extends State<GameScreen> {
                         stone: _selected!,
                         onShot: _shoot,
                         onCancel: () => setState(() => _selected = null),
-                        demo: widget.coach || _store.profile.lifetime[Deed.play] == null,
+                        demo:
+                            widget.coach ||
+                            _store.profile.lifetime[Deed.play] == null,
                         demoAngle: _demoAngle,
                       ),
               ),
@@ -651,7 +693,9 @@ class _GameScreenState extends State<GameScreen> {
                   stars: r.stars,
                   coins: r.coins,
                   character: r.won ? _myId : _foeId,
-                  onAgain: widget.title == null && !widget.coach ? _restart : null,
+                  onAgain: widget.title == null && !widget.coach
+                      ? _restart
+                      : null,
                   onDone: _leave,
                 ),
               ),
@@ -689,7 +733,10 @@ class _RoundIcon extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: Colors.black54,
-        border: Border.all(color: Palette.gold.withValues(alpha: 0.6), width: 1.5),
+        border: Border.all(
+          color: Palette.gold.withValues(alpha: 0.6),
+          width: 1.5,
+        ),
       ),
       child: Icon(icon, color: Palette.text),
     ),
@@ -735,36 +782,42 @@ class _Fighter extends StatelessWidget {
       ),
     );
     final info = Column(
-      crossAxisAlignment: mirror ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: mirror
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        OutlinedText(name, size: 15, color: active ? Palette.gold : Colors.white),
+        OutlinedText(
+          name,
+          size: 15,
+          color: active ? Palette.gold : Colors.white,
+        ),
         const SizedBox(height: 3),
         // 돌이 많으면 칸에 맞춰 작게.
         FittedBox(
           fit: BoxFit.scaleDown,
           child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var i = 0; i < left; i++)
-              Padding(
-                padding: const EdgeInsets.only(right: 2),
-                child: Container(
-                  width: 11,
-                  height: 11,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      center: const Alignment(-0.4, -0.4),
-                      colors: dark
-                          ? const [Color(0xFF6A6A74), Color(0xFF15151A)]
-                          : const [Colors.white, Color(0xFFC9C2B2)],
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < left; i++)
+                Padding(
+                  padding: const EdgeInsets.only(right: 2),
+                  child: Container(
+                    width: 11,
+                    height: 11,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        center: const Alignment(-0.4, -0.4),
+                        colors: dark
+                            ? const [Color(0xFF6A6A74), Color(0xFF15151A)]
+                            : const [Colors.white, Color(0xFFC9C2B2)],
+                      ),
+                      border: Border.all(color: Colors.black54),
                     ),
-                    border: Border.all(color: Colors.black54),
                   ),
                 ),
-              ),
-          ],
+            ],
           ),
         ),
       ],
@@ -775,11 +828,23 @@ class _Fighter extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
         color: Colors.black.withValues(alpha: active ? 0.55 : 0.35),
-        border: Border.all(color: active ? Palette.gold : Colors.white12, width: active ? 2 : 1),
-        boxShadow: active ? [BoxShadow(color: Palette.gold.withValues(alpha: 0.35), blurRadius: 12)] : null,
+        border: Border.all(
+          color: active ? Palette.gold : Colors.white12,
+          width: active ? 2 : 1,
+        ),
+        boxShadow: active
+            ? [
+                BoxShadow(
+                  color: Palette.gold.withValues(alpha: 0.35),
+                  blurRadius: 12,
+                ),
+              ]
+            : null,
       ),
       child: Row(
-        mainAxisAlignment: mirror ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: mirror
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: mirror
             ? [Flexible(child: info), const SizedBox(width: 6), face]
             : [face, const SizedBox(width: 6), Flexible(child: info)],
@@ -802,17 +867,34 @@ class _QiOrb extends StatelessWidget {
       shape: BoxShape.circle,
       gradient: RadialGradient(
         center: const Alignment(-0.35, -0.35),
-        colors: full ? [Colors.white, innerColor] : const [Color(0xFF4A4050), Color(0xFF1E1822)],
+        colors: full
+            ? [Colors.white, innerColor]
+            : const [Color(0xFF4A4050), Color(0xFF1E1822)],
       ),
-      border: Border.all(color: full ? Colors.white : Colors.white24, width: 1.5),
-      boxShadow: full ? [BoxShadow(color: innerColor.withValues(alpha: 0.8), blurRadius: 10)] : null,
+      border: Border.all(
+        color: full ? Colors.white : Colors.white24,
+        width: 1.5,
+      ),
+      boxShadow: full
+          ? [
+              BoxShadow(
+                color: innerColor.withValues(alpha: 0.8),
+                blurRadius: 10,
+              ),
+            ]
+          : null,
     ),
   );
 }
 
 /// 말풍선: 얼굴 + 이름 + 한마디.
 class _SpeechBubble extends StatelessWidget {
-  const _SpeechBubble({super.key, required this.by, required this.name, required this.text});
+  const _SpeechBubble({
+    super.key,
+    required this.by,
+    required this.name,
+    required this.text,
+  });
   final String? by;
   final String name;
   final String text;
@@ -822,7 +904,10 @@ class _SpeechBubble extends StatelessWidget {
     tween: Tween(begin: 0, end: 1),
     duration: const Duration(milliseconds: 260),
     curve: Curves.easeOutBack,
-    builder: (_, k, child) => Transform.scale(scale: 0.8 + 0.2 * k, child: Opacity(opacity: k.clamp(0, 1), child: child)),
+    builder: (_, k, child) => Transform.scale(
+      scale: 0.8 + 0.2 * k,
+      child: Opacity(opacity: k.clamp(0, 1), child: child),
+    ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -835,14 +920,34 @@ class _SpeechBubble extends StatelessWidget {
               color: Palette.paper,
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: const Color(0xFF2A1A12), width: 2.5),
-              boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 8, offset: Offset(0, 4))],
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black54,
+                  blurRadius: 8,
+                  offset: Offset(0, 4),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(name, style: const TextStyle(fontFamily: titleFont, fontSize: 14, color: Palette.redDeep)),
-                Text(text, style: const TextStyle(fontFamily: bodyFont, fontSize: 19, color: Color(0xFF2A1A12))),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontFamily: titleFont,
+                    fontSize: 14,
+                    color: Palette.redDeep,
+                  ),
+                ),
+                Text(
+                  text,
+                  style: const TextStyle(
+                    fontFamily: bodyFont,
+                    fontSize: 19,
+                    color: Color(0xFF2A1A12),
+                  ),
+                ),
               ],
             ),
           ),
@@ -854,7 +959,13 @@ class _SpeechBubble extends StatelessWidget {
 
 /// 판 시작: 두 사람이 양쪽에서 미끄러져 들어오고 가운데 「VS」.
 class VersusIntro extends StatefulWidget {
-  const VersusIntro({super.key, required this.me, required this.foe, required this.foeName, required this.title});
+  const VersusIntro({
+    super.key,
+    required this.me,
+    required this.foe,
+    required this.foeName,
+    required this.title,
+  });
   final String me;
   final String? foe;
   final String foeName;
@@ -864,8 +975,12 @@ class VersusIntro extends StatefulWidget {
   State<VersusIntro> createState() => _VersusIntroState();
 }
 
-class _VersusIntroState extends State<VersusIntro> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..forward();
+class _VersusIntroState extends State<VersusIntro>
+    with SingleTickerProviderStateMixin {
+  late final _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1500),
+  )..forward();
 
   @override
   void dispose() {
@@ -894,19 +1009,36 @@ class _VersusIntroState extends State<VersusIntro> with SingleTickerProviderStat
                   Positioned(
                     top: 90,
                     left: -w * 0.6 * (1 - inK),
-                    child: CharacterSprite(id: widget.foe ?? 'jagaek', height: 230),
+                    child: CharacterSprite(
+                      id: widget.foe ?? 'jagaek',
+                      height: 230,
+                    ),
                   ),
                   Positioned(
                     bottom: 90,
                     right: -w * 0.6 * (1 - inK),
-                    child: CharacterSprite(id: widget.me, height: 230, flip: true),
+                    child: CharacterSprite(
+                      id: widget.me,
+                      height: 230,
+                      flip: true,
+                    ),
                   ),
                   Transform.scale(
-                    scale: 0.5 + 0.5 * Curves.elasticOut.transform(((v - 0.2) / 0.5).clamp(0, 1)),
+                    scale:
+                        0.5 +
+                        0.5 *
+                            Curves.elasticOut.transform(
+                              ((v - 0.2) / 0.5).clamp(0, 1),
+                            ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const OutlinedText('VS', size: 76, title: true, color: Palette.gold),
+                        const OutlinedText(
+                          'VS',
+                          size: 76,
+                          title: true,
+                          color: Palette.gold,
+                        ),
                         OutlinedText(widget.title, size: 20),
                       ],
                     ),
@@ -923,7 +1055,11 @@ class _VersusIntroState extends State<VersusIntro> with SingleTickerProviderStat
 
 /// 일시정지: 계속 · 다시 · 소리 · 나가기.
 class _PauseMenu extends StatefulWidget {
-  const _PauseMenu({required this.onResume, required this.onRestart, required this.onQuit});
+  const _PauseMenu({
+    required this.onResume,
+    required this.onRestart,
+    required this.onQuit,
+  });
   final VoidCallback onResume;
   final VoidCallback onRestart;
   final VoidCallback onQuit;
@@ -947,11 +1083,25 @@ class _PauseMenuState extends State<_PauseMenu> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const OutlinedText('잠시 멈춤', size: 30, title: true, color: Palette.gold),
+                const OutlinedText(
+                  '잠시 멈춤',
+                  size: 30,
+                  title: true,
+                  color: Palette.gold,
+                ),
                 const SizedBox(height: 16),
-                GameButton(key: const Key('resume'), label: '계속', color: Palette.jade, onTap: widget.onResume),
+                GameButton(
+                  key: const Key('resume'),
+                  label: '계속',
+                  color: Palette.jade,
+                  onTap: widget.onResume,
+                ),
                 const SizedBox(height: 10),
-                GameButton(label: '처음부터', color: Palette.sky, onTap: widget.onRestart),
+                GameButton(
+                  label: '처음부터',
+                  color: Palette.sky,
+                  onTap: widget.onRestart,
+                ),
                 const SizedBox(height: 14),
                 Row(
                   children: [
@@ -978,7 +1128,13 @@ class _PauseMenuState extends State<_PauseMenu> {
                   ],
                 ),
                 const SizedBox(height: 6),
-                GameButton(label: '나가기', color: Palette.red, onTap: widget.onQuit, height: 52, fontSize: 20),
+                GameButton(
+                  label: '나가기',
+                  color: Palette.red,
+                  onTap: widget.onQuit,
+                  height: 52,
+                  fontSize: 20,
+                ),
               ],
             ),
           ),
@@ -1012,8 +1168,12 @@ class ResultOverlay extends StatefulWidget {
   State<ResultOverlay> createState() => _ResultOverlayState();
 }
 
-class _ResultOverlayState extends State<ResultOverlay> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..forward();
+class _ResultOverlayState extends State<ResultOverlay>
+    with SingleTickerProviderStateMixin {
+  late final _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  )..forward();
   final _attack = ValueNotifier<int>(0);
   int _rang = 0;
 
@@ -1029,7 +1189,12 @@ class _ResultOverlayState extends State<ResultOverlay> with SingleTickerProvider
         Buzz.tick();
       }
     });
-    if (widget.won) Future<void>.delayed(const Duration(milliseconds: 300), () => _attack.value++);
+    if (widget.won) {
+      Future<void>.delayed(
+        const Duration(milliseconds: 300),
+        () => _attack.value++,
+      );
+    }
   }
 
   @override
@@ -1055,14 +1220,20 @@ class _ResultOverlayState extends State<ResultOverlay> with SingleTickerProvider
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (widget.character != null)
-                    CharacterSprite(id: widget.character!, height: 200, attack: _attack),
+                    CharacterSprite(
+                      id: widget.character!,
+                      height: 200,
+                      attack: _attack,
+                    ),
                   Transform.scale(
                     scale: 0.4 + 0.6 * pop,
                     child: OutlinedText(
                       widget.title,
                       size: 54,
                       title: true,
-                      color: widget.won ? Palette.gold : const Color(0xFFB0B8C8),
+                      color: widget.won
+                          ? Palette.gold
+                          : const Color(0xFFB0B8C8),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -1073,12 +1244,22 @@ class _ResultOverlayState extends State<ResultOverlay> with SingleTickerProvider
                         for (var i = 0; i < 3; i++)
                           Builder(
                             builder: (_) {
-                              final k = ((v - 0.35 - i * 0.15) / 0.15).clamp(0.0, 1.0);
+                              final k = ((v - 0.35 - i * 0.15) / 0.15).clamp(
+                                0.0,
+                                1.0,
+                              );
                               final on = i < widget.stars && k > 0;
                               return Transform.translate(
                                 offset: Offset(0, i == 1 ? -12 : 0),
                                 child: Transform.scale(
-                                  scale: on ? 0.6 + 0.4 * Curves.easeOutBack.transform(k) * 1.0 : 0.85,
+                                  scale: on
+                                      ? 0.6 +
+                                            0.4 *
+                                                Curves.easeOutBack.transform(
+                                                  k,
+                                                ) *
+                                                1.0
+                                      : 0.85,
                                   child: Image.asset(
                                     Art.icon(on ? 'star' : 'star_empty'),
                                     width: i == 1 ? 74 : 60,
@@ -1097,7 +1278,11 @@ class _ResultOverlayState extends State<ResultOverlay> with SingleTickerProvider
                       children: [
                         Image.asset(Art.icon('coin'), width: 32),
                         const SizedBox(width: 6),
-                        OutlinedText('+${widget.coins} 일타쌍피', size: 20, color: Palette.gold),
+                        OutlinedText(
+                          '+${widget.coins} 일타쌍피',
+                          size: 20,
+                          color: Palette.gold,
+                        ),
                       ],
                     ),
                   ],
@@ -1110,7 +1295,12 @@ class _ResultOverlayState extends State<ResultOverlay> with SingleTickerProvider
                         children: [
                           if (widget.onAgain != null) ...[
                             Expanded(
-                              child: GameButton(label: '한 판 더', color: Palette.sky, onTap: widget.onAgain, fontSize: 20),
+                              child: GameButton(
+                                label: '한 판 더',
+                                color: Palette.sky,
+                                onTap: widget.onAgain,
+                                fontSize: 20,
+                              ),
                             ),
                             const SizedBox(width: 10),
                           ],

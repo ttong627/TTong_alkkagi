@@ -6,7 +6,14 @@ import 'package:flutter/material.dart';
 /// 반투명 흰 손이 검지를 세워 돌을 튕기거나, 눌러야 할 곳을 톡톡 누른다.
 
 /// 손끝이 [tip], 검지가 [angle](라디안, 손끝이 향하는 쪽) 방향인 손 하나를 그린다. [s] 는 손 길이(화소).
-void paintHand(Canvas c, Offset tip, double angle, double s, double alpha, {bool pressed = false}) {
+void paintHand(
+  Canvas c,
+  Offset tip,
+  double angle,
+  double s,
+  double alpha, {
+  bool pressed = false,
+}) {
   if (alpha <= 0) return;
   c.save();
   c.translate(tip.dx, tip.dy);
@@ -23,9 +30,18 @@ void paintHand(Canvas c, Offset tip, double angle, double s, double alpha, {bool
   final shadow = Paint()
     ..color = Colors.black.withValues(alpha: 0.25 * alpha)
     ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.04);
-  final finger = RRect.fromRectAndRadius(const Rect.fromLTWH(-0.11, 0, 0.22, 0.62), const Radius.circular(0.11));
-  final palm = RRect.fromRectAndRadius(const Rect.fromLTWH(-0.2, 0.42, 0.56, 0.52), const Radius.circular(0.16));
-  final thumb = RRect.fromRectAndRadius(const Rect.fromLTWH(-0.36, 0.5, 0.26, 0.17), const Radius.circular(0.085));
+  final finger = RRect.fromRectAndRadius(
+    const Rect.fromLTWH(-0.11, 0, 0.22, 0.62),
+    const Radius.circular(0.11),
+  );
+  final palm = RRect.fromRectAndRadius(
+    const Rect.fromLTWH(-0.2, 0.42, 0.56, 0.52),
+    const Radius.circular(0.16),
+  );
+  final thumb = RRect.fromRectAndRadius(
+    const Rect.fromLTWH(-0.36, 0.5, 0.26, 0.17),
+    const Radius.circular(0.085),
+  );
   for (final r in [palm, thumb, finger]) {
     c.drawRRect(r.shift(const Offset(0.03, 0.04)), shadow);
   }
@@ -35,7 +51,10 @@ void paintHand(Canvas c, Offset tip, double angle, double s, double alpha, {bool
   }
   // 굽힌 손가락 마디 셋.
   for (var i = 0; i < 3; i++) {
-    final k = RRect.fromRectAndRadius(Rect.fromLTWH(0.1 + i * 0.0, 0.46 + i * 0.13, 0.28, 0.14), const Radius.circular(0.07));
+    final k = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0.1 + i * 0.0, 0.46 + i * 0.13, 0.28, 0.14),
+      const Radius.circular(0.07),
+    );
     c.drawRRect(k, fill);
     c.drawRRect(k, line);
   }
@@ -43,7 +62,10 @@ void paintHand(Canvas c, Offset tip, double angle, double s, double alpha, {bool
   c.drawRRect(finger, line);
   // 손톱.
   c.drawRRect(
-    RRect.fromRectAndRadius(const Rect.fromLTWH(-0.06, 0.04, 0.12, 0.1), const Radius.circular(0.05)),
+    RRect.fromRectAndRadius(
+      const Rect.fromLTWH(-0.06, 0.04, 0.12, 0.1),
+      const Radius.circular(0.05),
+    ),
     Paint()..color = const Color(0xFFFFD6CC).withValues(alpha: alpha),
   );
   c.restore();
@@ -51,7 +73,12 @@ void paintHand(Canvas c, Offset tip, double angle, double s, double alpha, {bool
 
 /// 돌을 튕기는 시범: [from] 에서 [to] 로 손끝이 빠르게 지나간다. [t] 는 초(계속 흐름).
 class GhostFlickPainter extends CustomPainter {
-  GhostFlickPainter({required this.from, required this.to, required this.t, this.size = 90});
+  GhostFlickPainter({
+    required this.from,
+    required this.to,
+    required this.t,
+    this.size = 90,
+  });
   final Offset from;
   final Offset to;
   final double t;
@@ -88,7 +115,10 @@ class GhostFlickPainter extends CustomPainter {
         tip,
         Paint()
           ..shader = LinearGradient(
-            colors: [Colors.white.withValues(alpha: 0), const Color(0xFFFFE08A).withValues(alpha: 0.9 * alpha)],
+            colors: [
+              Colors.white.withValues(alpha: 0),
+              const Color(0xFFFFE08A).withValues(alpha: 0.9 * alpha),
+            ],
           ).createShader(Rect.fromPoints(a, tip))
           ..strokeWidth = size * 0.16
           ..strokeCap = StrokeCap.round,
@@ -103,7 +133,12 @@ class GhostFlickPainter extends CustomPainter {
 
 /// 여기를 누르세요: 퍼지는 고리 + 톡톡 누르는 손.
 class GhostTapPainter extends CustomPainter {
-  GhostTapPainter({required this.at, required this.t, this.size = 80, this.ring = 34});
+  GhostTapPainter({
+    required this.at,
+    required this.t,
+    this.size = 80,
+    this.ring = 34,
+  });
   final Offset at;
   final double t;
   final double size;
@@ -125,7 +160,8 @@ class GhostTapPainter extends CustomPainter {
     }
     final press = u < 0.25 ? math.sin(u / 0.25 * math.pi) : 0.0;
     // 손은 오른쪽 아래에서 비스듬히 누른다.
-    final tip = at + Offset(4, 6 + press * -2) + Offset(1, 1) * (1 - press) * 10;
+    final tip =
+        at + Offset(4, 6 + press * -2) + Offset(1, 1) * (1 - press) * 10;
     paintHand(canvas, tip, -math.pi / 2 - 0.45, size, 1, pressed: press > 0.5);
   }
 
@@ -143,7 +179,10 @@ class Ghost extends StatefulWidget {
 }
 
 class _GhostState extends State<Ghost> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
+  late final _c = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 1),
+  )..repeat();
   final _start = DateTime.now();
 
   @override
@@ -158,7 +197,9 @@ class _GhostState extends State<Ghost> with SingleTickerProviderStateMixin {
       animation: _c,
       builder: (_, _) => CustomPaint(
         key: const Key('ghost-hand'),
-        painter: widget.builder(DateTime.now().difference(_start).inMilliseconds / 1000),
+        painter: widget.builder(
+          DateTime.now().difference(_start).inMilliseconds / 1000,
+        ),
       ),
     ),
   );

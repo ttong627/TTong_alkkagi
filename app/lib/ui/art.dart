@@ -37,16 +37,36 @@ abstract final class Art {
 
   /// 그림이 있는 캐릭터 이름 전부(시험에서 파일이 다 있는지 본다).
   static const characterIds = [
-    'seokdu', 'yeonbi', 'cheongmyeong', 'banDal', 'gurumi', 'jeonggak', 'yonga', //
+    'seokdu',
+    'yeonbi',
+    'cheongmyeong',
+    'banDal',
+    'gurumi',
+    'jeonggak',
+    'yonga', //
     'seolhwa', 'chwiseon', 'mukgaek', 'magyo', 'geomhwang', 'sinseung',
-    'chonjang', 'tongtong', 'mukhyeon', 'jagaek', 'kubi', 'logic', 'maengju', 'sabu',
+    'chonjang',
+    'tongtong',
+    'mukhyeon',
+    'jagaek',
+    'kubi',
+    'logic',
+    'maengju',
+    'sabu',
   ];
 
   static const iconNames = [
     'coin', 'silver', 'token', 'stamina', 'naegong', 'tp', 'dan', 'campaign', //
     'training', 'puzzle', 'arena', 'wander', 'legend', 'shop', 'stats', 'codex',
     'depot', 'odds', 'free', 'rebirth', 'settings', 'look', 'mission',
-    'attendance', 'medal', 'lock', 'star', 'star_empty', 'chest', 'mail', 'rank',
+    'attendance',
+    'medal',
+    'lock',
+    'star',
+    'star_empty',
+    'chest',
+    'mail',
+    'rank',
   ];
 
   // ── 대전장(Flame)이 캔버스에 바로 그릴 그림: 미리 읽어 둔다.

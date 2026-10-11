@@ -449,7 +449,9 @@ class Profile {
     'attendDay': attendDay,
     'attendCount': attendCount,
     'missionDay': missionDay,
-    'missionCounts': {for (final e in missionCounts.entries) e.key.name: e.value},
+    'missionCounts': {
+      for (final e in missionCounts.entries) e.key.name: e.value,
+    },
     'missionClaimed': missionClaimed.toList(),
     'lifetime': {for (final e in lifetime.entries) e.key.name: e.value},
     'achieved': achieved.toList(),
@@ -538,7 +540,9 @@ class Profile {
     p.achieved.addAll((j['achieved'] as List? ?? []).cast<String>());
     final st2 = j['stars'] as Map? ?? {};
     for (final e in st2.entries) {
-      if (e.value is int) p.stars[e.key as String] = (e.value as int).clamp(0, 3);
+      if (e.value is int) {
+        p.stars[e.key as String] = (e.value as int).clamp(0, 3);
+      }
     }
     return p;
   }

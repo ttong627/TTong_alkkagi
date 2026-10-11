@@ -144,7 +144,8 @@ abstract final class Sound {
   }
 
   /// 대전장 배경 음악(장마다 다름). null 이면 끈다.
-  static void music(Arena? arena) => track(arena == null ? null : 'bgm_${arena.name}');
+  static void music(Arena? arena) =>
+      track(arena == null ? null : 'bgm_${arena.name}');
 
   /// 로비 음악.
   static void lobby() => track('bgm_lobby');

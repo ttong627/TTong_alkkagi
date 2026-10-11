@@ -26,16 +26,17 @@ const bodyFont = 'DoHyeon';
 const fallbackFonts = ['NotoKRFallback'];
 
 ThemeData buildTheme() {
-  final scheme = ColorScheme.fromSeed(
-    seedColor: Palette.gold,
-    brightness: Brightness.dark,
-  ).copyWith(
-    primary: Palette.gold,
-    onPrimary: const Color(0xFF2A1A08),
-    secondary: Palette.red,
-    surface: Palette.ink,
-    onSurface: Palette.text,
-  );
+  final scheme =
+      ColorScheme.fromSeed(
+        seedColor: Palette.gold,
+        brightness: Brightness.dark,
+      ).copyWith(
+        primary: Palette.gold,
+        onPrimary: const Color(0xFF2A1A08),
+        secondary: Palette.red,
+        surface: Palette.ink,
+        onSurface: Palette.text,
+      );
   final base = ThemeData(
     colorScheme: scheme,
     useMaterial3: true,
@@ -112,7 +113,11 @@ ThemeData buildTheme() {
     ),
     snackBarTheme: const SnackBarThemeData(
       backgroundColor: Palette.panelLight,
-      contentTextStyle: TextStyle(fontFamily: bodyFont, fontSize: 16, color: Palette.text),
+      contentTextStyle: TextStyle(
+        fontFamily: bodyFont,
+        fontSize: 16,
+        color: Palette.text,
+      ),
       behavior: SnackBarBehavior.floating,
     ),
     chipTheme: base.chipTheme.copyWith(
@@ -121,9 +126,7 @@ ThemeData buildTheme() {
       labelStyle: const TextStyle(fontFamily: bodyFont, color: Palette.text),
     ),
     pageTransitionsTheme: const PageTransitionsTheme(
-      builders: {
-        TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
-      },
+      builders: {TargetPlatform.android: FadeForwardsPageTransitionsBuilder()},
     ),
   );
 }

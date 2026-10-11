@@ -113,7 +113,10 @@ void paintArena(
   if (round) {
     canvas.drawCircle(shadowRect.center, shadowRect.width / 2, shadow);
   } else {
-    canvas.drawRRect(RRect.fromRectAndRadius(shadowRect, Radius.circular(scale)), shadow);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(shadowRect, Radius.circular(scale)),
+      shadow,
+    );
   }
   // 테두리(장외 경계 바로 바깥): 결 있는 두툼한 틀.
   final rimC = _rimColor(arena);
@@ -156,20 +159,20 @@ void paintArena(
     if (arena == Arena.logicMarble) _marbleGold(canvas, center, scale);
     if (arena == Arena.murimIce) _iceFire(canvas, center, scale);
   } else {
-  switch (arena) {
-    case Arena.dustyYard:
-      _dirt(canvas, rect, scale, rand);
-    case Arena.oilyTable:
-      _table(canvas, center, rect, scale, rand);
-    case Arena.turtleMarket:
-      _paving(canvas, rect, scale, rand);
-    case Arena.kubiForest:
-      _forest(canvas, rect, scale, rand);
-    case Arena.logicMarble:
-      _marble(canvas, center, rect, scale, rand);
-    case Arena.murimIce:
-      _ice(canvas, center, rect, scale, rand);
-  }
+    switch (arena) {
+      case Arena.dustyYard:
+        _dirt(canvas, rect, scale, rand);
+      case Arena.oilyTable:
+        _table(canvas, center, rect, scale, rand);
+      case Arena.turtleMarket:
+        _paving(canvas, rect, scale, rand);
+      case Arena.kubiForest:
+        _forest(canvas, rect, scale, rand);
+      case Arena.logicMarble:
+        _marble(canvas, center, rect, scale, rand);
+      case Arena.murimIce:
+        _ice(canvas, center, rect, scale, rand);
+    }
   }
   // 가장자리 그늘: 장외가 가까워지는 것을 느끼게 한다.
   canvas.drawPath(

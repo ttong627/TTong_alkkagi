@@ -163,10 +163,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             spacing: 14,
             runSpacing: 14,
             children: [
-              IconTile(icon: 'free', label: '자유 대전', onTap: () => _sheetGo(c, const FreePlayScreen())),
-              IconTile(icon: 'puzzle', label: '묘수풀이', onTap: () => _sheetGo(c, const PuzzleScreen())),
-              IconTile(icon: 'depot', label: '보급소', onTap: () => _sheetGo(c, const DepotScreen())),
-              IconTile(icon: 'look', label: '꾸미기', onTap: () => _sheetGo(c, const LookScreen())),
+              IconTile(
+                icon: 'free',
+                label: '자유 대전',
+                onTap: () => _sheetGo(c, const FreePlayScreen()),
+              ),
+              IconTile(
+                icon: 'puzzle',
+                label: '묘수풀이',
+                onTap: () => _sheetGo(c, const PuzzleScreen()),
+              ),
+              IconTile(
+                icon: 'depot',
+                label: '보급소',
+                onTap: () => _sheetGo(c, const DepotScreen()),
+              ),
+              IconTile(
+                icon: 'look',
+                label: '꾸미기',
+                onTap: () => _sheetGo(c, const LookScreen()),
+              ),
               if (p.canRebirth || p.rebirths > 0)
                 IconTile(
                   icon: 'rebirth',
@@ -174,9 +190,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   badge: p.canRebirth,
                   onTap: () => _sheetGo(c, const RebirthScreen()),
                 ),
-              IconTile(icon: 'odds', label: '확률', onTap: () => _sheetGo(c, const OddsScreen())),
-              IconTile(icon: 'settings', label: '설정', onTap: () => _sheetGo(c, const SettingsScreen())),
-              IconTile(icon: 'mail', label: '만든 이', onTap: () => _sheetGo(c, const CreditsScreen())),
+              IconTile(
+                icon: 'odds',
+                label: '확률',
+                onTap: () => _sheetGo(c, const OddsScreen()),
+              ),
+              IconTile(
+                icon: 'settings',
+                label: '설정',
+                onTap: () => _sheetGo(c, const SettingsScreen()),
+              ),
+              IconTile(
+                icon: 'mail',
+                label: '만든 이',
+                onTap: () => _sheetGo(c, const CreditsScreen()),
+              ),
             ],
           ),
         ),
@@ -198,7 +226,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final heroId = p.hero?.name ?? 'seokdu';
     final stageFrac = p.toNextStage == null
         ? 1.0
-        : (1 - p.toNextStage! / math.max(1, naegongStages[p.stage].$2 - naegongStages[p.stage - 1].$2))
+        : (1 -
+                  p.toNextStage! /
+                      math.max(
+                        1,
+                        naegongStages[p.stage].$2 -
+                            naegongStages[p.stage - 1].$2,
+                      ))
               .clamp(0.0, 1.0);
     return Scaffold(
       body: SceneBackground(
@@ -238,11 +272,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        CurrencyPill(icon: 'coin', value: p.coins, onTap: () => _open(const ShopScreen())),
+                        CurrencyPill(
+                          icon: 'coin',
+                          value: p.coins,
+                          onTap: () => _open(const ShopScreen()),
+                        ),
                         const SizedBox(width: 6),
-                        CurrencyPill(icon: 'silver', value: p.silver, onTap: () => _open(const LookScreen())),
+                        CurrencyPill(
+                          icon: 'silver',
+                          value: p.silver,
+                          onTap: () => _open(const LookScreen()),
+                        ),
                         const SizedBox(width: 6),
-                        CurrencyPill(icon: 'stamina', value: p.staminaNow(now).floor()),
+                        CurrencyPill(
+                          icon: 'stamina',
+                          value: p.staminaNow(now).floor(),
+                        ),
                       ],
                     ),
                   ),
@@ -255,7 +300,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           child: CharacterSprite(
                             key: const Key('lobby-hero'),
                             id: heroId,
-                            height: math.min(330, MediaQuery.sizeOf(context).height * 0.36),
+                            height: math.min(
+                              330,
+                              MediaQuery.sizeOf(context).height * 0.36,
+                            ),
                             attack: _heroStrike,
                             onTap: _tapHero,
                           ),
@@ -264,15 +312,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           Align(
                             alignment: const Alignment(0, -0.75),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
                               decoration: BoxDecoration(
                                 color: Palette.paper,
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: const Color(0xFF2A1A12), width: 2),
+                                border: Border.all(
+                                  color: const Color(0xFF2A1A12),
+                                  width: 2,
+                                ),
                               ),
                               child: Text(
                                 _heroLine!,
-                                style: const TextStyle(fontFamily: bodyFont, fontSize: 18, color: Color(0xFF2A1A12)),
+                                style: const TextStyle(
+                                  fontFamily: bodyFont,
+                                  fontSize: 18,
+                                  color: Color(0xFF2A1A12),
+                                ),
                               ),
                             ),
                           ),
@@ -314,7 +372,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           top: 12,
                           child: Column(
                             children: [
-                              IconTile(icon: 'shop', label: '만물상', size: 46, onTap: () => _open(const ShopScreen())),
+                              IconTile(
+                                icon: 'shop',
+                                label: '만물상',
+                                size: 46,
+                                onTap: () => _open(const ShopScreen()),
+                              ),
                               const SizedBox(height: 10),
                               if (p.legendaryOpen(now)) ...[
                                 IconTile(
@@ -322,11 +385,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   label: '기인방!',
                                   size: 46,
                                   badge: true,
-                                  onTap: () => _open(const LegendaryShopScreen()),
+                                  onTap: () =>
+                                      _open(const LegendaryShopScreen()),
                                 ),
                                 const SizedBox(height: 10),
                               ],
-                              IconTile(icon: 'codex', label: '도감', size: 46, onTap: () => _open(const CodexScreen())),
+                              IconTile(
+                                icon: 'codex',
+                                label: '도감',
+                                size: 46,
+                                onTap: () => _open(const CodexScreen()),
+                              ),
                             ],
                           ),
                         ),
@@ -351,7 +420,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         if (next != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
-                            child: OutlinedText('다음: $next', size: 15, color: Palette.gold),
+                            child: OutlinedText(
+                              '다음: $next',
+                              size: 15,
+                              color: Palette.gold,
+                            ),
                           ),
                       ],
                     ),
@@ -368,8 +441,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           badge: p.trainingDay != day,
                           onTap: () => _open(const TrainingScreen()),
                         ),
-                        IconTile(icon: 'arena', label: '투기장', size: 50, onTap: () => _open(const ArenaScreen())),
-                        IconTile(icon: 'wander', label: '유랑', size: 50, onTap: () => _open(const WanderScreen())),
+                        IconTile(
+                          icon: 'arena',
+                          label: '투기장',
+                          size: 50,
+                          onTap: () => _open(const ArenaScreen()),
+                        ),
+                        IconTile(
+                          icon: 'wander',
+                          label: '유랑',
+                          size: 50,
+                          onTap: () => _open(const WanderScreen()),
+                        ),
                         IconTile(
                           icon: 'stats',
                           label: '성장',
@@ -377,13 +460,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           badge: Stat.values.any(p.canRaise),
                           onTap: () => _open(const StatsScreen()),
                         ),
-                        IconTile(icon: 'chest', label: '더보기', size: 50, onTap: _more),
+                        IconTile(
+                          icon: 'chest',
+                          label: '더보기',
+                          size: 50,
+                          onTap: _more,
+                        ),
                       ],
                     ),
                   ),
                   Text(
                     versionLabel,
-                    style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.45)),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.white.withValues(alpha: 0.45),
+                    ),
                   ),
                   const SizedBox(height: 2),
                 ],
@@ -399,7 +490,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
 /// 위 왼쪽 내 얼굴 · 이름 · 내공 경지 막대.
 class _ProfileChip extends StatelessWidget {
-  const _ProfileChip({required this.heroId, required this.name, required this.stage, required this.frac});
+  const _ProfileChip({
+    required this.heroId,
+    required this.name,
+    required this.stage,
+    required this.frac,
+  });
   final String heroId;
   final String name;
   final String stage;
@@ -414,7 +510,10 @@ class _ProfileChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(40),
-        border: Border.all(color: Palette.gold.withValues(alpha: 0.6), width: 1.5),
+        border: Border.all(
+          color: Palette.gold.withValues(alpha: 0.6),
+          width: 1.5,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -425,7 +524,9 @@ class _ProfileChip extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(color: Palette.gold, width: 2.5),
-              gradient: const RadialGradient(colors: [Color(0xFF5A4636), Color(0xFF241A14)]),
+              gradient: const RadialGradient(
+                colors: [Color(0xFF5A4636), Color(0xFF241A14)],
+              ),
             ),
             child: ClipOval(
               child: Stack(
@@ -467,7 +568,10 @@ class _ProfileChip extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 2),
-              Text(stage, style: const TextStyle(fontSize: 12, color: Palette.dim)),
+              Text(
+                stage,
+                style: const TextStyle(fontSize: 12, color: Palette.dim),
+              ),
             ],
           ),
         ],
@@ -512,7 +616,9 @@ class _SpotlightState extends State<_Spotlight> {
         key: const Key('spotlight'),
         behavior: HitTestBehavior.opaque,
         onTapUp: (d) {
-          if (r != null && r.inflate(8).contains(d.localPosition)) widget.onTap();
+          if (r != null && r.inflate(8).contains(d.localPosition)) {
+            widget.onTap();
+          }
         },
         child: Stack(
           children: [
@@ -520,14 +626,26 @@ class _SpotlightState extends State<_Spotlight> {
             if (r != null) ...[
               Positioned.fill(
                 child: Ghost(
-                  builder: (t) => GhostTapPainter(at: r.center + const Offset(40, 0), t: t, size: 80, ring: 44),
+                  builder: (t) => GhostTapPainter(
+                    at: r.center + const Offset(40, 0),
+                    t: t,
+                    size: 80,
+                    ring: 44,
+                  ),
                 ),
               ),
               Positioned(
                 left: 0,
                 right: 0,
                 top: r.top - 70,
-                child: const Center(child: OutlinedText('여기를 눌러 강호로!', size: 24, title: true, color: Palette.gold)),
+                child: const Center(
+                  child: OutlinedText(
+                    '여기를 눌러 강호로!',
+                    size: 24,
+                    title: true,
+                    color: Palette.gold,
+                  ),
+                ),
               ),
             ],
           ],
@@ -550,9 +668,14 @@ class _HolePainter extends CustomPainter {
         : Path.combine(
             PathOperation.difference,
             all,
-            Path()..addRRect(RRect.fromRectAndRadius(h.inflate(10), const Radius.circular(28))),
+            Path()..addRRect(
+              RRect.fromRectAndRadius(h.inflate(10), const Radius.circular(28)),
+            ),
           );
-    canvas.drawPath(path, Paint()..color = Colors.black.withValues(alpha: 0.72));
+    canvas.drawPath(
+      path,
+      Paint()..color = Colors.black.withValues(alpha: 0.72),
+    );
     if (h != null) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(h.inflate(10), const Radius.circular(28)),

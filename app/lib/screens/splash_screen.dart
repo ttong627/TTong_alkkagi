@@ -27,16 +27,22 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))..forward();
-  final _tip = SplashScreen.tips[math.Random().nextInt(SplashScreen.tips.length)];
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late final _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1600),
+  )..forward();
+  final _tip =
+      SplashScreen.tips[math.Random().nextInt(SplashScreen.tips.length)];
 
   @override
   void initState() {
     super.initState();
     _c.addStatusListener((st) {
       if (st == AnimationStatus.completed && mounted) {
-        Navigator.of(context).pushReplacement(gameRoute<void>(const HomeScreen()));
+        Navigator.of(context)
+            .pushReplacement(gameRoute<void>(const HomeScreen()));
       }
     });
     // 그림을 미리 디코드해 두면 로비가 깜빡이지 않는다.
@@ -72,7 +78,12 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   const Spacer(flex: 2),
                   Transform.scale(
                     scale: 0.5 + 0.5 * title,
-                    child: const OutlinedText('탄지무림', size: 72, title: true, color: Palette.gold),
+                    child: const OutlinedText(
+                      '탄지무림',
+                      size: 72,
+                      title: true,
+                      color: Palette.gold,
+                    ),
                   ),
                   Opacity(
                     opacity: (v * 2).clamp(0, 1),
@@ -83,12 +94,22 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Transform.translate(
-                        offset: Offset(-80 * (1 - Curves.easeOut.transform(v)), 0),
+                        offset: Offset(
+                          -80 * (1 - Curves.easeOut.transform(v)),
+                          0,
+                        ),
                         child: const CharacterSprite(id: 'yeonbi', height: 220),
                       ),
                       Transform.translate(
-                        offset: Offset(80 * (1 - Curves.easeOut.transform(v)), 0),
-                        child: const CharacterSprite(id: 'seokdu', height: 220, flip: true),
+                        offset: Offset(
+                          80 * (1 - Curves.easeOut.transform(v)),
+                          0,
+                        ),
+                        child: const CharacterSprite(
+                          id: 'seokdu',
+                          height: 220,
+                          flip: true,
+                        ),
                       ),
                     ],
                   ),

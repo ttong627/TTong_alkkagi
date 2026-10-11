@@ -99,7 +99,10 @@ abstract final class Missions {
   static List<Mission> of(String day) {
     final n = int.tryParse(day) ?? 0;
     final start = n % missionPool.length;
-    return [for (var i = 0; i < 3; i++) missionPool[(start + i * 2) % missionPool.length]];
+    return [
+      for (var i = 0; i < 3; i++)
+        missionPool[(start + i * 2) % missionPool.length],
+    ];
   }
 
   static void _roll(Profile p, String day) {
@@ -120,7 +123,8 @@ abstract final class Missions {
   static int progress(Profile p, Mission m, String day) =>
       p.missionDay == day ? (p.missionCounts[m.deed] ?? 0) : 0;
 
-  static bool done(Profile p, Mission m, String day) => progress(p, m, day) >= m.goal;
+  static bool done(Profile p, Mission m, String day) =>
+      progress(p, m, day) >= m.goal;
 
   static bool claimed(Profile p, int i, String day) =>
       p.missionDay == day && p.missionClaimed.contains(i);
@@ -138,7 +142,9 @@ abstract final class Missions {
 
   /// 셋 다 받은 날 덤(한 번).
   static Reward? claimBonus(Profile p, String day) {
-    if (p.missionDay != day || p.missionClaimed.length < 3 || p.missionClaimed.contains(99)) {
+    if (p.missionDay != day ||
+        p.missionClaimed.length < 3 ||
+        p.missionClaimed.contains(99)) {
       return null;
     }
     p.missionClaimed.add(99);
@@ -168,19 +174,97 @@ class Achievement {
 }
 
 final achievements = <Achievement>[
-  Achievement('win1', '첫 승리', 1, const Reward(silver: 1), (p) => p.lifetime[Deed.win] ?? 0),
-  Achievement('win20', '스무 번 이김', 20, const Reward(silver: 3), (p) => p.lifetime[Deed.win] ?? 0),
-  Achievement('knock50', '돌 50개 떨어뜨림', 50, const Reward(silver: 2), (p) => p.lifetime[Deed.knock] ?? 0),
-  Achievement('knock300', '돌 300개 떨어뜨림', 300, const Reward(tokens: 2), (p) => p.lifetime[Deed.knock] ?? 0),
-  Achievement('crit30', '회심 일격 30번', 30, const Reward(silver: 2), (p) => p.lifetime[Deed.critical] ?? 0),
-  Achievement('train1000', '목인항 1,000타', 1000, const Reward(tokens: 1), (p) => p.totalHits),
-  Achievement('ch1', '1장 하산', 1, const Reward(coins: 300), (p) => p.done.contains('c1') ? 1 : 0),
-  Achievement('ch3', '3장 장터 평정', 1, const Reward(silver: 2), (p) => p.done.contains('c3') ? 1 : 0),
-  Achievement('ch6', '천하제일', 1, const Reward(tokens: 3), (p) => p.done.contains('c6') ? 1 : 0),
-  Achievement('stars30', '별 30개', 30, const Reward(silver: 3), (p) => p.totalStars),
-  Achievement('collect', '재질 네 가지 모두', 4, const Reward(silver: 2), (p) => p.materials.length),
-  Achievement('arena5', '투기장 5연승', 5, const Reward(tokens: 1), (p) => p.arenaBest),
-  Achievement('attend7', '7일 출석', 7, const Reward(silver: 2), (p) => p.attendCount),
+  Achievement(
+    'win1',
+    '첫 승리',
+    1,
+    const Reward(silver: 1),
+    (p) => p.lifetime[Deed.win] ?? 0,
+  ),
+  Achievement(
+    'win20',
+    '스무 번 이김',
+    20,
+    const Reward(silver: 3),
+    (p) => p.lifetime[Deed.win] ?? 0,
+  ),
+  Achievement(
+    'knock50',
+    '돌 50개 떨어뜨림',
+    50,
+    const Reward(silver: 2),
+    (p) => p.lifetime[Deed.knock] ?? 0,
+  ),
+  Achievement(
+    'knock300',
+    '돌 300개 떨어뜨림',
+    300,
+    const Reward(tokens: 2),
+    (p) => p.lifetime[Deed.knock] ?? 0,
+  ),
+  Achievement(
+    'crit30',
+    '회심 일격 30번',
+    30,
+    const Reward(silver: 2),
+    (p) => p.lifetime[Deed.critical] ?? 0,
+  ),
+  Achievement(
+    'train1000',
+    '목인항 1,000타',
+    1000,
+    const Reward(tokens: 1),
+    (p) => p.totalHits,
+  ),
+  Achievement(
+    'ch1',
+    '1장 하산',
+    1,
+    const Reward(coins: 300),
+    (p) => p.done.contains('c1') ? 1 : 0,
+  ),
+  Achievement(
+    'ch3',
+    '3장 장터 평정',
+    1,
+    const Reward(silver: 2),
+    (p) => p.done.contains('c3') ? 1 : 0,
+  ),
+  Achievement(
+    'ch6',
+    '천하제일',
+    1,
+    const Reward(tokens: 3),
+    (p) => p.done.contains('c6') ? 1 : 0,
+  ),
+  Achievement(
+    'stars30',
+    '별 30개',
+    30,
+    const Reward(silver: 3),
+    (p) => p.totalStars,
+  ),
+  Achievement(
+    'collect',
+    '재질 네 가지 모두',
+    4,
+    const Reward(silver: 2),
+    (p) => p.materials.length,
+  ),
+  Achievement(
+    'arena5',
+    '투기장 5연승',
+    5,
+    const Reward(tokens: 1),
+    (p) => p.arenaBest,
+  ),
+  Achievement(
+    'attend7',
+    '7일 출석',
+    7,
+    const Reward(silver: 2),
+    (p) => p.attendCount,
+  ),
 ];
 
 abstract final class Achievements {

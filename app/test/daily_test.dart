@@ -129,7 +129,10 @@ void main() {
 
   test('그림 파일이 모두 있다(캐릭터 두 자세·아이콘·배경·대전장 바닥)', () {
     final want = [
-      for (final id in Art.characterIds) ...[Art.character(id), Art.character(id, attack: true)],
+      for (final id in Art.characterIds) ...[
+        Art.character(id),
+        Art.character(id, attack: true),
+      ],
       ...Art.iconNames.map(Art.icon),
       Art.background('lobby'),
       for (final a in Arena.values) ...[Art.arenaBackground(a), Art.floor(a)],

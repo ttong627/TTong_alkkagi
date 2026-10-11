@@ -9,12 +9,15 @@ import 'package:flutter_test/flutter_test.dart';
 Set<int> _cmap(String path) {
   final b = File(path).readAsBytesSync();
   int u16(int o) => (b[o] << 8) | b[o + 1];
-  int u32(int o) => (b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3];
+  int u32(int o) =>
+      (b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3];
   final n = u16(4);
   var cmap = -1;
   for (var i = 0; i < n; i++) {
     final rec = 12 + i * 16;
-    if (String.fromCharCodes(b.sublist(rec, rec + 4)) == 'cmap') cmap = u32(rec + 8);
+    if (String.fromCharCodes(b.sublist(rec, rec + 4)) == 'cmap') {
+      cmap = u32(rec + 8);
+    }
   }
   final out = <int>{};
   final tables = u16(cmap + 2);
@@ -50,7 +53,9 @@ void main() {
     final fb = _cmap('assets/fonts/NotoSansKR-Fallback.ttf');
     final lit = RegExp(r"'([^'\\\n]*(?:\\.[^'\\\n]*)*)'");
     final missing = <String>{};
-    for (final f in Directory('lib').listSync(recursive: true).whereType<File>()) {
+    for (final f in Directory(
+      'lib',
+    ).listSync(recursive: true).whereType<File>()) {
       if (!f.path.endsWith('.dart')) continue;
       for (final m in lit.allMatches(f.readAsStringSync())) {
         for (final r in m.group(1)!.runes) {

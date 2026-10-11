@@ -124,11 +124,18 @@ class CodexScreen extends StatelessWidget {
 
 /// 도감 얼굴: 아직 못 만난 사람은 검은 그림자.
 Widget _face(String? id, bool known) {
-  final f = Portrait(id: id, size: 58, ring: known ? Palette.gold : Colors.white24);
+  final f = Portrait(
+    id: id,
+    size: 58,
+    ring: known ? Palette.gold : Colors.white24,
+  );
   return known
       ? f
       : ColorFiltered(
-          colorFilter: const ColorFilter.mode(Color(0xFF0E0A12), BlendMode.srcATop),
+          colorFilter: const ColorFilter.mode(
+            Color(0xFF0E0A12),
+            BlendMode.srcATop,
+          ),
           child: f,
         );
 }

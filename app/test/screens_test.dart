@@ -74,11 +74,17 @@ void main() {
     expect(find.text('321'), findsOneWidget);
     // 받을 임무가 있으니 임무 아이콘에 빨간 점.
     expect(
-      find.descendant(of: find.byKey(const Key('menu-missions')), matching: find.byKey(const Key('red-dot'))),
+      find.descendant(
+        of: find.byKey(const Key('menu-missions')),
+        matching: find.byKey(const Key('red-dot')),
+      ),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: find.byKey(const Key('menu-attendance')), matching: find.byKey(const Key('red-dot'))),
+      find.descendant(
+        of: find.byKey(const Key('menu-attendance')),
+        matching: find.byKey(const Key('red-dot')),
+      ),
       findsNothing,
     );
     await t.pumpWidget(const SizedBox());

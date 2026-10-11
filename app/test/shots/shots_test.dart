@@ -35,7 +35,8 @@ Future<void> _fonts() async {
     ('DoHyeon', 'DoHyeon-Regular'),
     ('NotoKRFallback', 'NotoSansKR-Fallback'),
   ]) {
-    final l = FontLoader(fam)..addFont(rootBundle.load('assets/fonts/$file.ttf'));
+    final l = FontLoader(fam)
+      ..addFont(rootBundle.load('assets/fonts/$file.ttf'));
     await l.load();
   }
   // 아이콘 글꼴.
@@ -46,7 +47,12 @@ Future<void> _fonts() async {
 
 bool _cached = false;
 
-Future<void> _shot(WidgetTester t, Widget w, String name, {int settleMs = 1600}) async {
+Future<void> _shot(
+  WidgetTester t,
+  Widget w,
+  String name, {
+  int settleMs = 1600,
+}) async {
   final key = GlobalKey();
   // 그림을 먼저 모두 풀어 캐시에 넣는다(화면이 그리기 전에 — 시험 환경은 늦게 읽은 그림을 다시 안 그린다).
   if (!_cached) {
@@ -69,13 +75,18 @@ Future<void> _shot(WidgetTester t, Widget w, String name, {int settleMs = 1600})
   await t.pumpWidget(
     RepaintBoundary(
       key: key,
-      child: MaterialApp(debugShowCheckedModeBanner: false, theme: buildTheme(), home: w),
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: buildTheme(),
+        home: w,
+      ),
     ),
   );
   for (var i = 0; i < settleMs ~/ 100; i++) {
     await t.pump(const Duration(milliseconds: 100));
   }
-  final boundary = key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+  final boundary =
+      key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
   await t.runAsync(() async {
     final img = await boundary.toImage(pixelRatio: 1);
     final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
@@ -109,13 +120,30 @@ void main() {
     await _shot(
       t,
       Scaffold(
-        body: ResultOverlay(title: '승리!', won: true, stars: 2, coins: 20, character: 'yonga', onDone: () {}, onAgain: () {}),
+        body: ResultOverlay(
+          title: '승리!',
+          won: true,
+          stars: 2,
+          coins: 20,
+          character: 'yonga',
+          onDone: () {},
+          onAgain: () {},
+        ),
       ),
       'result',
       settleMs: 2200,
     );
     await _shot(t, const CampaignScreen(), 'campaign');
-    await _shot(t, DialogueScreen(title: campaign[1].title, lines: campaign[1].intro, scene: 'oilyTable'), 'dialogue', settleMs: 2800);
+    await _shot(
+      t,
+      DialogueScreen(
+        title: campaign[1].title,
+        lines: campaign[1].intro,
+        scene: 'oilyTable',
+      ),
+      'dialogue',
+      settleMs: 2800,
+    );
     await _shot(t, const ShopScreen(), 'shop');
     await _shot(t, const StatsScreen(), 'stats');
     await _shot(t, const CodexScreen(), 'codex');
@@ -128,14 +156,23 @@ void main() {
     await _shot(t, const TutorialScreen(), 'tutorial');
     await _shot(
       t,
-      GameScreen(config: lessons[0].config, title: lessons[0].title, coach: true, coachLines: [lessons[0].line]),
+      GameScreen(
+        config: lessons[0].config,
+        title: lessons[0].title,
+        coach: true,
+        coachLines: [lessons[0].line],
+      ),
       'game_coach',
       settleMs: 2500,
     );
     await _shot(
       t,
       const GameScreen(
-        config: MatchConfig(mode: MatchMode.vsAi, arena: Arena.kubiForest, opponentName: '쿠비'),
+        config: MatchConfig(
+          mode: MatchMode.vsAi,
+          arena: Arena.kubiForest,
+          opponentName: '쿠비',
+        ),
         title: '4장 · 야성의 숲',
       ),
       'game_vs_intro',
@@ -144,7 +181,11 @@ void main() {
     await _shot(
       t,
       const GameScreen(
-        config: MatchConfig(mode: MatchMode.vsAi, arena: Arena.oilyTable, opponentName: '통통'),
+        config: MatchConfig(
+          mode: MatchMode.vsAi,
+          arena: Arena.oilyTable,
+          opponentName: '통통',
+        ),
         title: '2장 · 기름진 난장',
       ),
       'game_oily',

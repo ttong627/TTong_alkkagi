@@ -60,7 +60,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             color: Palette.jade,
             height: 56,
             fontSize: 20,
-            onTap: () => Navigator.of(context).push(gameRoute<void>(const TutorialScreen())),
+            onTap: () =>
+                Navigator.of(context)
+                    .push(gameRoute<void>(const TutorialScreen())),
           ),
           const SizedBox(height: 16),
           Text('소리', style: t.titleMedium),

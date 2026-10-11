@@ -126,7 +126,11 @@ class _MotesPainter extends CustomPainter {
               ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
           );
         case Motes.snow:
-          canvas.drawCircle(p, 1.5 + r.nextDouble() * 2.5, Paint()..color = const Color(0xCCFFFFFF));
+          canvas.drawCircle(
+            p,
+            1.5 + r.nextDouble() * 2.5,
+            Paint()..color = const Color(0xCCFFFFFF),
+          );
         case Motes.fireflies:
           final glow = 0.5 + 0.5 * math.sin((t + phase) * 3);
           canvas.drawCircle(
@@ -207,7 +211,13 @@ class _GameButtonState extends State<GameButton> {
                     fontFamily: titleFont,
                     fontSize: widget.fontSize,
                     color: Colors.white,
-                    shadows: [Shadow(color: edge, offset: const Offset(0, 2), blurRadius: 0)],
+                    shadows: [
+                      Shadow(
+                        color: edge,
+                        offset: const Offset(0, 2),
+                        blurRadius: 0,
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -242,7 +252,13 @@ class _GameButtonState extends State<GameButton> {
                   decoration: BoxDecoration(
                     color: edge,
                     borderRadius: BorderRadius.circular(h * 0.32),
-                    boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 8, offset: Offset(0, 4))],
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black54,
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -261,7 +277,9 @@ class _GameButtonState extends State<GameButton> {
                       colors: [top, base],
                     ),
                     border: Border.all(
-                      color: enabled ? Palette.gold.withValues(alpha: 0.85) : Colors.white24,
+                      color: enabled
+                          ? Palette.gold.withValues(alpha: 0.85)
+                          : Colors.white24,
                       width: 2,
                     ),
                   ),
@@ -321,8 +339,12 @@ class IconTile extends StatefulWidget {
   State<IconTile> createState() => _IconTileState();
 }
 
-class _IconTileState extends State<IconTile> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 260));
+class _IconTileState extends State<IconTile>
+    with SingleTickerProviderStateMixin {
+  late final _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 260),
+  );
 
   @override
   void dispose() {
@@ -366,7 +388,10 @@ class _IconTileState extends State<IconTile> with SingleTickerProviderStateMixin
                           Colors.black.withValues(alpha: 0.35),
                         ],
                       ),
-                      border: Border.all(color: Palette.gold.withValues(alpha: 0.55), width: 1.5),
+                      border: Border.all(
+                        color: Palette.gold.withValues(alpha: 0.55),
+                        width: 1.5,
+                      ),
                     ),
                     padding: const EdgeInsets.all(7),
                     child: Opacity(
@@ -380,7 +405,8 @@ class _IconTileState extends State<IconTile> with SingleTickerProviderStateMixin
                       bottom: -2,
                       child: Image.asset(Art.icon('lock'), width: 26),
                     ),
-                  if (widget.badge) const Positioned(right: 2, top: 2, child: RedDot()),
+                  if (widget.badge)
+                    const Positioned(right: 2, top: 2, child: RedDot()),
                 ],
               ),
               const SizedBox(height: 4),
@@ -403,8 +429,10 @@ class RedDot extends StatefulWidget {
 }
 
 class _RedDotState extends State<RedDot> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))
-    ..repeat(reverse: true);
+  late final _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat(reverse: true);
 
   @override
   void dispose() {
@@ -466,7 +494,12 @@ class OutlinedText extends StatelessWidget {
         Text(
           text,
           textAlign: align,
-          style: TextStyle(fontFamily: family, fontFamilyFallback: fallbackFonts, fontSize: size, color: color),
+          style: TextStyle(
+            fontFamily: family,
+            fontFamilyFallback: fallbackFonts,
+            fontSize: size,
+            color: color,
+          ),
         ),
       ],
     );
@@ -475,7 +508,12 @@ class OutlinedText extends StatelessWidget {
 
 /// 재화 한 칸: 그림 + 숫자(바뀌면 굴러 오른다).
 class CurrencyPill extends StatelessWidget {
-  const CurrencyPill({super.key, required this.icon, required this.value, this.onTap});
+  const CurrencyPill({
+    super.key,
+    required this.icon,
+    required this.value,
+    this.onTap,
+  });
   final String icon;
   final num value;
   final VoidCallback? onTap;
@@ -503,7 +541,11 @@ class CurrencyPill extends StatelessWidget {
               curve: Curves.easeOutCubic,
               builder: (_, v, _) => Text(
                 _short(v.round()),
-                style: const TextStyle(fontFamily: titleFont, fontSize: 16, color: Palette.text),
+                style: const TextStyle(
+                  fontFamily: titleFont,
+                  fontSize: 16,
+                  color: Palette.text,
+                ),
               ),
             ),
           ],
@@ -518,7 +560,12 @@ class CurrencyPill extends StatelessWidget {
 
 /// 반투명 어두운 판(금테).
 class GlassPanel extends StatelessWidget {
-  const GlassPanel({super.key, required this.child, this.padding = const EdgeInsets.all(14), this.radius = 20});
+  const GlassPanel({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(14),
+    this.radius = 20,
+  });
   final Widget child;
   final EdgeInsets padding;
   final double radius;
@@ -533,8 +580,13 @@ class GlassPanel extends StatelessWidget {
         end: Alignment.bottomCenter,
         colors: [Palette.panelLight, Palette.panel],
       ),
-      border: Border.all(color: Palette.gold.withValues(alpha: 0.45), width: 1.5),
-      boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 12, offset: Offset(0, 6))],
+      border: Border.all(
+        color: Palette.gold.withValues(alpha: 0.45),
+        width: 1.5,
+      ),
+      boxShadow: const [
+        BoxShadow(color: Colors.black54, blurRadius: 12, offset: Offset(0, 6)),
+      ],
     ),
     child: child,
   );
@@ -563,10 +615,16 @@ class CharacterSprite extends StatefulWidget {
   State<CharacterSprite> createState() => _CharacterSpriteState();
 }
 
-class _CharacterSpriteState extends State<CharacterSprite> with TickerProviderStateMixin {
-  late final _idle = AnimationController(vsync: this, duration: const Duration(milliseconds: 2400))
-    ..repeat(reverse: true);
-  late final _hit = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
+class _CharacterSpriteState extends State<CharacterSprite>
+    with TickerProviderStateMixin {
+  late final _idle = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2400),
+  )..repeat(reverse: true);
+  late final _hit = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 650),
+  );
 
   @override
   void initState() {
@@ -610,7 +668,9 @@ class _CharacterSpriteState extends State<CharacterSprite> with TickerProviderSt
           final h = _hit.value;
           final striking = _hit.isAnimating && h < 0.85;
           // 공격: 앞으로 쭉(0~0.25) → 버팀 → 제자리.
-          final lunge = h < 0.25 ? Curves.easeOut.transform(h / 0.25) : 1 - Curves.easeIn.transform(((h - 0.25) / 0.75).clamp(0, 1));
+          final lunge = h < 0.25
+              ? Curves.easeOut.transform(h / 0.25)
+              : 1 - Curves.easeIn.transform(((h - 0.25) / 0.75).clamp(0, 1));
           final flash = striking && h < 0.18 ? (1 - h / 0.18) : 0.0;
           final img = Image.asset(
             Art.character(widget.id, attack: striking),
@@ -618,12 +678,18 @@ class _CharacterSpriteState extends State<CharacterSprite> with TickerProviderSt
             height: widget.height,
             fit: BoxFit.contain,
             gaplessPlayback: true,
-            errorBuilder: (_, _, _) => SizedBox(width: w, height: widget.height),
+            errorBuilder: (_, _, _) =>
+                SizedBox(width: w, height: widget.height),
           );
           Widget body = Transform(
             alignment: Alignment.bottomCenter,
             transform: Matrix4.identity()
-              ..translateByDouble(lunge * w * 0.08 * (widget.flip ? -1 : 1), -breath * 3, 0, 1)
+              ..translateByDouble(
+                lunge * w * 0.08 * (widget.flip ? -1 : 1),
+                -breath * 3,
+                0,
+                1,
+              )
               ..scaleByDouble(1 + 0.012 * breath, 1 + 0.028 * breath, 1, 1),
             child: img,
           );
@@ -635,7 +701,10 @@ class _CharacterSpriteState extends State<CharacterSprite> with TickerProviderSt
                   child: Opacity(
                     opacity: flash * 0.7,
                     child: ColorFiltered(
-                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcATop),
+                      colorFilter: const ColorFilter.mode(
+                        Colors.white,
+                        BlendMode.srcATop,
+                      ),
                       child: body,
                     ),
                   ),
@@ -697,14 +766,23 @@ Route<T> gameRoute<T>(Widget page) => PageRouteBuilder<T>(
     final a = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
     return FadeTransition(
       opacity: a,
-      child: ScaleTransition(scale: Tween(begin: 0.96, end: 1.0).animate(a), child: child),
+      child: ScaleTransition(
+        scale: Tween(begin: 0.96, end: 1.0).animate(a),
+        child: child,
+      ),
     );
   },
 );
 
 /// 동그란 얼굴(캐릭터 그림의 머리 부분).
 class Portrait extends StatelessWidget {
-  const Portrait({super.key, required this.id, this.size = 52, this.ring = Palette.gold, this.attack = false});
+  const Portrait({
+    super.key,
+    required this.id,
+    this.size = 52,
+    this.ring = Palette.gold,
+    this.attack = false,
+  });
   final String? id;
   final double size;
   final Color ring;
@@ -720,7 +798,9 @@ class Portrait extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(color: ring, width: 2.5),
-        gradient: const RadialGradient(colors: [Color(0xFF5A4636), Color(0xFF241A14)]),
+        gradient: const RadialGradient(
+          colors: [Color(0xFF5A4636), Color(0xFF241A14)],
+        ),
         boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 6)],
       ),
       child: ClipOval(

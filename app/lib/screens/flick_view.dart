@@ -631,8 +631,22 @@ class _FlickViewState extends State<FlickView>
                             Positioned.fill(
                               child: Ghost(
                                 builder: (t) => GhostFlickPainter(
-                                  from: c - Offset(math.cos(widget.demoAngle), math.sin(widget.demoAngle)) * r * 2.4,
-                                  to: c + Offset(math.cos(widget.demoAngle), math.sin(widget.demoAngle)) * r * 0.7,
+                                  from:
+                                      c -
+                                      Offset(
+                                            math.cos(widget.demoAngle),
+                                            math.sin(widget.demoAngle),
+                                          ) *
+                                          r *
+                                          2.4,
+                                  to:
+                                      c +
+                                      Offset(
+                                            math.cos(widget.demoAngle),
+                                            math.sin(widget.demoAngle),
+                                          ) *
+                                          r *
+                                          0.7,
                                   t: t,
                                   size: r * 1.15,
                                 ),

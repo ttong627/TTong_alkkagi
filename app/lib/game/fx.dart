@@ -378,7 +378,9 @@ class BattleFx {
   ) {
     for (final r in _rings) {
       final k = r.t / r.dur;
-      final rad = (r.r0 + (r.r1 - r.r0) * Curves.easeOut.transform(k.clamp(0.0, 1.0))) * scale;
+      final rad =
+          (r.r0 + (r.r1 - r.r0) * Curves.easeOut.transform(k.clamp(0.0, 1.0))) *
+          scale;
       canvas.drawCircle(
         at(r.at.dx, r.at.dy),
         rad,
