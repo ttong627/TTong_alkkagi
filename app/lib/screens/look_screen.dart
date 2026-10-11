@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../game/avatar.dart';
 import '../progress/profile.dart';
 import '../progress/store.dart';
+import '../ui/kit.dart';
 
 /// 외형 꾸미기(설계서 §2.5): 얼굴형·머리·도복 색. 앞 3가지는 처음부터, 나머지는 은자 3개씩.
 class LookScreen extends StatefulWidget {
@@ -44,7 +45,8 @@ class _LookScreenState extends State<LookScreen> {
           selected: on,
           onSelected: (_) => tap(),
         );
-    return Scaffold(
+    return GameScaffold(
+      background: 'lobby',
       appBar: AppBar(title: Text('외형 · 은자 ${p.silver}')),
       body: ListView(
         padding: const EdgeInsets.all(16),

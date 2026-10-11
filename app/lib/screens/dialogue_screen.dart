@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../audio/sound.dart';
+import '../progress/store.dart';
 import '../story/chapters.dart';
+import '../ui/art.dart';
+import '../ui/kit.dart';
+import '../ui/theme.dart';
 
 /// 말하는 사람마다 빛깔.
 Color speakerColor(String who) => switch (who) {
@@ -14,103 +19,209 @@ Color speakerColor(String who) => switch (who) {
   _ => const Color(0xFFDDDDDD),
 };
 
-/// 대사 화면: 한 줄씩 눌러 넘긴다. 다 보면 닫힌다(건너뛰기 가능).
+/// 대사 화면(설계서 §16.11): 말하는 사람이 그림으로 서서 말한다. 글자는 한 자씩 나온다.
+/// 누르면 다음 줄(글자가 다 안 나왔으면 먼저 다 보여 준다). 건너뛰기 가능.
 class DialogueScreen extends StatefulWidget {
-  const DialogueScreen({super.key, required this.title, required this.lines});
+  const DialogueScreen({
+    super.key,
+    required this.title,
+    required this.lines,
+    this.scene = 'lobby',
+  });
   final String title;
   final List<Line> lines;
+
+  /// 배경 그림 이름([Art.background]).
+  final String scene;
 
   @override
   State<DialogueScreen> createState() => _DialogueScreenState();
 }
 
-class _DialogueScreenState extends State<DialogueScreen> {
+class _DialogueScreenState extends State<DialogueScreen>
+    with SingleTickerProviderStateMixin {
   int _i = 0;
+  late final _type = AnimationController(vsync: this);
+  final _strike = ValueNotifier<int>(0);
+
+  @override
+  void initState() {
+    super.initState();
+    _start();
+  }
+
+  void _start() {
+    final (_, text) = widget.lines[_i];
+    _type
+      ..duration = Duration(milliseconds: (text.length * 28).clamp(300, 2600))
+      ..forward(from: 0);
+    _strike.value++;
+  }
+
+  @override
+  void dispose() {
+    _type.dispose();
+    _strike.dispose();
+    super.dispose();
+  }
 
   void _next() {
+    if (_type.isAnimating) {
+      _type.value = 1;
+      return;
+    }
+    Sound.play('ui_tap', 0.6);
     if (_i + 1 >= widget.lines.length) {
       Navigator.of(context).pop();
     } else {
       setState(() => _i++);
+      _start();
     }
   }
 
+  /// 말하는 사람 그림 이름(「나」는 내 캐릭터).
+  String? _face(String who) => who == '나'
+      ? (ProfileStore.instance.profile.hero?.name ?? 'seokdu')
+      : Art.bossId(who);
+
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
     final (who, text) = widget.lines[_i];
     final narrator = who == '해설';
     final c = speakerColor(who);
+    final face = narrator ? null : _face(who);
+    // 사람이 바뀔 때마다 왼쪽·오른쪽을 번갈아 선다.
+    final left = _i.isEven;
     return Scaffold(
-      backgroundColor: const Color(0xFF14110E),
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
           TextButton(
+            key: const Key('dialogue-skip'),
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('건너뛰기'),
+            child: const Text('건너뛰기 ▶▶', style: TextStyle(color: Palette.text)),
           ),
         ],
       ),
-      body: GestureDetector(
-        key: const Key('dialogue-tap'),
-        behavior: HitTestBehavior.opaque,
-        onTap: _next,
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
+      body: SceneBackground(
+        asset: Art.background(widget.scene),
+        dim: narrator ? 0.55 : 0.3,
+        child: GestureDetector(
+          key: const Key('dialogue-tap'),
+          behavior: HitTestBehavior.opaque,
+          onTap: _next,
+          child: SafeArea(
+            child: Stack(
               children: [
-                const Spacer(),
-                if (!narrator)
-                  CircleAvatar(
-                    radius: 54,
-                    backgroundColor: c.withValues(alpha: 0.25),
-                    child: Text(
-                      who.characters.first,
-                      style: t.displayMedium?.copyWith(
-                        color: c,
-                        fontWeight: FontWeight.w900,
+                if (face != null)
+                  AnimatedAlign(
+                    key: ValueKey('who-$_i'),
+                    duration: const Duration(milliseconds: 300),
+                    alignment: Alignment(left ? -0.75 : 0.75, 0.25),
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: 1),
+                      duration: const Duration(milliseconds: 320),
+                      curve: Curves.easeOutBack,
+                      builder: (_, k, child) => Transform.translate(
+                        offset: Offset((left ? -1 : 1) * 60 * (1 - k), 0),
+                        child: Opacity(opacity: k.clamp(0, 1), child: child),
+                      ),
+                      child: CharacterSprite(
+                        id: face,
+                        height: 360,
+                        attack: _strike,
+                        flip: !left,
                       ),
                     ),
                   ),
-                const SizedBox(height: 24),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: c.withValues(alpha: 0.6)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (!narrator)
-                        Text(
-                          who,
-                          style: t.titleMedium?.copyWith(
-                            color: c,
-                            fontWeight: FontWeight.w800,
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 22),
+                    child: Container(
+                      width: double.infinity,
+                      constraints: const BoxConstraints(minHeight: 150),
+                      padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+                      decoration: BoxDecoration(
+                        color: narrator
+                            ? Colors.black.withValues(alpha: 0.7)
+                            : Palette.paper,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: narrator
+                              ? Palette.gold
+                              : const Color(0xFF2A1A12),
+                          width: 3,
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black54,
+                            blurRadius: 12,
+                            offset: Offset(0, 6),
                           ),
-                        ),
-                      if (!narrator) const SizedBox(height: 6),
-                      Text(
-                        text,
-                        style: t.titleMedium?.copyWith(
-                          height: 1.6,
-                          fontStyle: narrator ? FontStyle.italic : null,
-                        ),
+                        ],
                       ),
-                    ],
+                      child: AnimatedBuilder(
+                        animation: _type,
+                        builder: (_, _) {
+                          final n = (text.length * _type.value).round();
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (!narrator)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: c,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    who,
+                                    style: const TextStyle(
+                                      fontFamily: titleFont,
+                                      fontSize: 16,
+                                      color: Color(0xFF2A1A12),
+                                    ),
+                                  ),
+                                ),
+                              if (!narrator) const SizedBox(height: 8),
+                              Text(
+                                text.substring(0, n),
+                                style: TextStyle(
+                                  fontFamily: bodyFont,
+                                  fontSize: 21,
+                                  height: 1.45,
+                                  color: narrator
+                                      ? Palette.text
+                                      : const Color(0xFF2A1A12),
+                                ),
+                              ),
+                              Align(
+                                alignment: Alignment.bottomRight,
+                                child: Opacity(
+                                  opacity: _type.isAnimating ? 0 : 1,
+                                  child: Text(
+                                    '${_i + 1}/${widget.lines.length} ▼',
+                                    style: TextStyle(
+                                      color: narrator
+                                          ? Palette.dim
+                                          : const Color(0x992A1A12),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  '${_i + 1} / ${widget.lines.length} · 눌러서 넘기기',
-                  style: t.bodySmall,
-                ),
-                const Spacer(),
               ],
             ),
           ),

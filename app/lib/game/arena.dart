@@ -3,6 +3,8 @@ import 'dart:ui';
 
 import 'package:alkkagi_physics/alkkagi_physics.dart';
 
+import '../ui/art.dart';
+
 /// 대전장. 마을·맵마다 바닥 그림과 미끄러운 정도가 다르다(설계서 v2 §9.1).
 ///
 /// [floorFactor] 는 돌 감속에 곱하는 바닥 배수다. 처음 값이며 플레이해 보며 조정한다.
@@ -103,15 +105,39 @@ void paintArena(
     shape.addRect(rect);
   }
 
-  // 테두리(장외 경계 바로 바깥).
-  final rim = Paint()..color = _rimColor(arena);
+  // 판 아래 그림자(배경 위에 떠 있는 판).
+  final shadowRect = rect.inflate(1.4 * scale).shift(Offset(0, 0.9 * scale));
+  final shadow = Paint()
+    ..color = const Color(0xAA000000)
+    ..maskFilter = MaskFilter.blur(BlurStyle.normal, 1.2 * scale);
   if (round) {
-    canvas.drawCircle(center, (h + 0.8) * scale, rim);
+    canvas.drawCircle(shadowRect.center, shadowRect.width / 2, shadow);
+  } else {
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(shadowRect, Radius.circular(scale)),
+      shadow,
+    );
+  }
+  // 테두리(장외 경계 바로 바깥): 결 있는 두툼한 틀.
+  final rimC = _rimColor(arena);
+  final rim = Paint()
+    ..shader = Gradient.linear(
+      rect.topLeft,
+      rect.bottomRight,
+      [
+        Color.lerp(rimC, const Color(0xFFFFFFFF), 0.25)!,
+        rimC,
+        Color.lerp(rimC, const Color(0xFF000000), 0.35)!,
+      ],
+      const [0, 0.5, 1],
+    );
+  if (round) {
+    canvas.drawCircle(center, (h + 0.9) * scale, rim);
   } else {
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        rect.inflate(0.8 * scale),
-        Radius.circular(0.5 * scale),
+        rect.inflate(0.9 * scale),
+        Radius.circular(0.6 * scale),
       ),
       rim,
     );
@@ -121,19 +147,32 @@ void paintArena(
   canvas.clipPath(shape);
   canvas.drawRect(rect, Paint()..color = arena.floor);
   final rand = math.Random(arena.index * 7919 + 17);
-  switch (arena) {
-    case Arena.dustyYard:
-      _dirt(canvas, rect, scale, rand);
-    case Arena.oilyTable:
-      _table(canvas, center, rect, scale, rand);
-    case Arena.turtleMarket:
-      _paving(canvas, rect, scale, rand);
-    case Arena.kubiForest:
-      _forest(canvas, rect, scale, rand);
-    case Arena.logicMarble:
-      _marble(canvas, center, rect, scale, rand);
-    case Arena.murimIce:
-      _ice(canvas, center, rect, scale, rand);
+  final img = Art.floorImage(arena);
+  if (img != null) {
+    // 그린 바닥 그림(tool/art). 그 위에 장마다 특별한 무늬만 더한다.
+    canvas.drawImageRect(
+      img,
+      Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()),
+      rect,
+      Paint()..filterQuality = FilterQuality.medium,
+    );
+    if (arena == Arena.logicMarble) _marbleGold(canvas, center, scale);
+    if (arena == Arena.murimIce) _iceFire(canvas, center, scale);
+  } else {
+    switch (arena) {
+      case Arena.dustyYard:
+        _dirt(canvas, rect, scale, rand);
+      case Arena.oilyTable:
+        _table(canvas, center, rect, scale, rand);
+      case Arena.turtleMarket:
+        _paving(canvas, rect, scale, rand);
+      case Arena.kubiForest:
+        _forest(canvas, rect, scale, rand);
+      case Arena.logicMarble:
+        _marble(canvas, center, rect, scale, rand);
+      case Arena.murimIce:
+        _ice(canvas, center, rect, scale, rand);
+    }
   }
   // 가장자리 그늘: 장외가 가까워지는 것을 느끼게 한다.
   canvas.drawPath(
@@ -331,6 +370,11 @@ void _marble(Canvas c, Offset o, Rect r, double s, math.Random rand) {
       );
     c.drawPath(path, vein);
   }
+  _marbleGold(c, o, s);
+}
+
+/// 학당 바닥의 금빛 기하 문양.
+void _marbleGold(Canvas c, Offset o, double s) {
   final gold = Paint()
     ..style = PaintingStyle.stroke
     ..strokeWidth = 0.14 * s
@@ -385,6 +429,11 @@ void _ice(Canvas c, Offset o, Rect r, double s, math.Random rand) {
       Paint()..color = const Color(0xCCFFFFFF),
     );
   }
+  _iceFire(c, o, s);
+}
+
+/// 빙판 가장자리 네 귀퉁이 불꽃.
+void _iceFire(Canvas c, Offset o, double s) {
   for (var k = 0; k < 4; k++) {
     final a = k * math.pi / 2 + math.pi / 4;
     final p = o + Offset(math.cos(a), math.sin(a)) * 19.5 * s;

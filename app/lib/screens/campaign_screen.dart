@@ -1,6 +1,12 @@
 import 'package:alkkagi_physics/alkkagi_physics.dart';
 import 'package:flutter/material.dart';
 
+import '../audio/sound.dart';
+import '../progress/profile.dart';
+import '../ui/art.dart';
+import '../ui/kit.dart';
+import '../ui/theme.dart';
+
 import '../game/arena.dart';
 import '../game/fx_colors.dart';
 import '../game/match.dart';
@@ -29,18 +35,23 @@ class _CampaignScreenState extends State<CampaignScreen> {
     final nav = Navigator.of(context);
     if (!p.codex.contains('서장')) {
       await nav.push(
-        MaterialPageRoute<void>(
-          builder: (_) =>
-              const DialogueScreen(title: '서장 · 기명석', lines: prologue),
+        gameRoute<void>(
+          const DialogueScreen(
+            title: '서장 · 기명석',
+            lines: prologue,
+            scene: 'lobby',
+          ),
         ),
       );
       p.codex.add('서장');
       await _store.save();
     }
+    Sound.play('jingle_chapter');
     await nav.push(
-      MaterialPageRoute<void>(
-        builder: (_) => DialogueScreen(
+      gameRoute<void>(
+        DialogueScreen(
           title: s.title,
+          scene: s.arena.name,
           lines: [
             if (p.hero case final h?)
               (s.speaker, heroGreeting(h.label, h.trait)),
@@ -51,12 +62,13 @@ class _CampaignScreenState extends State<CampaignScreen> {
     );
     Match? last;
     final won = await nav.push<bool>(
-      MaterialPageRoute(
-        builder: (_) => GameScreen(
+      gameRoute(
+        GameScreen(
           config: Campaign.configFor(p, s),
           title: s.title,
           quips: s.quips,
           boss: true,
+          stageId: s.id,
           onTurnEnd: (m) => last = m,
         ),
       ),
@@ -71,36 +83,23 @@ class _CampaignScreenState extends State<CampaignScreen> {
     );
     await _store.save();
     if (!mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: Text(won ? '승리!' : '패배'),
-        content: Text(
-          won
-              ? [
-                  '엽전 +${r.coins}${r.first ? ' (처음 깬 판 ×2)' : ''}',
-                  if (r.silver > 0) '은자 +${r.silver}',
-                  if (r.bonus > 0) '일타쌍피 +${r.bonus}',
-                  if (r.fine > 0) '백성 돌 배상 −${r.fine}',
-                  if (r.hero != null)
-                    '새 캐릭터: ${r.hero!.label} — ${r.hero!.trait}',
-                ].join('\n')
-              : '${s.boss}에게 졌습니다. 목인항에서 내공을 쌓거나 다시 도전하세요.'
-                    '${r.bonus > 0 ? '\n일타쌍피 +${r.bonus}' : ''}'
-                    '${r.fine > 0 ? '\n백성 돌 배상 −${r.fine}' : ''}',
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.pop(c),
-            child: const Text('확인'),
-          ),
-        ],
-      ),
+    await showRewardDialog(
+      context,
+      title: won ? '승리!' : '패배',
+      won: won,
+      items: [
+        if (r.coins > 0) ('coin', '+${r.coins}${r.first ? ' (첫 승 ×2)' : ''}'),
+        if (r.silver > 0) ('silver', '+${r.silver}'),
+        if (r.bonus > 0) ('coin', '일타쌍피 +${r.bonus}'),
+        if (r.fine > 0) ('coin', '백성 돌 배상 −${r.fine}'),
+      ],
+      newHero: r.hero,
+      note: won ? null : '${s.boss}에게 졌다. 목인항에서 내공을 쌓고 다시!',
     );
     if (!won || !mounted) return;
     await nav.push(
-      MaterialPageRoute<void>(
-        builder: (_) => DialogueScreen(title: s.title, lines: s.outro),
+      gameRoute<void>(
+        DialogueScreen(title: s.title, lines: s.outro, scene: s.arena.name),
       ),
     );
     if (r.awaken && mounted) await _awaken();
@@ -119,8 +118,8 @@ class _CampaignScreenState extends State<CampaignScreen> {
     ];
     final m = martials[DateTime.now().millisecond % martials.length];
     final won = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => GameScreen(
+      gameRoute(
+        GameScreen(
           title: '폐관수련동',
           boss: true,
           config: Campaign.playerConfig(
@@ -183,57 +182,278 @@ class _CampaignScreenState extends State<CampaignScreen> {
   @override
   Widget build(BuildContext context) {
     final p = _store.profile;
-    return Scaffold(
-      appBar: AppBar(title: const Text('강호행')),
+    return GameScaffold(
+      title: '강호행',
+      background: 'dustyYard',
+      dim: 0.5,
+      actions: [
+        Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: Row(
+            children: [
+              Image.asset(Art.icon('star'), width: 26),
+              const SizedBox(width: 4),
+              Text(
+                '${p.totalStars}',
+                style: const TextStyle(fontFamily: titleFont, fontSize: 18),
+              ),
+            ],
+          ),
+        ),
+      ],
       body: ListView.builder(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
         itemCount: campaign.length + 1,
         itemBuilder: (_, i) {
           if (i == campaign.length) {
             final open = p.stage >= 7;
-            return Card(
-              child: ListTile(
-                key: const Key('seclusion'),
-                leading: Icon(open ? Icons.whatshot : Icons.lock),
-                title: const Text('폐관수련동'),
-                subtitle: Text(
-                  open
-                      ? '경지 수련자의 끝판 — 무공을 쓰는 강적 · 예상 궤적 없음'
-                      : '내공 현경(2,400) 이 필요합니다',
-                ),
-                enabled: open,
-                onTap: open ? _seclusion : null,
-              ),
+            return _StageCard(
+              key: const Key('seclusion'),
+              scene: 'murimIce',
+              face: 'mukgaek',
+              title: '폐관수련동',
+              sub: open ? '끝판 · 무공 쓰는 강적' : '내공 현경(7단계)부터',
+              stars: 0,
+              locked: !open,
+              done: false,
+              onTap: open ? _seclusion : null,
             );
           }
           final s = campaign[i];
           final lock = Campaign.lockReason(p, i);
-          final done = p.done.contains(s.id);
-          return Card(
-            child: ListTile(
-              key: Key('stage-${s.id}'),
-              leading: Icon(
-                done
-                    ? Icons.check_circle
-                    : (lock == null ? Icons.play_circle : Icons.lock),
-                color: done ? innerColor : null,
-              ),
-              title: Text(s.title),
-              subtitle: Text(
-                lock ??
-                    '${s.boss} · ${s.arena.label} · ${s.material.label} ${s.shape.label}'
-                        '${s.martial.cost > 0 ? ' · 무공 ${s.martial.label}' : ''}'
-                        '${s.weather != Weather.clear ? ' · 천기 ${s.weather.label}' : ''}'
-                        '${s.features.isNotEmpty ? ' · 지물 ${{for (final f in s.features) f.kind.label}.join('·')}' : ''}'
-                        '${s.civilians.isNotEmpty ? ' · 백성 돌 ${s.civilians.length}' : ''}'
-                        '${s.shiftingFloor ? ' · 빙판↔불꽃 바닥' : ''}',
-              ),
-              enabled: lock == null,
-              onTap: lock == null ? () => _play(i) : null,
-            ),
+          return _StageCard(
+            key: Key('stage-${s.id}'),
+            scene: s.arena.name,
+            face: Art.bossId(s.boss),
+            title: s.title,
+            sub: lock ?? '${s.boss} · ${s.arena.label}',
+            stars: p.stars[s.id] ?? 0,
+            locked: lock != null,
+            done: p.done.contains(s.id),
+            onTap: lock == null ? () => _play(i) : null,
           );
         },
       ),
     );
   }
+}
+
+/// 강호행 판 한 칸: 그 장의 배경 위에 고수 얼굴 · 제목 · 별.
+class _StageCard extends StatelessWidget {
+  const _StageCard({
+    super.key,
+    required this.scene,
+    required this.face,
+    required this.title,
+    required this.sub,
+    required this.stars,
+    required this.locked,
+    required this.done,
+    required this.onTap,
+  });
+  final String scene;
+  final String? face;
+  final String title;
+  final String sub;
+  final int stars;
+  final bool locked;
+  final bool done;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GestureDetector(
+        onTap: onTap == null
+            ? () => Sound.play('error', 0.6)
+            : () {
+                Sound.play('ui_open');
+                onTap!();
+              },
+        child: Container(
+          height: 128,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: locked ? Colors.white24 : Palette.gold,
+              width: 2,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black54,
+                blurRadius: 10,
+                offset: Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.asset(
+                Art.background(scene),
+                fit: BoxFit.cover,
+                alignment: const Alignment(0, 0.3),
+              ),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.black.withValues(alpha: locked ? 0.8 : 0.65),
+                      Colors.black.withValues(alpha: 0.1),
+                    ],
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  const SizedBox(width: 10),
+                  Opacity(
+                    opacity: locked ? 0.45 : 1,
+                    child: Portrait(
+                      id: face,
+                      size: 86,
+                      ring: locked ? Colors.white24 : Palette.gold,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: OutlinedText(
+                            title,
+                            size: 20,
+                            title: true,
+                            align: TextAlign.start,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          sub,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: Palette.text,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            for (var k = 0; k < 3; k++)
+                              Image.asset(
+                                Art.icon(k < stars ? 'star' : 'star_empty'),
+                                width: 24,
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: locked
+                        ? Image.asset(Art.icon('lock'), width: 40)
+                        : (done
+                              ? const Icon(
+                                  Icons.check_circle,
+                                  color: Palette.jade,
+                                  size: 40,
+                                )
+                              : const Icon(
+                                  Icons.play_circle_fill,
+                                  color: Palette.gold,
+                                  size: 46,
+                                )),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 보상 창: 그림과 숫자로(설계서 §16.9).
+Future<void> showRewardDialog(
+  BuildContext context, {
+  required String title,
+  required bool won,
+  required List<(String, String)> items,
+  Fighter? newHero,
+  String? note,
+}) {
+  if (won) Sound.play('jingle_reward');
+  return showDialog<void>(
+    context: context,
+    builder: (c) => Dialog(
+      backgroundColor: Colors.transparent,
+      child: GlassPanel(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            OutlinedText(
+              title,
+              size: 40,
+              title: true,
+              color: won ? Palette.gold : const Color(0xFFB0B8C8),
+            ),
+            const SizedBox(height: 12),
+            for (final (icon, text) in items)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Image.asset(Art.icon(icon), width: 40),
+                    const SizedBox(width: 8),
+                    Text(
+                      text,
+                      style: const TextStyle(
+                        fontFamily: titleFont,
+                        fontSize: 22,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            if (newHero != null) ...[
+              const SizedBox(height: 8),
+              CharacterSprite(id: newHero.name, height: 180),
+              OutlinedText(
+                '새 동료: ${newHero.label}',
+                size: 22,
+                color: Palette.gold,
+              ),
+              Text(newHero.trait, textAlign: TextAlign.center),
+            ],
+            if (note != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                note,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 17),
+              ),
+            ],
+            const SizedBox(height: 16),
+            GameButton(
+              label: '확인',
+              color: Palette.red,
+              onTap: () => Navigator.pop(c),
+              width: 180,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }

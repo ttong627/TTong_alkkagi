@@ -5,6 +5,7 @@ import '../progress/store.dart';
 import '../story/puzzles.dart';
 import 'encounter_flow.dart';
 import 'game_screen.dart';
+import '../ui/kit.dart';
 
 /// 목인항 묘수풀이(설계서 §8.1): 정해진 수 안에 표적을 모두 떨어뜨린다. 처음 풀면 수련 포인트.
 class PuzzleScreen extends StatefulWidget {
@@ -58,7 +59,8 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
   @override
   Widget build(BuildContext context) {
     final p = _store.profile;
-    return Scaffold(
+    return GameScaffold(
+      background: 'turtleMarket',
       appBar: AppBar(title: const Text('목인항 · 묘수풀이')),
       body: ListView(
         padding: const EdgeInsets.all(12),

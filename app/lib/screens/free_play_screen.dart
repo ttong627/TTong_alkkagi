@@ -6,6 +6,7 @@ import '../game/fx_colors.dart';
 import '../game/match.dart';
 import '../game/schools.dart';
 import 'game_screen.dart';
+import '../ui/kit.dart';
 
 /// 자유 대전: 모드·난이도·대전장·돌(재질·모양)·무공을 마음대로 골라 친다(성장·보상 없음).
 class FreePlayScreen extends StatefulWidget {
@@ -58,7 +59,8 @@ class _FreePlayScreenState extends State<FreePlayScreen> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    return Scaffold(
+    return GameScaffold(
+      background: 'dustyYard',
       appBar: AppBar(title: const Text('자유 대전')),
       body: SafeArea(
         child: ListView(

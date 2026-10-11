@@ -15,6 +15,7 @@ import '../game/match.dart';
 import '../game/predict.dart';
 import '../input/touch_feed.dart';
 import '../progress/settings.dart';
+import '../ui/ghost_hand.dart';
 
 /// 재질마다 기(氣) 빛깔.
 const _qiColors = {
@@ -37,7 +38,15 @@ class FlickView extends StatefulWidget {
     required this.stone,
     required this.onShot,
     required this.onCancel,
+    this.demo = false,
+    this.demoAngle = -math.pi / 2,
   });
+
+  /// 시범 손가락을 보여 줄까(입문·처음 몇 판). 손이 닿으면 사라진다.
+  final bool demo;
+
+  /// 시범 손가락이 튕기는 쪽(라디안, 화면 위 = −π/2). 판 위 방향과 같다.
+  final double demoAngle;
 
   final Match match;
   final phys.Stone stone;
@@ -607,7 +616,7 @@ class _FlickViewState extends State<FlickView>
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    '검지로 돌을 튕기세요. 화면을 스치며 맞혀도, 돌 바로 앞에서 튕겨도 맞아요. 가운데는 곧게, 가장자리는 비스듬히',
+                                    '가운데 → 곧게 · 가장자리 → 비스듬히',
                                     style: t.bodySmall?.copyWith(
                                       color: Colors.white70,
                                     ),
@@ -617,6 +626,32 @@ class _FlickViewState extends State<FlickView>
                               ),
                             ),
                           ),
+                          // 시범 손가락: 돌 아래에서 검지로 위로 튕긴다(글 대신 보여 준다).
+                          if (widget.demo && !_down && _launch == null)
+                            Positioned.fill(
+                              child: Ghost(
+                                builder: (t) => GhostFlickPainter(
+                                  from:
+                                      c -
+                                      Offset(
+                                            math.cos(widget.demoAngle),
+                                            math.sin(widget.demoAngle),
+                                          ) *
+                                          r *
+                                          2.4,
+                                  to:
+                                      c +
+                                      Offset(
+                                            math.cos(widget.demoAngle),
+                                            math.sin(widget.demoAngle),
+                                          ) *
+                                          r *
+                                          0.7,
+                                  t: t,
+                                  size: r * 1.15,
+                                ),
+                              ),
+                            ),
                           // 손끝 자국은 맨 위에.
                           Positioned.fill(
                             child: CustomPaint(

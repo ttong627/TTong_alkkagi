@@ -11,6 +11,7 @@ import '../progress/store.dart';
 import '../story/campaign.dart';
 import 'encounter_flow.dart';
 import 'game_screen.dart';
+import '../ui/kit.dart';
 
 /// 투기장(설계서 §8.1): 진기 10 + 엽전 20 으로 들어가 AI 와 연승전. 이길수록 배수가 오르고
 /// 언제든 그만두고 모은 엽전을 받는다. 지면 50% 만. 3연승 이상 그만두면 징표 +1.
@@ -107,7 +108,8 @@ class _ArenaScreenState extends State<ArenaScreen> {
   Widget build(BuildContext context) {
     final p = _store.profile;
     final t = Theme.of(context).textTheme;
-    return Scaffold(
+    return GameScaffold(
+      background: 'murimIce',
       appBar: AppBar(
         title: Text('투기장 · 진기 ${p.staminaNow(_now).floor()} · 엽전 ${p.coins}'),
       ),

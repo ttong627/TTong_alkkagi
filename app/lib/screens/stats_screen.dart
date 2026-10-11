@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../progress/profile.dart';
 import '../progress/store.dart';
 import 'shop_screen.dart';
+import '../ui/kit.dart';
 
 /// 능력치(설계서 §2.3·§16.4)·캐릭터(§2.2·§16.3)·내 돌(산 재질·모양) 고르기.
 class StatsScreen extends StatefulWidget {
@@ -25,7 +26,8 @@ class _StatsScreenState extends State<StatsScreen> {
   Widget build(BuildContext context) {
     final p = _store.profile;
     final t = Theme.of(context).textTheme;
-    return Scaffold(
+    return GameScaffold(
+      background: 'kubiForest',
       appBar: AppBar(
         title: Text('능력치 · 수련 포인트 ${p.trainingPoints.toStringAsFixed(1)}'),
       ),

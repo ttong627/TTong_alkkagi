@@ -64,6 +64,23 @@ flutter:
 
   assets:
     - assets/sounds/
+    - assets/images/chars/
+    - assets/images/scenes/
+    - assets/images/icons/
+    - assets/licenses/
+
+  # 글꼴(SIL Open Font License · assets/licenses 에 원문): 제목 Black Han Sans, 본문 도현, 보충 Noto Sans KR.
+  fonts:
+    - family: BlackHanSans
+      fonts:
+        - asset: assets/fonts/BlackHanSans-Regular.ttf
+    - family: DoHyeon
+      fonts:
+        - asset: assets/fonts/DoHyeon-Regular.ttf
+    # 위 두 글꼴에 없는 기호·한자(·—…「」 彈指一擊 등)만 떼어 온 Noto Sans KR(tool/make_fallback_font.py).
+    - family: NotoKRFallback
+      fonts:
+        - asset: assets/fonts/NotoSansKR-Fallback.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

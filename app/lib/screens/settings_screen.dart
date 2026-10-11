@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import '../game/flick.dart';
 import '../input/touch_feed.dart';
 import '../progress/settings.dart';
+import '../ui/kit.dart';
+import '../ui/theme.dart';
+import 'tutorial_screen.dart';
 
 /// 설정 화면(설계서 §16.6).
 class SettingsScreen extends StatefulWidget {
@@ -43,11 +46,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final t = Theme.of(context).textTheme;
     final range = TouchProfile.shared.range;
     final pct = (s.feel * 100).round();
-    return Scaffold(
+    return GameScaffold(
+      background: 'lobby',
       appBar: AppBar(title: const Text('설정')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // 입문(설계서 §16.10)을 다시: 사부와 수련 넷을 처음부터.
+          GameButton(
+            key: const Key('replay-tutorial'),
+            label: '입문 수련 다시 하기',
+            icon: 'training',
+            color: Palette.jade,
+            height: 56,
+            fontSize: 20,
+            onTap: () =>
+                Navigator.of(context)
+                    .push(gameRoute<void>(const TutorialScreen())),
+          ),
+          const SizedBox(height: 16),
           Text('소리', style: t.titleMedium),
           ListTile(
             title: const Text('효과음'),

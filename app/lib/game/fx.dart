@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../audio/sound.dart';
 import 'fx_colors.dart';
 import 'match.dart';
+import '../ui/theme.dart';
 
 /// 판 위 연출: 날아가는 돌 잔상, 충돌 불꽃·화면 흔들림·잠깐 느려지기, 장외, 회심·내공·무공·스킬 효과.
 ///
@@ -377,7 +378,9 @@ class BattleFx {
   ) {
     for (final r in _rings) {
       final k = r.t / r.dur;
-      final rad = (r.r0 + (r.r1 - r.r0) * Curves.easeOut.transform(k)) * scale;
+      final rad =
+          (r.r0 + (r.r1 - r.r0) * Curves.easeOut.transform(k.clamp(0.0, 1.0))) *
+          scale;
       canvas.drawCircle(
         at(r.at.dx, r.at.dy),
         rad,
@@ -400,8 +403,9 @@ class BattleFx {
       final pos = at(t.at.dx, t.at.dy).translate(0, -k * 30);
       final pop = k < 0.15 ? 0.6 + k / 0.15 * 0.6 : 1.2 - (k - 0.15) * 0.25;
       final style = TextStyle(
+        fontFamily: titleFont,
+        fontFamilyFallback: fallbackFonts,
         fontSize: t.size * pop,
-        fontWeight: FontWeight.w900,
         color: t.color.withValues(alpha: (1 - k * k).clamp(0.0, 1.0)),
         shadows: const [Shadow(blurRadius: 6, color: Color(0xCC000000))],
       );

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../game/board_paint.dart';
 import '../progress/profile.dart';
 import '../progress/store.dart';
+import '../ui/kit.dart';
 
 /// 만물상(설계서 §6.2A): 엽전으로 재질·모양을 산다. 산 것은 「능력치 · 내 돌」에서 고른다.
 class ShopScreen extends StatefulWidget {
@@ -34,7 +35,8 @@ class _ShopScreenState extends State<ShopScreen> {
   Widget build(BuildContext context) {
     final p = _store.profile;
     final t = Theme.of(context).textTheme;
-    return Scaffold(
+    return GameScaffold(
+      background: 'turtleMarket',
       appBar: AppBar(title: Text('만물상 · 엽전 ${p.coins}')),
       body: ListView(
         padding: const EdgeInsets.all(12),

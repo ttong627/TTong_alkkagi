@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../game/flick.dart';
 import '../progress/encounters.dart';
+import '../ui/kit.dart';
 
 /// 확률 안내(설계서 §12.2): 게임 안 모든 확률을 그대로 보여 준다.
 class OddsScreen extends StatelessWidget {
@@ -26,7 +27,8 @@ class OddsScreen extends StatelessWidget {
       ('기인방 「내공 아낌」', '내공을 쓸 때 10% 로 1칸 돌려받음'),
       ('기인방 「장외 시 기」', '상대 돌을 떨어뜨릴 때마다 10% 로 내공 +1칸'),
     ];
-    return Scaffold(
+    return GameScaffold(
+      background: 'logicMarble',
       appBar: AppBar(title: const Text('확률 안내')),
       body: ListView(
         padding: const EdgeInsets.all(12),
