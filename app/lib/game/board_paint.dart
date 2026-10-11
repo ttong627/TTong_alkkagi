@@ -434,14 +434,27 @@ void paintFeature(
         Paint()..color = const Color(0x55FFFFFF),
       );
     case FeatureKind.bamboo:
-      canvas.drawCircle(c, r, Paint()..color = const Color(0xFF3FAF6A));
+      // 위에서 본 청죽 단면: 튕겨 내는 기운(옅은 테) · 진한 테두리 · 속 빈 마디.
+      // 실제 크기(반지름 0.8cm)로만 그리면 숲 바닥에서 잘 안 보였다(2026-10-11 화면 확인).
       canvas.drawCircle(
         c,
-        r * 0.7,
+        r * 2.1,
+        Paint()
+          ..shader = Gradient.radial(c, r * 2.1, const [
+            Color(0x669BE8B5),
+            Color(0x009BE8B5),
+          ]),
+      );
+      canvas.drawCircle(c, r * 1.12, Paint()..color = const Color(0xFF123D22));
+      canvas.drawCircle(c, r, Paint()..color = const Color(0xFF3FAF6A));
+      canvas.drawCircle(c, r * 0.62, Paint()..color = const Color(0xFFDDF5C9));
+      canvas.drawCircle(
+        c,
+        r * 0.62,
         Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = r * 0.15
-          ..color = const Color(0xFF9BE8B5),
+          ..strokeWidth = r * 0.14
+          ..color = const Color(0xFF2E8A50),
       );
     case FeatureKind.gong:
       canvas.drawCircle(

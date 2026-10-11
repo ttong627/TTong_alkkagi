@@ -206,6 +206,20 @@ class Profile {
   /// 깬 목인항 묘수풀이(퍼즐) 번호.
   final puzzles = <int>{};
 
+  /// 트릭샷 판마다 가장 좋은 별(0~3).
+  final puzzleStars = <int, int>{};
+
+  /// 트릭샷 별 합계.
+  int get trickStarTotal => puzzleStars.values.fold(0, (a, b) => a + b);
+
+  /// 더 좋은 별만 남긴다. 새로 늘어난 별 수를 돌려준다.
+  int recordPuzzleStars(int id, int stars) {
+    final old = puzzleStars[id] ?? 0;
+    if (stars <= old) return 0;
+    puzzleStars[id] = stars.clamp(0, 3);
+    return puzzleStars[id]! - old;
+  }
+
   /// 강호유랑: 이번 주 번호와 지나온 칸 수.
   String wanderWeek = '';
   int wanderRow = 0;
@@ -481,6 +495,7 @@ class Profile {
     'legUntil': legendaryUntil,
     'legendary': legendary,
     'puzzles': puzzles.toList(),
+    'puzzleStars': {for (final e in puzzleStars.entries) '${e.key}': e.value},
     'wanderWeek': wanderWeek,
     'wanderRow': wanderRow,
     'arenaBest': arenaBest,
@@ -564,6 +579,13 @@ class Profile {
     p.legendaryUntil = j['legUntil'] as int? ?? 0;
     p.legendary.addAll((j['legendary'] as List? ?? []).cast<String>());
     p.puzzles.addAll((j['puzzles'] as List? ?? []).cast<int>());
+    final ps = j['puzzleStars'] as Map? ?? {};
+    for (final e in ps.entries) {
+      final id = int.tryParse('${e.key}');
+      if (id != null && e.value is int) {
+        p.puzzleStars[id] = (e.value as int).clamp(0, 3);
+      }
+    }
     p.wanderWeek = j['wanderWeek'] as String? ?? '';
     p.wanderRow = j['wanderRow'] as int? ?? 0;
     p.arenaBest = j['arenaBest'] as int? ?? 0;

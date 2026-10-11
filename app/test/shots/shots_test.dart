@@ -12,6 +12,8 @@ import 'package:alkkagi/screens/codex_screen.dart';
 import 'package:alkkagi/screens/daily_screen.dart';
 import 'package:alkkagi/screens/dialogue_screen.dart';
 import 'package:alkkagi/screens/free_play_screen.dart';
+import 'package:alkkagi/screens/puzzle_screen.dart';
+import 'package:alkkagi/story/trickshots.dart';
 import 'package:alkkagi/screens/settings_screen.dart';
 import 'package:alkkagi/screens/shop_screen.dart';
 import 'package:alkkagi/screens/stats_screen.dart';
@@ -157,6 +159,22 @@ void main() {
       );
     }
     await _shot(t, const FreePlayScreen(), 'free_play');
+    // 트릭샷: 판 고르기 · 청죽 · 경종/지뢰 · 빙판 백성 돌(시간 제한).
+    await _shot(t, const PuzzleScreen(), 'puzzle', settleMs: 1200);
+    for (final id in [1035, 1047, 1058]) {
+      final z = trickshots.firstWhere((x) => x.id == id);
+      await _shot(
+        t,
+        GameScreen(
+          config: z.config(),
+          title: '트릭샷 · ${z.title}',
+          info: () => z.help,
+          timeLimit: z.seconds,
+        ),
+        'trick_$id',
+        settleMs: 1600,
+      );
+    }
     await _shot(t, const CampaignScreen(), 'campaign');
     await _shot(
       t,

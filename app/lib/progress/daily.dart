@@ -265,6 +265,20 @@ final achievements = <Achievement>[
   // 강호행 9판 × 별 3 = 27 이 만점(예전 목표 30 은 이룰 수 없었다 — 2026-10-11).
   Achievement('stars9', '별 9개', 9, const Reward(tp: 30), (p) => p.totalStars),
   Achievement(
+    'trick30',
+    '트릭샷 별 30',
+    30,
+    const Reward(silver: 2),
+    (p) => p.trickStarTotal,
+  ),
+  Achievement(
+    'trick120',
+    '트릭샷 별 120',
+    120,
+    const Reward(tokens: 3),
+    (p) => p.trickStarTotal,
+  ),
+  Achievement(
     'stars18',
     '별 18개',
     18,

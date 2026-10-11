@@ -694,6 +694,11 @@ class Match extends ChangeNotifier {
       }
     }
     if (config.mode == MatchMode.practice) {
+      // 묘수풀이: 백성 돌을 하나라도 떨어뜨리면 실패.
+      if (config.layout != null && civiliansLost > 0) {
+        _winner = 1;
+        return;
+      }
       // 상대 돌을 다 떨어뜨렸으면 내 돌이 같이 나가도 성공.
       if (alive(1) == 0) {
         _winner = 0;
@@ -761,6 +766,13 @@ class Match extends ChangeNotifier {
     } else {
       _winner = mine > theirs ? 0 : 1;
     }
+  }
+
+  /// 시간이 다 됐다(묘수풀이 시간 제한): 실패로 끝낸다.
+  void timeUp() {
+    if (isOver) return;
+    _winner = 1;
+    notifyListeners();
   }
 
   /// 판 아래에 보일 규칙 상황 한 줄(기본 규칙이면 null).
