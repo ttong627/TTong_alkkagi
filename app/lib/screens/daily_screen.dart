@@ -157,7 +157,9 @@ class _DailyScreenState extends State<DailyScreen>
     );
   }
 
-  Widget _missions(Profile p, String day) {
+  Widget _missions(Profile p, String today) {
+    // 받기·세기가 쓰는 날과 같은 날의 임무를 보여 준다(시계를 되돌리면 화면과 실제 임무가 달랐다 · 2026-10-11 점검).
+    final day = Missions.effectiveDay(p, today);
     final ms = Missions.of(day);
     final allDone = p.missionDay == day && p.missionClaimed.length >= 3;
     return ListView(
@@ -175,27 +177,38 @@ class _DailyScreenState extends State<DailyScreen>
           ),
         const SizedBox(height: 8),
         GlassPanel(
+          padding: const EdgeInsets.all(10),
           child: Row(
             children: [
-              Image.asset(Art.icon('chest'), width: 56),
+              Image.asset(Art.icon('chest'), width: 50),
               const SizedBox(width: 10),
-              const Expanded(
-                child: Text('셋 다 끝내면 덤!', style: TextStyle(fontSize: 18)),
-              ),
-              for (final (ic, n) in missionBonus.items)
-                _RewardChip(icon: ic, n: n),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 84,
-                child: GameButton(
-                  label: p.missionClaimed.contains(99) ? '완료' : '받기',
-                  height: 44,
-                  fontSize: 18,
-                  color: Palette.red,
-                  onTap: allDone && !p.missionClaimed.contains(99)
-                      ? () => _got(Missions.claimBonus(p, day))
-                      : null,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '셋 다 하면 덤!',
+                      style: TextStyle(fontFamily: titleFont, fontSize: 17),
+                    ),
+                    const SizedBox(height: 3),
+                    Wrap(
+                      children: [
+                        for (final (ic, n) in missionBonus.items)
+                          _RewardChip(icon: ic, n: n),
+                      ],
+                    ),
+                  ],
                 ),
+              ),
+              const SizedBox(width: 8),
+              _ClaimSlot(
+                claimed: p.missionClaimed.contains(99),
+                ready: allDone,
+                now: p.missionDay == day
+                    ? p.missionClaimed.where((i) => i < 3).length
+                    : 0,
+                goal: 3,
+                onClaim: () => _got(Missions.claimBonus(p, day)),
               ),
             ],
           ),
@@ -273,24 +286,29 @@ class _DayCell extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '$day일',
-                  style: const TextStyle(
-                    fontFamily: titleFont,
-                    fontSize: 14,
-                    color: Palette.dim,
+          // 글자가 커져도(×100·글자 크기 1.3배) 칸 안에 맞게 줄어든다.
+          Padding(
+            padding: const EdgeInsets.all(4),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$day일',
+                    style: const TextStyle(
+                      fontFamily: titleFont,
+                      fontSize: 14,
+                      color: Palette.dim,
+                    ),
                   ),
-                ),
-                Image.asset(Art.icon(big ? 'chest' : icon), width: 42),
-                Text(
-                  '×$n',
-                  style: const TextStyle(fontFamily: titleFont, fontSize: 16),
-                ),
-              ],
+                  Image.asset(Art.icon(big ? 'chest' : icon), width: 42),
+                  Text(
+                    '×$n',
+                    style: const TextStyle(fontFamily: titleFont, fontSize: 16),
+                  ),
+                ],
+              ),
             ),
           ),
           if (taken)
@@ -351,26 +369,13 @@ class _TaskCard extends StatelessWidget {
                     style: const TextStyle(fontFamily: titleFont, fontSize: 17),
                   ),
                   const SizedBox(height: 5),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: LinearProgressIndicator(
-                      value: (now / goal).clamp(0.0, 1.0),
-                      minHeight: 10,
-                      backgroundColor: Colors.white12,
-                      color: done ? Palette.jade : Palette.gold,
-                    ),
+                  GameBar(
+                    value: now / goal,
+                    color: done ? Palette.jade : Palette.gold,
                   ),
                   const SizedBox(height: 3),
-                  Row(
+                  Wrap(
                     children: [
-                      Text(
-                        '${now.clamp(0, goal)} / $goal',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Palette.dim,
-                        ),
-                      ),
-                      const Spacer(),
                       for (final (ic, n) in reward.items)
                         _RewardChip(icon: ic, n: n),
                     ],
@@ -379,20 +384,68 @@ class _TaskCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            SizedBox(
-              width: 78,
-              child: GameButton(
-                label: claimed ? '완료' : '받기',
-                height: 44,
-                fontSize: 18,
-                color: Palette.red,
-                onTap: done && !claimed ? onClaim : null,
-              ),
+            _ClaimSlot(
+              claimed: claimed,
+              ready: done,
+              now: now,
+              goal: goal,
+              onClaim: onClaim,
             ),
           ],
         ),
       ),
     );
+  }
+}
+
+/// 오른쪽 칸: 받은 것은 ✔, 받을 수 있으면 「받기」 단추, 아직이면 「0/3」 진행(누르는 단추처럼 안 보이게).
+class _ClaimSlot extends StatelessWidget {
+  const _ClaimSlot({
+    required this.claimed,
+    required this.ready,
+    required this.now,
+    required this.goal,
+    required this.onClaim,
+  });
+  final bool claimed;
+  final bool ready;
+  final int now;
+  final int goal;
+  final VoidCallback onClaim;
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget slot;
+    if (claimed) {
+      slot = Semantics(
+        label: '받음',
+        child: const Icon(Icons.check_circle, color: Palette.jade, size: 40),
+      );
+    } else if (ready) {
+      slot = GameButton(
+        label: '받기',
+        height: 44,
+        fontSize: 18,
+        color: Palette.red,
+        onTap: onClaim,
+      );
+    } else {
+      slot = Semantics(
+        label: '진행 $now / $goal',
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            '${now.clamp(0, goal)}/$goal',
+            style: const TextStyle(
+              fontFamily: titleFont,
+              fontSize: 20,
+              color: Palette.dim,
+            ),
+          ),
+        ),
+      );
+    }
+    return SizedBox(width: 78, child: Center(child: slot));
   }
 }
 

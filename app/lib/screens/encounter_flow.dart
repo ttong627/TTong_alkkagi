@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../game/match.dart';
 import '../progress/encounters.dart';
+import '../progress/profile.dart';
 import '../progress/store.dart';
 import '../story/puzzles.dart';
 import 'game_screen.dart';
@@ -17,6 +18,11 @@ Future<void> afterRound(BuildContext context, {double boost = 1}) async {
   final store = ProfileStore.instance;
   final p = store.profile;
   final now = DateTime.now().millisecondsSinceEpoch;
+  // 하루 상한(2026-10-11 경제 점검: 묘수풀이를 열었다 닫기만 해도 시간당 수백 번 뽑던 것).
+  if (!takeEncounterTurn(p, today())) {
+    await store.save();
+    return;
+  }
   final e = rollEncounter(p, _rand, now: now, boost: boost);
   await store.save();
   if (e == null || !context.mounted) return;
@@ -25,6 +31,7 @@ Future<void> afterRound(BuildContext context, {double boost = 1}) async {
     case Encounter.elixir:
       await showDialog<void>(
         context: context,
+        barrierDismissible: false,
         builder: (c) => AlertDialog(
           title: const Text('기연! 천년설삼'),
           content: const Text('산삼 향이 퍼진다. 먹으니 단전이 뜨거워진다 — 내공 +100'),
@@ -37,21 +44,28 @@ Future<void> afterRound(BuildContext context, {double boost = 1}) async {
         ),
       );
     case Encounter.legendary:
+      // 한 번뿐인 기회: 바깥을 눌러도, 뒤로 가기를 눌러도 닫히지 않는다(단추로만 고른다).
       final go = await showDialog<bool>(
         context: context,
-        builder: (c) => AlertDialog(
-          title: const Text('기연! 기인방'),
-          content: const Text('허름한 노인이 보따리를 편다. 「10분만 판다네. 값은 자네 주머니 보고 부르지.」'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(c, false),
-              child: const Text('나중에'),
+        barrierDismissible: false,
+        builder: (c) => PopScope(
+          canPop: false,
+          child: AlertDialog(
+            title: const Text('기연! 기인방'),
+            content: const Text(
+              '허름한 노인이 보따리를 편다. 「10분만 판다네. 값은 자네 주머니 보고 부르지.」',
             ),
-            FilledButton(
-              onPressed: () => Navigator.pop(c, true),
-              child: const Text('들여다보기'),
-            ),
-          ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(c, false),
+                child: const Text('나중에'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(c, true),
+                child: const Text('들여다보기'),
+              ),
+            ],
+          ),
         ),
       );
       if (go == true) {
@@ -60,21 +74,26 @@ Future<void> afterRound(BuildContext context, {double boost = 1}) async {
         );
       }
     case Encounter.hermit:
+      // 한 번만 기회: 바깥을 눌러도, 뒤로 가기를 눌러도 닫히지 않는다(단추로만 고른다).
       final go = await showDialog<bool>(
         context: context,
-        builder: (c) => AlertDialog(
-          title: const Text('기연! 은둔 고수'),
-          content: const Text('「한 번에 돌 셋을 떨어뜨려 보아라. 해내면 내 비급을 주마.」(한 번만 기회)'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(c, false),
-              child: const Text('사양한다'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(c, true),
-              child: const Text('도전'),
-            ),
-          ],
+        barrierDismissible: false,
+        builder: (c) => PopScope(
+          canPop: false,
+          child: AlertDialog(
+            title: const Text('기연! 은둔 고수'),
+            content: const Text('「한 번에 돌 셋을 떨어뜨려 보아라. 해내면 내 비급을 주마.」(한 번만 기회)'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(c, false),
+                child: const Text('사양한다'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(c, true),
+                child: const Text('도전'),
+              ),
+            ],
+          ),
         ),
       );
       if (go != true) return;
@@ -102,6 +121,7 @@ Future<void> afterRound(BuildContext context, {double boost = 1}) async {
       if (!context.mounted) return;
       await showDialog<void>(
         context: context,
+        barrierDismissible: false,
         builder: (c) => AlertDialog(
           title: Text(won == true ? '시험 통과!' : '실패'),
           content: Text(msg),

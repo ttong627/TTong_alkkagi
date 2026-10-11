@@ -47,9 +47,8 @@ class _SplashScreenState extends State<SplashScreen>
     });
     // 그림을 미리 디코드해 두면 로비가 깜빡이지 않는다.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      for (final id in ['seokdu', 'yeonbi', 'cheongmyeong', 'sabu']) {
-        unawaited(precacheImage(AssetImage(Art.character(id)), context));
-      }
+      // 캐릭터는 그릴 크기로 줄여 읽으므로(CharacterSprite) 원본 크기로 미리 읽지 않는다
+      // (쓰이지 않는 880×1040 넷 ≈ 15MB 를 들고 있던 것 · 2026-10-11 점검).
       unawaited(precacheImage(AssetImage(Art.background('lobby')), context));
     });
   }

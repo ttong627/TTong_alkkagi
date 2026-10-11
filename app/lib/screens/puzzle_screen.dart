@@ -5,7 +5,9 @@ import '../progress/store.dart';
 import '../story/puzzles.dart';
 import 'encounter_flow.dart';
 import 'game_screen.dart';
+import '../ui/art.dart';
 import '../ui/kit.dart';
+import '../ui/theme.dart';
 
 /// 목인항 묘수풀이(설계서 §8.1): 정해진 수 안에 표적을 모두 떨어뜨린다. 처음 풀면 수련 포인트.
 class PuzzleScreen extends StatefulWidget {
@@ -63,7 +65,8 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
       ),
     );
     setState(() {});
-    await afterRound(context);
+    // 기연은 처음 풀었을 때만 뽑는다(열었다 닫기로 뽑던 구멍 — 2026-10-11).
+    if (first) await afterRound(context);
   }
 
   @override
@@ -71,24 +74,45 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
     final p = _store.profile;
     return GameScaffold(
       background: 'turtleMarket',
-      appBar: AppBar(title: const Text('목인항 · 묘수풀이')),
+      appBar: AppBar(
+        title: const Text('묘수풀이'),
+        actions: [
+          HelpButton(
+            title: '묘수풀이',
+            lines: [
+              ('puzzle', '정해진 수 안에 표적을 모두 떨어뜨려요'),
+              ('tp', '처음 풀면 수련 포인트를 받아요'),
+            ],
+          ),
+        ],
+      ),
       body: ListView(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
         children: [
+          SectionHead(
+            '목인항',
+            icon: 'puzzle',
+            trailing: InfoPill(
+              text:
+                  '${puzzles.where((z) => p.puzzles.contains(z.id)).length}/${puzzles.length}',
+            ),
+          ),
           for (final z in puzzles)
-            Card(
-              child: ListTile(
-                leading: Icon(
-                  p.puzzles.contains(z.id)
-                      ? Icons.check_circle
-                      : Icons.extension,
-                ),
-                title: Text('${z.id}. ${z.title}'),
-                subtitle: Text(
-                  '${z.help} · ${z.shots}수 · 처음 풀면 수련 포인트 +${z.reward}',
-                ),
-                onTap: () => _play(z),
+            RowCard(
+              leading: Image.asset(
+                Art.icon(p.puzzles.contains(z.id) ? 'star' : 'puzzle'),
+                width: 44,
               ),
+              title: '${z.id}. ${z.title}',
+              sub: '${z.shots}수',
+              trailing: p.puzzles.contains(z.id)
+                  ? const Icon(
+                      Icons.check_circle,
+                      color: Palette.jade,
+                      size: 36,
+                    )
+                  : InfoPill(icon: 'tp', text: '+${z.reward}'),
+              onTap: () => _play(z),
             ),
         ],
       ),

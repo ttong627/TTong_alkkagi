@@ -87,6 +87,14 @@ Future<void> _shot(
   for (var i = 0; i < settleMs ~/ 100; i++) {
     await t.pump(const Duration(milliseconds: 100));
   }
+  // 캐릭터·얼굴은 그릴 크기로 줄여 읽어(캐시 열쇠가 원본과 다름) 미리 읽은 원본을 못 쓴다 —
+  // 실제 시간을 조금 주어 풀리게 한 뒤 다시 그린다.
+  await t.runAsync(
+    () => Future<void>.delayed(const Duration(milliseconds: 700)),
+  );
+  for (var i = 0; i < 3; i++) {
+    await t.pump(const Duration(milliseconds: 50));
+  }
   final boundary =
       key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
   await t.runAsync(() async {
@@ -253,7 +261,8 @@ void main() {
         title: '2장 · 기름진 난장',
       ),
       'screenshot-3-versus',
-      settleMs: 700,
+      // 시작 연출 0.9초 — 사라지기 전(0.74초 전)에 찍는다.
+      settleMs: 400,
       ratio: k,
       dir: out,
     );

@@ -67,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _updater.addListener(_onUpdate);
     _store.addListener(_onUpdate);
     // 입문(강제) 중에 새 판을 깔고 앱이 닫히면 안 된다 — 입문을 마친 뒤 로비에서 확인한다.
-    if (_store.profile.tutorialDone) _updater.run();
+    if (_store.profile.tutorialDone || e2eUpdater) _updater.run();
     if (e2eFlick) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _open(const FreePlayScreen(autoPractice: true)),

@@ -5,8 +5,10 @@ import '../game/arena.dart';
 import '../game/fx_colors.dart';
 import '../game/match.dart';
 import '../game/schools.dart';
-import 'game_screen.dart';
 import '../ui/kit.dart';
+import '../ui/theme.dart';
+import 'game_screen.dart';
+import 'shop_screen.dart' show stoneIcon;
 
 /// 자유 대전: 모드·난이도·대전장·돌(재질·모양)·무공을 마음대로 골라 친다(성장·보상 없음).
 class FreePlayScreen extends StatefulWidget {
@@ -58,162 +60,198 @@ class _FreePlayScreenState extends State<FreePlayScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
     return GameScaffold(
       background: 'dustyYard',
       appBar: AppBar(title: const Text('자유 대전')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-          children: [
-            const SizedBox(height: 28),
-            _Section(
-              title: 'AI 난이도',
-              child: SizedBox(
-                width: double.infinity,
-                child: SegmentedButton<Difficulty>(
-                  showSelectedIcon: false,
-                  segments: [
-                    for (final d in Difficulty.values)
-                      ButtonSegment(value: d, label: Text(d.label)),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+        children: [
+          _Section(
+            title: '난이도',
+            icon: 'rank',
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final d in Difficulty.values)
+                  GameChip(
+                    label: d.label,
+                    selected: _difficulty == d,
+                    onTap: () => setState(() => _difficulty = d),
+                  ),
+              ],
+            ),
+          ),
+          _Section(
+            title: '대전장',
+            icon: 'campaign',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final a in Arena.values)
+                      GameChip(
+                        leading: CircleAvatar(
+                          radius: 9,
+                          backgroundColor: a.floor,
+                        ),
+                        label: a.label,
+                        selected: _arena == a,
+                        onTap: () => setState(() => _arena = a),
+                      ),
                   ],
-                  selected: {_difficulty},
-                  onSelectionChanged: (s) =>
-                      setState(() => _difficulty = s.first),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${_arena.chapter} · ${_arena.feel}',
+                  style: const TextStyle(fontSize: 14, color: Palette.dim),
+                ),
+              ],
+            ),
+          ),
+          _Section(
+            title: '내 돌',
+            icon: 'shop',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final m in StoneMaterial.values)
+                      GameChip(
+                        leading: stoneIcon(m, _shape),
+                        label: m.label,
+                        selected: _material == m,
+                        onTap: () => setState(() => _material = m),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final s in StoneShape.values)
+                      GameChip(
+                        leading: stoneIcon(_material, s),
+                        label: s.label,
+                        selected: _shape == s,
+                        onTap: () => setState(() => _shape = s),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          _Section(
+            title: '문파 무공',
+            icon: 'naegong',
+            trailing: HelpButton(
+              title: _martial.label,
+              lines: [(null, martialHelp(_martial))],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final (t, school) in schools)
+                      GameChip(
+                        leading: CircleAvatar(
+                          radius: 9,
+                          backgroundColor: techniqueColor(t),
+                        ),
+                        label: school,
+                        selected: _martial == t,
+                        onTap: () => setState(() => _martial = t),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _martial.label,
+                  style: const TextStyle(fontSize: 16, color: Palette.dim),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          GameButton(
+            label: '혼자 하기',
+            icon: 'arena',
+            height: 64,
+            onTap: () => _start(MatchMode.vsAi),
+          ),
+          const SizedBox(height: 8),
+          GameButton(
+            label: '둘이 하기',
+            icon: 'free',
+            color: Palette.jade,
+            height: 64,
+            onTap: () => _start(MatchMode.twoPlayer),
+          ),
+          const SizedBox(height: 8),
+          GameButton(
+            label: '연습',
+            icon: 'training',
+            color: Palette.sky,
+            height: 56,
+            fontSize: 22,
+            onTap: () => _start(MatchMode.practice),
+          ),
+          const SizedBox(height: 12),
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.info_outline, size: 18, color: Palette.dim),
+              SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  '성장·보상 없는 놀이터',
+                  style: TextStyle(fontSize: 15, color: Palette.dim),
                 ),
               ),
-            ),
-            _Section(
-              title: '대전장',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final a in Arena.values)
-                        ChoiceChip(
-                          avatar: CircleAvatar(backgroundColor: a.floor),
-                          label: Text(a.label),
-                          selected: _arena == a,
-                          onSelected: (_) => setState(() => _arena = a),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '${_arena.chapter} · ${_arena.feel}',
-                    style: t.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            _Section(
-              title: '내 돌 재질',
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final m in StoneMaterial.values)
-                    ChoiceChip(
-                      label: Text(m.label),
-                      selected: _material == m,
-                      onSelected: (_) => setState(() => _material = m),
-                    ),
-                ],
-              ),
-            ),
-            _Section(
-              title: '내 돌 모양',
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final s in StoneShape.values)
-                    ChoiceChip(
-                      label: Text(s.label),
-                      selected: _shape == s,
-                      onSelected: (_) => setState(() => _shape = s),
-                    ),
-                ],
-              ),
-            ),
-            _Section(
-              title: '문파 무공 (내공 타격 때 발동)',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final (t, school) in schools)
-                        ChoiceChip(
-                          avatar: CircleAvatar(
-                            backgroundColor: techniqueColor(t),
-                          ),
-                          label: Text('$school · ${t.label}'),
-                          selected: _martial == t,
-                          onSelected: (_) => setState(() => _martial = t),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(martialHelp(_martial), style: t.bodySmall),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: () => _start(MatchMode.vsAi),
-              child: const _BigLabel('혼자 하기 (AI 대전)'),
-            ),
-            const SizedBox(height: 10),
-            FilledButton.tonal(
-              onPressed: () => _start(MatchMode.twoPlayer),
-              child: const _BigLabel('둘이 하기 (한 기기)'),
-            ),
-            const SizedBox(height: 10),
-            OutlinedButton(
-              onPressed: () => _start(MatchMode.practice),
-              child: const _BigLabel('연습'),
-            ),
-            const SizedBox(height: 16),
-            Text('자유 대전은 성장·보상이 없습니다. 강호행·목인항에서 실력을 키우세요.', style: t.bodySmall),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
+/// 설정 한 묶음: 어두운 판 + 그림 머리글.
 class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.child});
+  const _Section({
+    required this.title,
+    required this.icon,
+    required this.child,
+    this.trailing,
+  });
   final String title;
+  final String icon;
   final Widget child;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 18),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 8),
-        child,
-      ],
+    padding: const EdgeInsets.only(bottom: 12),
+    child: GlassPanel(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      radius: 18,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionHead(title, icon: icon, trailing: trailing),
+          child,
+        ],
+      ),
     ),
-  );
-}
-
-class _BigLabel extends StatelessWidget {
-  const _BigLabel(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 14),
-    child: Text(text, style: const TextStyle(fontSize: 18)),
   );
 }

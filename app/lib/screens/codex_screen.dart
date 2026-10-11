@@ -17,105 +17,97 @@ class CodexScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = ProfileStore.instance.profile;
-    final t = Theme.of(context).textTheme;
     final bosses = {for (final s in campaign) s.boss};
+    // 한 칸: 가진 것은 그림 + 이름, 못 만난 것은 흐리게 + 「???」.
     Widget entry(bool have, Widget icon, String name) => Opacity(
       opacity: have ? 1 : 0.3,
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: [icon, const SizedBox(height: 4), Text(have ? name : '???')],
+        children: [
+          icon,
+          const SizedBox(height: 4),
+          Text(have ? name : '???', style: const TextStyle(fontSize: 15)),
+        ],
       ),
     );
+    // 묶음: 어두운 판 + 그림 머리글(가진 수 / 전체 수).
+    Widget group(String title, String icon, List<Widget> items, [String? n]) =>
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: GlassPanel(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            radius: 18,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SectionHead(
+                  title,
+                  icon: icon,
+                  trailing: n == null ? null : InfoPill(text: n),
+                ),
+                Wrap(spacing: 16, runSpacing: 12, children: items),
+              ],
+            ),
+          ),
+        );
     return GameScaffold(
       background: 'logicMarble',
-      appBar: AppBar(title: Text('도감 · 세트 보너스 +${p.codexBonus}')),
+      appBar: AppBar(
+        title: const Text('도감'),
+        actions: [
+          InfoPill(icon: 'codex', text: '+${p.codexBonus}'),
+          const SizedBox(width: 12),
+        ],
+      ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
         children: [
-          Text(
-            '재질 ${p.materials.length}/${StoneMaterial.values.length}',
-            style: t.titleMedium,
-          ),
-          Wrap(
-            spacing: 16,
-            runSpacing: 12,
-            children: [
-              for (final m in StoneMaterial.values)
-                entry(
-                  p.materials.contains(m),
-                  stoneIcon(m, StoneShape.round),
-                  m.label,
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '모양 ${p.shapes.length}/${StoneShape.values.length}',
-            style: t.titleMedium,
-          ),
-          Wrap(
-            spacing: 16,
-            runSpacing: 12,
-            children: [
-              for (final s in StoneShape.values)
-                entry(
-                  p.shapes.contains(s),
-                  stoneIcon(StoneMaterial.cheongok, s),
-                  s.label,
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '캐릭터 ${p.heroes.length}/${Fighter.values.length}',
-            style: t.titleMedium,
-          ),
-          Wrap(
-            spacing: 16,
-            runSpacing: 12,
-            children: [
-              for (final h in Fighter.values)
-                entry(
-                  p.heroes.contains(h),
-                  _face(h.name, p.heroes.contains(h)),
-                  h.label,
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text('만난 고수', style: t.titleMedium),
-          Wrap(
-            spacing: 16,
-            runSpacing: 12,
-            children: [
-              for (final b in bosses)
-                entry(
-                  p.codex.contains('고수:$b'),
-                  _face(Art.bossId(b), p.codex.contains('고수:$b')),
-                  b,
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text('겪은 천기 · 지물', style: t.titleMedium),
-          Wrap(
-            spacing: 16,
-            runSpacing: 12,
-            children: [
-              for (final w in Weather.values.skip(1))
-                entry(
-                  p.codex.contains('천기:${w.name}'),
-                  const Icon(Icons.cloud, size: 36),
-                  w.label,
-                ),
-              for (final f in FeatureKind.values)
-                entry(
-                  p.codex.contains('지물:${f.name}'),
-                  const Icon(Icons.landscape, size: 36),
-                  f.label,
-                ),
-            ],
-          ),
+          group('재질', 'shop', [
+            for (final m in StoneMaterial.values)
+              entry(
+                p.materials.contains(m),
+                stoneIcon(m, StoneShape.round),
+                m.label,
+              ),
+          ], '${p.materials.length}/${StoneMaterial.values.length}'),
+          group('모양', 'stats', [
+            for (final s in StoneShape.values)
+              entry(
+                p.shapes.contains(s),
+                stoneIcon(StoneMaterial.cheongok, s),
+                s.label,
+              ),
+          ], '${p.shapes.length}/${StoneShape.values.length}'),
+          group('캐릭터', 'free', [
+            for (final h in Fighter.values)
+              entry(
+                p.heroes.contains(h),
+                _face(h.name, p.heroes.contains(h)),
+                h.label,
+              ),
+          ], '${p.heroes.length}/${Fighter.values.length}'),
+          group('고수', 'arena', [
+            for (final b in bosses)
+              entry(
+                p.codex.contains('고수:$b'),
+                _face(Art.bossId(b), p.codex.contains('고수:$b')),
+                b,
+              ),
+          ]),
+          group('천기 · 지물', 'wander', [
+            for (final w in Weather.values.skip(1))
+              entry(
+                p.codex.contains('천기:${w.name}'),
+                const Icon(Icons.cloud, size: 36),
+                w.label,
+              ),
+            for (final f in FeatureKind.values)
+              entry(
+                p.codex.contains('지물:${f.name}'),
+                const Icon(Icons.landscape, size: 36),
+                f.label,
+              ),
+          ]),
         ],
       ),
     );
