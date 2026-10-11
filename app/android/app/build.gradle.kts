@@ -44,6 +44,16 @@ android {
         }
     }
 
+    // 두 가지 판(2026-10-11 형 요청 「자동 업데이트」):
+    //  - sideload: 휴대폰 시험판. 켤 때 새 판을 받아 스스로 업데이트한다(인터넷·설치 권한).
+    //  - play: 플레이 스토어 판. 스토어가 업데이트하므로 업데이트 기능·인터넷 권한이 없다.
+    // 둘 다 앱 ID 가 같아 지금 깔린 시험판 위로 그대로 업데이트된다.
+    flavorDimensions += "channel"
+    productFlavors {
+        create("sideload") { dimension = "channel" }
+        create("play") { dimension = "channel" }
+    }
+
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName(if (hasUploadKey) "upload" else "debug")

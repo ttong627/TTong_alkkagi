@@ -1,0 +1,80 @@
+# 시험판 자동 업데이트 실제 확인 (안드로이드 14 에뮬레이터)
+#
+# 빌드 1 을 깔고 켜면, 앱이 version.json 을 보고 빌드 2 를 내려받아 **누르지 않고** 스스로
+# 업데이트하는지 본다. 두 판은 같은 실행에서 만든 같은 키(디버그)로 서명한다.
+# 내려받을 파일은 이 실행 전용 임시 릴리스(e2e-실행번호)에 올렸다가 끝나면 지운다.
+name: updater-e2e
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'app/lib/update/**'
+      - 'app/android/app/src/sideload/**'
+      - 'app/android/app/build.gradle.kts'
+      - '.github/workflows/updater-e2e.yml'
+
+env:
+  FLUTTER_VERSION: 3.47.6
+
+jobs:
+  self-update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    env:
+      TAG: e2e-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: 빌드 1·2 (x86_64 시험판)
+        working-directory: app
+        run: |
+          URL="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/version.json"
+          flutter pub get
+          for N in 1 2; do
+            flutter build apk --release --flavor sideload --split-per-abi --target-platform android-x64 \
+              --build-number $N --dart-define=APP_BUILD=$N --dart-define=APP_CHANNEL=sideload \
+              --dart-define=UPDATE_URL=$URL
+            cp build/app/outputs/flutter-apk/app-x86_64-sideload-release.apk "$RUNNER_TEMP/v$N.apk"
+          done
+          AAPT2=$(ls -d "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
+          for N in 1 2; do "$AAPT2" dump badging "$RUNNER_TEMP/v$N.apk" | grep -E "^package:"; done
+          V2=$("$AAPT2" dump badging "$RUNNER_TEMP/v2.apk" | sed -nE "s/.*versionCode='([0-9]+)'.*/\1/p")
+          echo "V2_CODE=$V2" >> "$GITHUB_ENV"
+      - name: 빌드 2 를 임시 릴리스에 올리기
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/tanji-e2e.apk"
+          echo "{\"build\": 2, \"apk\": \"$APK\", \"notes\": \"e2e\"}" > version.json
+          cp "$RUNNER_TEMP/v2.apk" tanji-e2e.apk
+          gh release create "$TAG" tanji-e2e.apk version.json --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --prerelease --title "자동 업데이트 시험(지워짐)" --notes "updater-e2e"
+      - name: KVM 켜기
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: 에뮬레이터에서 빌드 1 켜기 → 스스로 빌드 2 로 바뀌는지
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: bash .github/scripts/updater-e2e.sh "$RUNNER_TEMP/v1.apk" "$V2_CODE"
+      - name: 임시 릴리스 지우기
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --cleanup-tag -y || true

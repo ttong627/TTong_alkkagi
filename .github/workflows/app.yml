@@ -6,6 +6,11 @@
 #   ANDROID_KEY_ALIAS         키 별칭
 #   ANDROID_KEY_PASSWORD      키 비밀번호
 #   PLAY_SERVICE_ACCOUNT_JSON 구글 플레이 올리기용 서비스 계정 JSON (올리기를 쓸 때만)
+#   TELEGRAM_BOT_TOKEN        새 시험판 링크를 보낼 텔레그램 봇 토큰 (선택)
+#   TELEGRAM_CHAT_ID          받을 대화 번호 (선택)
+# 업로드 키가 등록돼 있으면 main 에 들어올 때마다 휴대폰(arm64) 시험판을 고정 링크
+#   https://github.com/<저장소>/releases/download/test-latest/tanji-murim-test.apk
+# 에 올린다. 늘 같은 키·더 큰 빌드 번호라 휴대폰에서 지우지 않고 업데이트로 깔린다.
 # 업로드 키가 없으면 디버그 키로 서명한 시험용 APK 만 만든다(플레이에는 못 올림).
 # make_release 를 켜면 APK·AAB 를 시험판 릴리스(build-번호)에도 올린다 — 산출물(artifact)
 # 저장소에 닿지 못하는 곳에서 파일을 받아 업로드 키로 따로 서명할 때 쓴다.
@@ -64,6 +69,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       build_number: ${{ steps.bn.outputs.build_number }}
+      signed: ${{ steps.key.outputs.signed }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -76,14 +82,17 @@ jobs:
           channel: stable
           cache: true
       - name: 업로드 키 준비
+        id: key
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           if [ -n "$KEYSTORE_B64" ]; then
             echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
             echo "ALKKAGI_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
             echo "업로드 키로 서명합니다."
           else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
             echo "::warning::업로드 키 비밀값이 없어 디버그 키로 서명합니다(플레이에 올릴 수 없음)."
           fi
       - name: 빌드 번호 = 실행 번호 · 판 이름 = pubspec
@@ -102,14 +111,15 @@ jobs:
           flutter pub get
           DEFS="--build-number $BUILD_NUMBER --dart-define=APP_VERSION=$VERSION_NAME --dart-define=APP_BUILD=$BUILD_NUMBER"
           mkdir -p "$RUNNER_TEMP/out"
-          flutter build apk --release $DEFS
-          cp build/app/outputs/flutter-apk/app-release.apk "$RUNNER_TEMP/out/tanji-murim-$BUILD_NUMBER.apk"
-          # 휴대폰(arm64) 전용 APK: 크기가 절반쯤이라 시험판으로 주고받기 쉽다.
+          # 스토어 판(play): 업데이트 기능·인터넷 권한 없음. 모든 기기용 APK 와 AAB.
+          flutter build apk --release --flavor play $DEFS --dart-define=APP_CHANNEL=play
+          cp build/app/outputs/flutter-apk/app-play-release.apk "$RUNNER_TEMP/out/tanji-murim-$BUILD_NUMBER.apk"
+          flutter build appbundle --release --flavor play $DEFS --dart-define=APP_CHANNEL=play
+          cp build/app/outputs/bundle/playRelease/app-play-release.aab "$RUNNER_TEMP/out/tanji-murim-$BUILD_NUMBER.aab"
+          # 휴대폰 시험판(sideload): arm64 전용, 켤 때 스스로 업데이트한다.
           # versionCode = 2000 + 빌드 번호(Flutter 의 ABI 배수). 시험판은 늘 이 파일로 업데이트한다.
-          flutter build apk --release --split-per-abi $DEFS
-          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "$RUNNER_TEMP/out/tanji-murim-$BUILD_NUMBER-arm64.apk"
-          flutter build appbundle --release $DEFS
-          cp build/app/outputs/bundle/release/app-release.aab "$RUNNER_TEMP/out/tanji-murim-$BUILD_NUMBER.aab"
+          flutter build apk --release --flavor sideload --split-per-abi $DEFS --dart-define=APP_CHANNEL=sideload
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-sideload-release.apk "$RUNNER_TEMP/out/tanji-murim-$BUILD_NUMBER-arm64.apk"
           ls -la "$RUNNER_TEMP/out"
       - name: APK 점검(권한·물리 엔진 포함 여부)
         run: |
@@ -129,6 +139,11 @@ jobs:
           "$AAPT2" dump badging "$ARM" | grep -E "^package:"
           unzip -l "$ARM" | grep '\.so$'
           unzip -l "$ARM" | grep -q 'arm64-v8a/libbox2d' || { echo "::error::arm64 전용 APK 에 물리 엔진이 없습니다"; exit 1; }
+          echo "--- 시험판 권한(스스로 업데이트) ---"
+          "$AAPT2" dump permissions "$ARM" | tee arm-perm.txt
+          for p in android.permission.INTERNET android.permission.REQUEST_INSTALL_PACKAGES android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION; do
+            grep -q "$p" arm-perm.txt || { echo "::error::시험판에 $p 권한이 없습니다(자동 업데이트 불가)"; exit 1; }
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: android-${{ env.BUILD_NUMBER }}
@@ -167,3 +182,77 @@ jobs:
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
             --title "시험판 $TAG" \
             --notes "자동 빌드 $TAG (커밋 $GITHUB_SHA). 플레이 업로드용 AAB 는 업로드 키로 따로 서명한다."
+
+  # 고정 링크(test-latest)에 휴대폰 시험판을 올리고 텔레그램으로 알린다.
+  # 업로드 키로 서명된 빌드만 올린다 — 다른 키가 올라가면 휴대폰에서 업데이트가 막힌다.
+  test-latest:
+    needs: android
+    if: >-
+      ${{ needs.android.outputs.signed == 'true' &&
+          ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+           (github.event_name == 'workflow_dispatch' && inputs.make_release)) }}
+    runs-on: ubuntu-latest
+    concurrency: test-latest
+    permissions:
+      contents: write
+    env:
+      # 업로드 키 인증서 SHA-256 (공개 정보). 이 키가 아니면 올리지 않는다.
+      UPLOAD_CERT_SHA256: 90dbee10f71a1ebca7365d85d5d9eccebd08f5a07f350b46bd4179d6f79d8ab0
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-${{ needs.android.outputs.build_number }}
+          path: out
+      - name: 서명 키 확인
+        env:
+          BUILD_NUMBER: ${{ needs.android.outputs.build_number }}
+        run: |
+          APK="out/tanji-murim-$BUILD_NUMBER-arm64.apk"
+          SIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$SIGNER" verify --print-certs "$APK" | tee certs.txt
+          GOT=$(sed -nE 's/.*certificate SHA-256 digest: ([0-9a-f]+).*/\1/p' certs.txt | head -1)
+          WANT=$(echo "$UPLOAD_CERT_SHA256" | tr -d ' ')
+          if [ "$GOT" != "$WANT" ]; then
+            echo "::error::업로드 키가 아닌 키로 서명됨($GOT). 고정 링크에 올리지 않습니다."; exit 1
+          fi
+          cp "$APK" tanji-murim-test.apk
+      - name: 바뀐 점 한 줄 · version.json
+        env:
+          BUILD_NUMBER: ${{ needs.android.outputs.build_number }}
+          HEAD_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          # 병합 커밋이면 첫 줄(Merge pull request …) 대신 PR 제목 줄을 쓴다.
+          WHAT=$(printf '%s\n' "$HEAD_MSG" | awk 'NF && !/^Merge pull request/ {print; exit}')
+          printf '%s' "$WHAT" > what.txt
+          LINK="https://github.com/$GITHUB_REPOSITORY/releases/download/test-latest/tanji-murim-test.apk"
+          python3 -c "import json,sys; json.dump({'build': int(sys.argv[1]), 'apk': sys.argv[2], 'notes': open('what.txt', encoding='utf-8').read()}, open('version.json', 'w', encoding='utf-8'), ensure_ascii=False)" "$BUILD_NUMBER" "$LINK"
+          cat version.json
+      - name: 고정 링크에 올리기
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_NUMBER: ${{ needs.android.outputs.build_number }}
+        run: |
+          NOTES="휴대폰(arm64) 시험판 · 빌드 $BUILD_NUMBER (커밋 ${GITHUB_SHA::7}). 깔려 있는 앱 위에 그대로 설치하면 업데이트됩니다."
+          if ! gh release view test-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create test-latest --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --prerelease --title "시험판 (늘 최신)" --notes "$NOTES"
+          fi
+          # APK 먼저, version.json 나중에: 앱이 새 번호를 본 순간 APK 는 이미 새것이다.
+          gh release upload test-latest tanji-murim-test.apk --clobber --repo "$GITHUB_REPOSITORY"
+          gh release upload test-latest version.json --clobber --repo "$GITHUB_REPOSITORY"
+          gh release edit test-latest --repo "$GITHUB_REPOSITORY" --notes "$NOTES"
+      - name: 텔레그램 알림
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BUILD_NUMBER: ${{ needs.android.outputs.build_number }}
+        run: |
+          if [ -z "$TG_TOKEN" ] || [ -z "$TG_CHAT" ]; then
+            echo "텔레그램 비밀값이 없어 알림은 건너뜁니다."; exit 0
+          fi
+          LINK="https://github.com/$GITHUB_REPOSITORY/releases/download/test-latest/tanji-murim-test.apk"
+          WHAT=$(cat what.txt)
+          TEXT=$(printf '탄지 무림 시험판 빌드 %s\n%s\n\n받기: %s\n이미 깔려 있으면 앱을 켤 때 저절로 업데이트됩니다.' "$BUILD_NUMBER" "$WHAT" "$LINK")
+          curl -sS -o resp.json "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" --data-urlencode "text=${TEXT}"
+          python3 -c "import json,sys; r=json.load(open('resp.json')); print('텔레그램 보냄' if r.get('ok') else '텔레그램 실패: '+str(r.get('description'))); sys.exit(0 if r.get('ok') else 1)"
