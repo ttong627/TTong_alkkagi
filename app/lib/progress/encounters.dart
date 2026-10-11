@@ -41,8 +41,9 @@ List<String> legendaryStock(Profile p, math.Random r) {
       if (!p.materials.contains(m)) '재질:${m.name}',
     for (final s in StoneShape.values)
       if (!p.shapes.contains(s)) '모양:${s.name}',
-    '비급',
-    '꾸미기:금빛 잔상',
+    // 상한에 닿은 비급·이미 가진 잔상은 진열하지 않는다(2026-10-11 경제 점검).
+    if (p.secretArts < Profile.maxSecretArts) '비급',
+    if (!p.trails.contains('금빛 잔상')) '꾸미기:금빛 잔상',
   ]..shuffle(r);
   return [
     for (final item in pool.take(3))
@@ -50,9 +51,14 @@ List<String> legendaryStock(Profile p, math.Random r) {
   ];
 }
 
-/// 기인방 값: 노인이 지금 가진 엽전의 30~50% 를 부른다(최소 50). 깎기 성공 시 −20%.
+/// 기인방 값: 노인이 지금 가진 엽전의 30~50% 를 부른다(최소 150 — 엽전을 비우고 들어가 정가 900짜리를
+/// 50에 사던 구멍을 막음, 2026-10-11). 깎기 성공 시 −20%. 화면은 하나 살 때마다 값을 다시 부른다.
+const int legendaryMinPrice = 150;
 int legendaryPrice(int coins, math.Random r, {bool haggled = false}) {
-  final ask = math.max(50, (coins * (0.3 + r.nextDouble() * 0.2)).round());
+  final ask = math.max(
+    legendaryMinPrice,
+    (coins * (0.3 + r.nextDouble() * 0.2)).round(),
+  );
   return haggled ? (ask * 0.8).round() : ask;
 }
 
@@ -60,6 +66,20 @@ int legendaryPrice(int coins, math.Random r, {bool haggled = false}) {
 /// 기인방 등장 확률: 0.5% + 윤회천기 「기연의 눈」 칸마다 0.1%p, 최대 0.8%(설계서 §10.3).
 double legendaryChance(int level) =>
     math.min(0.008, Encounter.legendary.chance + 0.001 * level);
+
+/// 하루에 뽑는 기연 상한(설계서 §5.3 은 하루 20판을 가정 — 그 두 배).
+const int encountersPerDay = 40;
+
+/// 오늘 기연을 하나 더 뽑아도 되나(되면 센다). 날짜는 앞으로만 넘어간다.
+bool takeEncounterTurn(Profile p, String day) {
+  if (day.compareTo(saneDay(p.encounterDay, day)) > 0) {
+    p.encounterDay = day;
+    p.encountersToday = 0;
+  }
+  if (p.encountersToday >= encountersPerDay) return false;
+  p.encountersToday++;
+  return true;
+}
 
 /// 한 판이 끝났다. 기연이 있으면 돌려주고 바로 적용할 것(영약·기인방)은 적용한다.
 /// [boost] 는 강호유랑 물음표 칸(5배).
@@ -114,7 +134,7 @@ bool buyLegendary(Profile p, String entry, int price) {
     p.shapes.add(s);
     p.codex.add('모양:${s.name}');
   } else if (item == '비급') {
-    p.secretArts++;
+    p.gainSecretArt();
   } else if (item.startsWith('꾸미기:')) {
     p.trails.add(item.substring(4));
   }
@@ -134,8 +154,9 @@ String hermitReward(Profile p, math.Random r) {
     p.codex.add('캐릭터:${h.name}');
     return '은둔 고수가 제자로 받아들였다 — 새 캐릭터 ${h.label}';
   }
-  p.secretArts++;
-  return '희귀 비급 — 모든 능력치 +1';
+  if (p.gainSecretArt()) return '희귀 비급 — 모든 능력치 +1';
+  p.coins += 300;
+  return '비급은 이미 다 익혔구나 — 엽전 300';
 }
 
 /// 표시용 이름.

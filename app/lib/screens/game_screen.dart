@@ -116,6 +116,7 @@ class _GameScreenState extends State<GameScreen> {
   String get _aiFace => switch (widget.config.difficulty) {
     Difficulty.easy => 'banDal',
     Difficulty.normal => 'jagaek',
+    Difficulty.skilled => 'mukhyeon',
     Difficulty.hard => 'mukgaek',
   };
 
@@ -147,6 +148,7 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void initState() {
     super.initState();
+    _live++;
     // 숙적(묵현)·폐관 고수와는 긴박한 고수전 곡, 나머지는 대전장 곡.
     final rival =
         widget.config.opponentName == '묵현' ||
@@ -160,7 +162,8 @@ class _GameScreenState extends State<GameScreen> {
     _intro = _showIntro;
     if (_intro) {
       Sound.play('go');
-      Future<void>.delayed(const Duration(milliseconds: 1500), () {
+      // 0.9초 — 눌러도 바로 넘어간다(매 판 1.5초를 기다리게 하던 것 · 2026-10-11 점검).
+      Future<void>.delayed(const Duration(milliseconds: 900), () {
         if (mounted) setState(() => _intro = false);
       });
     }
@@ -198,7 +201,15 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
+  /// 판 번호: 「처음부터」로 판이 바뀌면 늦게 도착한 옛 판의 결과·AI 수를 버린다
+  /// (새 판 위에 지난 판 결과가 뜨던 것 · 2026-10-11 점검).
+  int _gen = 0;
+
+  /// 떠 있는 대전 화면 수 — 닫히는 옛 판이 새 판(입문 다음 수련)의 음악을 로비 곡으로 덮지 않게.
+  static int _live = 0;
+
   void _newMatch() {
+    _gen++;
     _match = Match(widget.config)..addListener(_onMatch);
     _game = BoardGame(
       _match,
@@ -223,9 +234,19 @@ class _GameScreenState extends State<GameScreen> {
     return best;
   }
 
+  /// 일시정지: 손만 막는 것이 아니라 물리·AI 도 멈춘다(창 아래에서 상대가 두던 것 · 2026-10-11 점검).
+  void _setPaused(bool v) {
+    if (_paused == v) return;
+    setState(() => _paused = v);
+    _game.paused = v;
+    if (!v) WidgetsBinding.instance.addPostFrameCallback((_) => _onMatch());
+  }
+
   void _restart() {
+    _game.paused = false;
     setState(() {
       _paused = false;
+      _aiThinking = false;
       _match
         ..removeListener(_onMatch)
         ..dispose();
@@ -237,6 +258,8 @@ class _GameScreenState extends State<GameScreen> {
 
   /// 이번 판에서 센 일(임무·업적, 설계서 §16.9).
   void _record(Deed d, [int n = 1]) {
+    // 자유 대전·입문은 세지 않는다(「보상 없음」인 자유 대전 연습으로 임무를 채우던 것 — 2026-10-11).
+    if (widget.coach || widget.title == null) return;
     if (widget.config.training && d != Deed.knock) return;
     Missions.record(_store.profile, d, today(), n);
   }
@@ -250,6 +273,9 @@ class _GameScreenState extends State<GameScreen> {
       _selected = null;
     }
     if (_wasMoving && !_match.isMoving) {
+      // 먼저 내린다: onTurnEnd(목인항 더미 다시 세우기)가 알림을 다시 보내 여기로 곧장 되돌아오면
+      // 끝없이 다시 불려 판이 터졌다(2026-10-11 점검 · 한 번 치면 1000번 넘게 불림).
+      _wasMoving = false;
       widget.onTurnEnd?.call(_match);
       if (_match.lastShooter == 0 && _match.lastKnocked > 0) {
         _record(Deed.knock, _match.lastKnocked);
@@ -271,15 +297,19 @@ class _GameScreenState extends State<GameScreen> {
           widget.config.mode == MatchMode.vsAi &&
           _match.winner == 0 &&
           !_match.isDraw;
+      final gen = _gen;
       if (boss) {
         Sound.play('finisher');
         setState(() => _finisher = finisherName(widget.config.martial));
         Future<void>.delayed(const Duration(milliseconds: 1900), () {
-          if (mounted) setState(() => _finisher = null);
+          if (!mounted || gen != _gen) return;
+          setState(() => _finisher = null);
           _showResult();
         });
       } else {
-        Future<void>.delayed(const Duration(milliseconds: 500), _showResult);
+        Future<void>.delayed(const Duration(milliseconds: 500), () {
+          if (mounted && gen == _gen) _showResult();
+        });
       }
       return;
     }
@@ -294,6 +324,7 @@ class _GameScreenState extends State<GameScreen> {
         !_match.isMoving &&
         !_aiThinking &&
         !_match.isOver &&
+        !_paused &&
         !_intro) {
       unawaited(_playAi());
     }
@@ -354,6 +385,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _playAi() async {
+    final gen = _gen;
     setState(() => _aiThinking = true);
     final started = DateTime.now();
     final shot = await chooseAiShot(_match);
@@ -361,7 +393,11 @@ class _GameScreenState extends State<GameScreen> {
     if (waited < const Duration(milliseconds: 700)) {
       await Future<void>.delayed(const Duration(milliseconds: 700) - waited);
     }
-    if (!mounted) return;
+    // 멈춘 동안은 두지 않고 기다린다.
+    while (mounted && _paused && gen == _gen) {
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+    }
+    if (!mounted || gen != _gen) return;
     setState(() => _aiThinking = false);
     _foeStrike.value++;
     _match.shoot(
@@ -425,7 +461,8 @@ class _GameScreenState extends State<GameScreen> {
     _myStrike.dispose();
     _foeStrike.dispose();
     Sound.slide(0);
-    Sound.lobby();
+    _live--;
+    if (_live == 0) Sound.lobby();
     _match
       ..removeListener(_onMatch)
       ..dispose();
@@ -453,6 +490,8 @@ class _GameScreenState extends State<GameScreen> {
   /// 입문: 아직 돌을 안 골랐으면 눌러야 할 내 돌 위에 톡톡 손.
   phys.Stone? get _tapHint {
     if (!widget.coach ||
+        _aiTurn ||
+        _aiThinking ||
         _selected != null ||
         _match.isMoving ||
         _match.isOver) {
@@ -479,9 +518,22 @@ class _GameScreenState extends State<GameScreen> {
                         : '표적')));
     final hint = _tapHint;
     return PopScope(
-      canPop: !widget.coach,
+      // 시스템 뒤로 가기는 늘 일시정지(결과 없이 닫혀 투기장 패배가 사라지던 구멍 — 2026-10-11).
+      // 나가려면 일시정지의 「나가기」(= 진 판).
+      canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && !widget.coach) setState(() => _paused = true);
+        if (didPop || _result != null) return;
+        // 가까이 보기 중이면 「다른 돌 고르기」, 시작 연출이면 건너뛰기.
+        if (_selected != null && !widget.coach) {
+          setState(() => _selected = null);
+          return;
+        }
+        if (_intro) {
+          setState(() => _intro = false);
+          return;
+        }
+        if (widget.coach || _clashing) return;
+        _setPaused(!_paused);
       },
       child: Scaffold(
         body: Stack(
@@ -511,7 +563,7 @@ class _GameScreenState extends State<GameScreen> {
                           _RoundIcon(
                             key: const Key('pause'),
                             icon: Icons.pause_rounded,
-                            onTap: () => setState(() => _paused = true),
+                            onTap: () => _setPaused(true),
                           ),
                         Expanded(
                           child: _Fighter(
@@ -581,6 +633,11 @@ class _GameScreenState extends State<GameScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
+                            // 구슬만 있으면 무엇인지 모른다 — 이름을 붙인다(2026-10-11 점검).
+                            const Padding(
+                              padding: EdgeInsets.only(right: 6),
+                              child: OutlinedText('내공', size: 15),
+                            ),
                             for (var i = 0; i < maxQi; i++)
                               Padding(
                                 padding: const EdgeInsets.symmetric(
@@ -627,9 +684,7 @@ class _GameScreenState extends State<GameScreen> {
                         stone: _selected!,
                         onShot: _shoot,
                         onCancel: () => setState(() => _selected = null),
-                        demo:
-                            widget.coach ||
-                            _store.profile.lifetime[Deed.play] == null,
+                        demo: widget.coach || !_store.profile.tutorialDone,
                         demoAngle: _demoAngle,
                       ),
               ),
@@ -664,6 +719,7 @@ class _GameScreenState extends State<GameScreen> {
             if (_intro)
               Positioned.fill(
                 child: VersusIntro(
+                  onSkip: () => setState(() => _intro = false),
                   me: _myId,
                   foe: _foeId,
                   foeName: foeName,
@@ -673,10 +729,13 @@ class _GameScreenState extends State<GameScreen> {
             if (_paused)
               Positioned.fill(
                 child: _PauseMenu(
-                  onResume: () => setState(() => _paused = false),
-                  onRestart: _restart,
+                  onResume: () => _setPaused(false),
+                  // 판을 거는 판(강호행·투기장·기연 등)은 다시 하기로 진 판을 지울 수 없다.
+                  onRestart: widget.title == null ? _restart : null,
+                  // 진 판이 되는 판(강호행·투기장 등)은 한 번 묻는다.
+                  quitLoses: widget.title != null,
                   onQuit: () {
-                    setState(() => _paused = false);
+                    _setPaused(false);
                     if (widget.title != null) {
                       Navigator.of(context).pop(false);
                     } else {
@@ -721,25 +780,32 @@ class _RoundIcon extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: () {
-      Sound.play('ui_tap', 0.7);
-      onTap();
-    },
-    child: Container(
-      width: 44,
-      height: 44,
-      margin: const EdgeInsets.only(right: 6),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.black54,
-        border: Border.all(
-          color: Palette.gold.withValues(alpha: 0.6),
-          width: 1.5,
-        ),
-      ),
-      child: Icon(icon, color: Palette.text),
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: '잠시 멈춤',
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        Sound.play('ui_tap', 0.7);
+        onTap();
+      },
+      child: _roundBody(),
     ),
+  );
+
+  Widget _roundBody() => Container(
+    width: 48,
+    height: 48,
+    margin: const EdgeInsets.only(right: 6),
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: Colors.black54,
+      border: Border.all(
+        color: Palette.gold.withValues(alpha: 0.6),
+        width: 1.5,
+      ),
+    ),
+    child: Icon(icon, color: Palette.text),
   );
 }
 
@@ -965,11 +1031,15 @@ class VersusIntro extends StatefulWidget {
     required this.foe,
     required this.foeName,
     required this.title,
+    this.onSkip,
   });
   final String me;
   final String? foe;
   final String foeName;
   final String title;
+
+  /// 누르면 바로 넘어간다.
+  final VoidCallback? onSkip;
 
   @override
   State<VersusIntro> createState() => _VersusIntroState();
@@ -979,7 +1049,7 @@ class _VersusIntroState extends State<VersusIntro>
     with SingleTickerProviderStateMixin {
   late final _c = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1500),
+    duration: const Duration(milliseconds: 900),
   )..forward();
 
   @override
@@ -990,7 +1060,9 @@ class _VersusIntroState extends State<VersusIntro>
 
   @override
   Widget build(BuildContext context) {
-    return IgnorePointer(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: widget.onSkip,
       child: AnimatedBuilder(
         animation: _c,
         builder: (context, _) {
@@ -1059,16 +1131,30 @@ class _PauseMenu extends StatefulWidget {
     required this.onResume,
     required this.onRestart,
     required this.onQuit,
+    this.quitLoses = false,
   });
   final VoidCallback onResume;
-  final VoidCallback onRestart;
+  final VoidCallback? onRestart;
   final VoidCallback onQuit;
+  final bool quitLoses;
 
   @override
   State<_PauseMenu> createState() => _PauseMenuState();
 }
 
 class _PauseMenuState extends State<_PauseMenu> {
+  /// 「처음부터」·「나가기」를 한 번 더 눌러야 실행(실수로 진 판이 되던 것 · 2026-10-11 점검).
+  String? _confirm;
+
+  void _ask(String what, VoidCallback go) {
+    if (_confirm == what) {
+      go();
+      return;
+    }
+    Sound.play('ui_open');
+    setState(() => _confirm = what);
+  }
+
   @override
   Widget build(BuildContext context) {
     final st = Settings.instance;
@@ -1097,11 +1183,13 @@ class _PauseMenuState extends State<_PauseMenu> {
                   onTap: widget.onResume,
                 ),
                 const SizedBox(height: 10),
-                GameButton(
-                  label: '처음부터',
-                  color: Palette.sky,
-                  onTap: widget.onRestart,
-                ),
+                if (widget.onRestart case final restart?)
+                  GameButton(
+                    key: const Key('restart'),
+                    label: _confirm == 'restart' ? '정말 처음부터?' : '처음부터',
+                    color: Palette.sky,
+                    onTap: () => _ask('restart', restart),
+                  ),
                 const SizedBox(height: 14),
                 Row(
                   children: [
@@ -1129,9 +1217,12 @@ class _PauseMenuState extends State<_PauseMenu> {
                 ),
                 const SizedBox(height: 6),
                 GameButton(
-                  label: '나가기',
+                  key: const Key('quit'),
+                  label: _confirm == 'quit'
+                      ? (widget.quitLoses ? '진 판이 됩니다 — 나가기' : '정말 나가기')
+                      : '나가기',
                   color: Palette.red,
-                  onTap: widget.onQuit,
+                  onTap: () => _ask('quit', widget.onQuit),
                   height: 52,
                   fontSize: 20,
                 ),
@@ -1298,7 +1389,8 @@ class _ResultOverlayState extends State<ResultOverlay>
                               child: GameButton(
                                 label: '한 판 더',
                                 color: Palette.sky,
-                                onTap: widget.onAgain,
+                                // 보이기 전에는 눌리지 않게(나가기와 같이).
+                                onTap: v > 0.6 ? widget.onAgain : null,
                                 fontSize: 20,
                               ),
                             ),

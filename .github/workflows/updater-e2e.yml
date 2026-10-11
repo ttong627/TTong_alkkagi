@@ -56,8 +56,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           APK="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/tanji-e2e.apk"
-          echo "{\"build\": 2, \"apk\": \"$APK\", \"notes\": \"e2e\"}" > version.json
           cp "$RUNNER_TEMP/v2.apk" tanji-e2e.apk
+          SHA=$(sha256sum tanji-e2e.apk | cut -d' ' -f1)
+          SIZE=$(stat -c %s tanji-e2e.apk)
+          echo "{\"build\": 2, \"apk\": \"$APK\", \"sha256\": \"$SHA\", \"size\": $SIZE, \"notes\": \"e2e\"}" > version.json
           gh release create "$TAG" tanji-e2e.apk version.json --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" --prerelease --title "자동 업데이트 시험(지워짐)" --notes "updater-e2e"
       - name: KVM 켜기

@@ -68,13 +68,15 @@ enum Stat {
 /// 내공 단계 8단계 (설계서 §16.2).
 const naegongStages = [
   ('삼류', 0.0),
-  ('이류', 100.0),
-  ('일류', 300.0),
-  ('절정', 600.0),
-  ('초절정', 1000.0),
-  ('화경', 1600.0),
-  ('현경', 2400.0),
-  ('생사경', 3500.0),
+  // 2026-10-11 경제 점검: 하루 깨달음 30타 = 90 이라 이류 100 이면 첫날 2장이 막혔다. 새 판이
+  // 1·3·6·10·14·20·30일째에 고르게 열리게 바꿈 [가정 — 실기기로 다시 맞춘다].
+  ('이류', 90.0),
+  ('일류', 270.0),
+  ('절정', 540.0),
+  ('초절정', 900.0),
+  ('화경', 1260.0),
+  ('현경', 1800.0),
+  ('생사경', 2700.0),
 ];
 
 /// 쌓인 내공 → 단계(1~8).
@@ -123,7 +125,8 @@ abstract final class Stamina {
 }
 
 /// 능력치 단계 n → n+1 비용(수련 포인트).
-int statCost(int level) => 10 * (level + 1);
+/// 2026-10-11 경제 점검: 10×(n+1)(합계 6,300)은 환생 전에 절대 못 채웠다 → 6×(n+1)(합계 3,780).
+int statCost(int level) => 6 * (level + 1);
 const int maxStatLevel = 20;
 
 /// 기기에 저장하는 진행 상태(오프라인판). 온라인판에서는 서버로 옮긴다(체크리스트 3-11).
@@ -166,8 +169,31 @@ class Profile {
   /// 기인방 특수효과(설계서 §6.2C) — 산 물건에 붙어 온 효과들(같은 효과는 하나만).
   final perks = <String>{};
 
-  /// 은둔 고수 비급: 모든 능력치 +n (설계서 §5.3).
+  /// 은둔 고수 비급: 모든 능력치 +n (설계서 §5.3). 환생 한 번에 [maxSecretArts] 까지(보급소·기인방·은둔 고수 합).
   int secretArts = 0;
+
+  /// 2026-10-11 경제 점검: 상한이 없어 징표만 모으면 능력치가 최대가 됐다.
+  static const int maxSecretArts = 3;
+
+  /// 비급 하나 더 얻기(상한이면 false).
+  bool gainSecretArt() {
+    if (secretArts >= maxSecretArts) return false;
+    secretArts++;
+    return true;
+  }
+
+  /// 보급소 비급 값(징표): 10 → 20 → 30.
+  int get secretArtPrice => 10 * (secretArts + 1);
+
+  /// 폐관수련동 큰 보상을 받은 날(하루 한 번).
+  String seclusionDay = '';
+
+  /// 이번 주 강호유랑에서 이긴 전투 수(완주 보상 조건).
+  int wanderWins = 0;
+
+  /// 오늘 뽑은 기연 수(하루 상한).
+  String encounterDay = '';
+  int encountersToday = 0;
 
   /// 꾸미기: 잔상 빛깔(보급소·기인방).
   final trails = <String>{'기본'};
@@ -287,6 +313,7 @@ class Profile {
     done.clear();
     coins = 0;
     school = null;
+    secretArts = 0;
     wanderRow = 0;
     heroes.add(chosen);
     hero = chosen;
@@ -315,8 +342,17 @@ class Profile {
   /// 지금(밀리초) 진기. 6분마다 1 찬다(최대 [Stamina.max]).
   double staminaNow(int now) {
     if (staminaAt == 0) return stamina;
-    final regen = (now - staminaAt) / Stamina.regenMs;
+    // 시계를 되돌려도 줄지 않게(0 아래로 안 감).
+    final regen = math.max(0, now - staminaAt) / Stamina.regenMs;
     return math.min(staminaMax.toDouble(), stamina + regen);
+  }
+
+  /// 진기 시각을 [now]로 옮긴다. 시계를 되돌린 채 쓰고 다시 돌려 그 사이 진기를 공짜로 채우지 못하게,
+  /// 저장된 시각이 더 뒤면 그대로 둔다 — 단 이틀 넘게 앞서 있으면(시계가 잘못 앞서 갔던 흔적) [now]로.
+  /// 2026-10-11 점검.
+  void _markStamina(int now) {
+    const grace = 2 * Duration.millisecondsPerDay;
+    staminaAt = (staminaAt > now && staminaAt - now <= grace) ? staminaAt : now;
   }
 
   /// 진기를 쓴다. 모자라면 false.
@@ -324,13 +360,13 @@ class Profile {
     final cur = staminaNow(now);
     if (cur < n) return false;
     stamina = cur - n;
-    staminaAt = now;
+    _markStamina(now);
     return true;
   }
 
   void refundStamina(int now, double n) {
     stamina = math.min(staminaMax.toDouble(), staminaNow(now) + n);
-    staminaAt = now;
+    _markStamina(now);
   }
 
   /// 무림맹 보급소가 열렸나(설계서 §6.2B): 주말, 또는 목인항 1,000타, 또는 6장 격파.
@@ -368,7 +404,8 @@ class Profile {
   // --- 목인항 ---
   /// 오늘([day] = yyyymmdd) 한 타. 얻은 내공을 돌려준다. 날이 바뀌면 처음부터 센다.
   double trainHit(String day) {
-    if (trainingDay != day) {
+    // 날짜는 앞으로만 넘어간다(기기 시계를 되돌려 깨달음 30타를 다시 받는 것 막기).
+    if (day.compareTo(saneDay(trainingDay, day)) > 0) {
       trainingDay = day;
       trainingHits = 0;
     }
@@ -376,7 +413,7 @@ class Profile {
     trainingHits++;
     totalHits++;
     // 일일 임무「목인항 치기」(빠져 있어 그 임무를 끝낼 수 없었다 — 2026-10-11 고침).
-    Missions.record(this, Deed.train, day);
+    Missions.record(this, Deed.train, trainingDay);
     naegong += g;
     trainingPoints += g;
     return g;
@@ -384,7 +421,9 @@ class Profile {
 
   // --- 능력치 올리기 ---
   bool canRaise(Stat s) =>
-      stats[s]! < maxStatLevel && trainingPoints >= statCost(stats[s]!);
+      stats[s]! < maxStatLevel &&
+      level(s) < maxStatLevel &&
+      trainingPoints >= statCost(stats[s]!);
 
   bool raise(Stat s) {
     if (!canRaise(s)) return false;
@@ -465,6 +504,10 @@ class Profile {
     'achieved': achieved.toList(),
     'stars': stars,
     'seenHints': seenHints.toList(),
+    'seclusionDay': seclusionDay,
+    'wanderWins': wanderWins,
+    'encDay': encounterDay,
+    'encToday': encountersToday,
     'celebrated': celebratedStage,
   };
 
@@ -512,7 +555,10 @@ class Profile {
     p.stamina = (j['stamina'] as num? ?? Stamina.max).toDouble();
     p.staminaAt = j['staminaAt'] as int? ?? 0;
     p.perks.addAll((j['perks'] as List? ?? []).cast<String>());
-    p.secretArts = j['secretArts'] as int? ?? 0;
+    p.secretArts = (j['secretArts'] as int? ?? 0).clamp(
+      0,
+      Profile.maxSecretArts,
+    );
     p.trails.addAll((j['trails'] as List? ?? []).cast<String>());
     p.trail = j['trail'] as String? ?? '기본';
     p.legendaryUntil = j['legUntil'] as int? ?? 0;
@@ -555,14 +601,53 @@ class Profile {
       }
     }
     p.seenHints.addAll((j['seenHints'] as List? ?? []).cast<String>());
+    p.seclusionDay = j['seclusionDay'] as String? ?? '';
+    p.wanderWins = j['wanderWins'] as int? ?? 0;
+    p.encounterDay = j['encDay'] as String? ?? '';
+    p.encountersToday = j['encToday'] as int? ?? 0;
     // 칸이 없는 옛 저장은 지금 경지를 이미 축하한 것으로 본다(켜자마자 몰아서 축하하지 않게).
     p.celebratedStage = j['celebrated'] as int? ?? p.stage;
+    p._sanitize();
     return p;
   }
 
+  /// 저장·백업 코드에서 들어온 숫자를 쓸 수 있는 범위로 묶는다
+  /// (`1e999`→무한대, 최대 정수 +1→음수 같은 값에 화면이 터지지 않게 · 2026-10-11 점검).
+  void _sanitize() {
+    const cap = 1000000000;
+    double f(double v, [double max = 1e9]) => v.isFinite ? v.clamp(0, max) : 0;
+    int i(int v) => v.clamp(0, cap);
+    naegong = f(naegong);
+    trainingPoints = f(trainingPoints);
+    stamina = f(stamina, staminaMax.toDouble());
+    coins = i(coins);
+    silver = i(silver);
+    tokens = i(tokens);
+    totalHits = i(totalHits);
+    danCores = i(danCores);
+    rebirths = i(rebirths);
+    arenaBest = i(arenaBest);
+    wanderRow = i(wanderRow);
+    wanderWins = i(wanderWins);
+    attendCount = i(attendCount);
+    trainingHits = i(trainingHits);
+    encountersToday = i(encountersToday);
+    celebratedStage = i(celebratedStage);
+    for (final d in Deed.values) {
+      if (missionCounts[d] case final v?) missionCounts[d] = i(v);
+      if (lifetime[d] case final v?) lifetime[d] = i(v);
+    }
+  }
+
   String encode() => jsonEncode(toJson());
-  static Profile decode(String s) =>
-      Profile.fromJson((jsonDecode(s) as Map).cast<String, Object?>());
+
+  /// 모르는 판(v)은 거절한다 — 나중 판의 저장을 옛 앱이 읽고 덮어쓰지 않게.
+  static Profile decode(String s) {
+    final j = (jsonDecode(s) as Map).cast<String, Object?>();
+    final v = j['v'] as int? ?? 1;
+    if (v != 1) throw FormatException('모르는 저장 판: $v');
+    return Profile.fromJson(j);
+  }
 }
 
 /// 외형(설계서 §2.5) — 얼굴형 3 · 머리 6 · 도복 색 8. 앞 3개는 처음부터, 나머지는 만물상에서 은자로.
@@ -581,10 +666,30 @@ const robeColors = [
 const robeNames = ['쪽빛', '팥빛', '솔빛', '흰 무명', '먹빛', '황금빛', '보랏빛', '진홍'];
 
 /// 머리·도복 하나 값(은자).
-const int lookPrice = 3;
+/// 2026-10-11 경제 점검: 3(합계 24)이면 5일째 은자 쓸 곳이 사라졌다.
+const int lookPrice = 5;
 
 /// 오늘 날짜(기기 시간, yyyymmdd). 온라인판에서는 서버 시간을 쓴다(설계서 §11.4).
 String today([DateTime? now]) {
   final d = now ?? DateTime.now();
   return '${d.year}${d.month.toString().padLeft(2, '0')}${d.day.toString().padLeft(2, '0')}';
+}
+
+/// 날짜는 앞으로만 넘어간다(시계를 되돌려 같은 보상을 또 받는 것 막기). 그런데 시계가 한 번 잘못 앞서
+/// 갔으면(2027년) 그날까지 출석·임무·목인항이 잠겼다 → 저장된 날이 [day]보다 [graceDays]일 넘게 앞서
+/// 있으면 잘못된 날로 보고 잊는다(빈 문자열) · 2026-10-11 점검.
+String saneDay(String stored, String day, {int graceDays = 2}) {
+  final a = _dayNumber(stored), b = _dayNumber(day);
+  if (a == null || b == null) return stored;
+  return a - b > graceDays ? '' : stored;
+}
+
+int? _dayNumber(String yyyymmdd) {
+  if (yyyymmdd.length != 8) return null;
+  final y = int.tryParse(yyyymmdd.substring(0, 4));
+  final m = int.tryParse(yyyymmdd.substring(4, 6));
+  final d = int.tryParse(yyyymmdd.substring(6, 8));
+  if (y == null || m == null || d == null) return null;
+  return DateTime.utc(y, m, d).millisecondsSinceEpoch ~/
+      Duration.millisecondsPerDay;
 }

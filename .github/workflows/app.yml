@@ -39,6 +39,10 @@ on:
 env:
   FLUTTER_VERSION: 3.47.6
 
+# 기본은 읽기만. 쓰기가 필요한 작업(release·test-latest)만 따로 연다.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -81,10 +85,12 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      # PR 빌드에는 업로드 키를 주지 않는다(PR 이 워크플로·Gradle 을 바꿔 키를 빼내지 못하게 · 2026-10-11 점검).
+      # PR 은 디버그 키로 빌드만 확인하고, 업로드 키 서명은 main 과 손으로 돌릴 때만.
       - name: 업로드 키 준비
         id: key
         env:
-          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_B64: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEYSTORE_BASE64 || '' }}
         run: |
           if [ -n "$KEYSTORE_B64" ]; then
             echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
@@ -104,9 +110,9 @@ jobs:
       - name: APK·AAB 빌드
         working-directory: app
         env:
-          ALKKAGI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ALKKAGI_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ALKKAGI_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ALKKAGI_KEYSTORE_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEYSTORE_PASSWORD || '' }}
+          ALKKAGI_KEY_ALIAS: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEY_ALIAS || '' }}
+          ALKKAGI_KEY_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEY_PASSWORD || '' }}
         run: |
           flutter pub get
           DEFS="--build-number $BUILD_NUMBER --dart-define=APP_VERSION=$VERSION_NAME --dart-define=APP_BUILD=$BUILD_NUMBER"
@@ -130,9 +136,17 @@ jobs:
           "$AAPT2" dump permissions "$APK"
           echo "--- 네이티브 라이브러리 ---"
           unzip -l "$APK" | grep '\.so$'
-          if "$AAPT2" dump permissions "$APK" | grep -q 'android.permission.INTERNET'; then
-            echo "::error::출시 빌드에 인터넷 권한이 들어 있습니다(데이터 보안 답변과 다름)"; exit 1
-          fi
+          # 스토어 판에는 인터넷·설치 권한이 하나도 없어야 한다(데이터 보안 답변 · 플레이 정책).
+          for p in android.permission.INTERNET android.permission.REQUEST_INSTALL_PACKAGES android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION; do
+            if "$AAPT2" dump permissions "$APK" | grep -q "$p"; then
+              echo "::error::출시 빌드에 $p 권한이 들어 있습니다"; exit 1
+            fi
+          done
+          # 플레이가 요구하는 대상 SDK(35 이상).
+          TSDK=$("$AAPT2" dump badging "$APK" | sed -nE "s/^targetSdkVersion:'([0-9]+)'.*/\1/p")
+          [ "${TSDK:-0}" -ge 35 ] || { echo "::error::targetSdkVersion=$TSDK (35 이상이어야 함)"; exit 1; }
+          # 세로 고정(태블릿 밖에서는 가로로 열리지 않게).
+          "$AAPT2" dump xmltree --file AndroidManifest.xml "$APK" | grep -q 'screenOrientation' || { echo "::error::세로 고정(screenOrientation)이 없습니다"; exit 1; }
           unzip -l "$APK" | grep -q 'arm64-v8a/libbox2d' || { echo "::error::arm64 물리 엔진 라이브러리가 없습니다"; exit 1; }
           echo "--- 휴대폰(arm64) 전용 APK ---"
           ARM="$RUNNER_TEMP/out/tanji-murim-$BUILD_NUMBER-arm64.apk"
@@ -150,7 +164,8 @@ jobs:
           path: ${{ runner.temp }}/out/
           retention-days: 30
       - name: 구글 플레이에 올리기
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.play_track != '' }}
+        # 업로드 키로 서명된 AAB 만 올린다(디버그 서명 AAB 는 플레이가 거절한다).
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.play_track != '' && steps.key.outputs.signed == 'true' }}
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
@@ -217,7 +232,21 @@ jobs:
             echo "::error::업로드 키가 아닌 키로 서명됨($GOT). 고정 링크에 올리지 않습니다."; exit 1
           fi
           cp "$APK" tanji-murim-test.apk
+      # 늦게 끝난 옛 실행이 새 판을 덮지 않게: 지금 올라가 있는 번호보다 클 때만 올린다.
+      - name: 더 새 판인지 확인
+        id: newer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_NUMBER: ${{ needs.android.outputs.build_number }}
+        run: |
+          CUR=0
+          if gh release download test-latest --repo "$GITHUB_REPOSITORY" --pattern version.json --output cur.json 2>/dev/null; then
+            CUR=$(python3 -c "import json; print(int(json.load(open('cur.json')).get('build', 0)))" || echo 0)
+          fi
+          echo "올라가 있는 판: $CUR · 이번 판: $BUILD_NUMBER"
+          if [ "$BUILD_NUMBER" -gt "$CUR" ]; then echo "go=true" >> "$GITHUB_OUTPUT"; else echo "go=false" >> "$GITHUB_OUTPUT"; echo "::notice::더 새 판($CUR)이 이미 있어 올리지 않습니다."; fi
       - name: 바뀐 점 한 줄 · version.json
+        if: ${{ steps.newer.outputs.go == 'true' }}
         env:
           BUILD_NUMBER: ${{ needs.android.outputs.build_number }}
           HEAD_MSG: ${{ github.event.head_commit.message }}
@@ -231,9 +260,13 @@ jobs:
           WHAT=$(printf '%s\n' "$HEAD_MSG" | awk 'NF && !/^Merge pull request/ {print; exit}')
           printf '%s' "$WHAT" > what.txt
           LINK="https://github.com/$GITHUB_REPOSITORY/releases/download/test-latest/tanji-murim-test.apk"
-          python3 -c "import json,sys; json.dump({'build': int(sys.argv[1]), 'apk': sys.argv[2], 'notes': open('what.txt', encoding='utf-8').read()}, open('version.json', 'w', encoding='utf-8'), ensure_ascii=False)" "$BUILD_NUMBER" "$LINK"
+          # sha256·size: 앱이 받은 파일을 이 값과 맞춰 본 뒤에만 설치한다(바뀐 파일 설치 막기).
+          SHA=$(sha256sum tanji-murim-test.apk | cut -d' ' -f1)
+          SIZE=$(stat -c %s tanji-murim-test.apk)
+          python3 -c "import json,sys; json.dump({'build': int(sys.argv[1]), 'apk': sys.argv[2], 'sha256': sys.argv[3], 'size': int(sys.argv[4]), 'notes': open('what.txt', encoding='utf-8').read()}, open('version.json', 'w', encoding='utf-8'), ensure_ascii=False)" "$BUILD_NUMBER" "$LINK" "$SHA" "$SIZE"
           cat version.json
       - name: 고정 링크에 올리기
+        if: ${{ steps.newer.outputs.go == 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
           BUILD_NUMBER: ${{ needs.android.outputs.build_number }}
@@ -248,6 +281,7 @@ jobs:
           gh release upload test-latest version.json --clobber --repo "$GITHUB_REPOSITORY"
           gh release edit test-latest --repo "$GITHUB_REPOSITORY" --notes "$NOTES"
       - name: 텔레그램 알림
+        if: ${{ steps.newer.outputs.go == 'true' }}
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}

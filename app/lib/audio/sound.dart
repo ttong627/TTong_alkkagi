@@ -3,7 +3,7 @@ import 'dart:math' as math;
 
 import 'package:alkkagi_physics/alkkagi_physics.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import '../game/arena.dart';
 import '../progress/settings.dart';
@@ -13,7 +13,11 @@ import '../progress/settings.dart';
 /// [init] 을 부르기 전(시험 등)에는 아무 소리도 내지 않는다. 소리를 못 내도 판은 그대로 간다.
 abstract final class Sound {
   static bool _ready = false;
-  static final _pools = <String, AudioPool>{};
+
+  /// 효과음마다 미리 읽어 둔 플레이어 몇 개를 돌려 쓴다(겹쳐 낼 수 있는 수 = [_voices]).
+  /// ⛔AudioPool(lowLatency)은 다 낸 플레이어를 돌려받지 않아 소리마다 새 플레이어가 쌓였다
+  /// (50번 내면 플레이어 50개 · 2026-10-11 점검 실측) — 그래서 직접 돌린다.
+  static final _pools = <String, _Voices>{};
   static AudioPlayer? _music;
   static AudioPlayer? _slide;
   static String? _track;
@@ -73,27 +77,58 @@ abstract final class Sound {
 
   static Future<void> init() async {
     try {
+      // 실행마다 새 임시 폴더에 소리를 복사해 쌓이지 않게 한 폴더로 고정.
+      AudioCache.instance = AudioCache(cacheId: 'sounds-v1');
       // 다른 앱 소리를 끊지 않고 섞는다.
       await AudioPlayer.global.setAudioContext(
         AudioContextConfig(focus: AudioContextConfigFocus.mixWithOthers)
             .build(),
       );
-      for (final n in effects) {
-        _pools[n] = await AudioPool.createFromAsset(
-          path: 'sounds/$n.ogg',
-          maxPlayers: _voices[n] ?? 2,
-          playerMode: PlayerMode.lowLatency,
-        );
-      }
+      // 음악 먼저(로비 곡이 효과음을 다 읽을 때까지 기다리지 않게).
       _music = AudioPlayer()..setReleaseMode(ReleaseMode.loop);
-      _slide = AudioPlayer()..setReleaseMode(ReleaseMode.loop);
-      await _slide!.setSource(AssetSource('sounds/slide.ogg'));
-      await _slide!.setVolume(0);
       _ready = true;
       Settings.instance.addListener(_applyVolumes);
+      WidgetsBinding.instance.addObserver(_Lifecycle());
       if (_pending != null) track(_pending);
     } catch (e) {
       debugPrint('소리 준비 실패: $e');
+      return;
+    }
+    // 효과음은 함께 읽고, 하나가 실패해도 나머지는 그대로 낸다.
+    await Future.wait([
+      for (final n in effects)
+        _Voices.load('sounds/$n.ogg', _voices[n] ?? 2)
+            .then<void>((v) => _pools[n] = v)
+            .catchError((Object e) => debugPrint('효과음 $n 실패: $e')),
+      () async {
+        try {
+          final s = AudioPlayer()..setReleaseMode(ReleaseMode.loop);
+          await s.setSource(AssetSource('sounds/slide.ogg'));
+          await s.setVolume(0);
+          _slide = s;
+        } catch (e) {
+          debugPrint('미끄럼 소리 실패: $e');
+        }
+      }(),
+    ]);
+  }
+
+  /// 앱이 뒤로 가면(홈 단추·화면 끔) 음악을 멈추고, 돌아오면 다시 튼다.
+  static bool _backgrounded = false;
+  static void _onLifecycle(AppLifecycleState s) {
+    final m = _music;
+    if (!_ready || m == null) return;
+    final away =
+        s == AppLifecycleState.paused ||
+        s == AppLifecycleState.hidden ||
+        s == AppLifecycleState.detached;
+    if (away && !_backgrounded) {
+      _backgrounded = true;
+      unawaited(m.pause().catchError((_) {}));
+      slide(0);
+    } else if (s == AppLifecycleState.resumed && _backgrounded) {
+      _backgrounded = false;
+      if (_track != null) unawaited(m.resume().catchError((_) {}));
     }
   }
 
@@ -108,8 +143,8 @@ abstract final class Sound {
     if (!_ready) return;
     final v = (Settings.instance.sfx * gain).clamp(0.0, 1.0);
     final pool = _pools[name];
-    if (pool == null || v <= 0.01) return;
-    unawaited(pool.start(volume: v).then((_) {}, onError: (_) {}));
+    if (pool == null || v <= 0.01 || _backgrounded) return;
+    pool.play(v);
   }
 
   /// 손끝이 돌에 닿음 — 세기([power] 0~1)에 따라 크기.
@@ -159,19 +194,59 @@ abstract final class Sound {
     }
     if (name == _track) return;
     _track = name;
+    // 빠르게 연달아 바꾸면 늦게 끝난 옛 곡이 이기지 않게 차례표를 둔다.
+    final my = ++_turn;
     unawaited(() async {
       try {
-        if (name == null) {
-          await p.stop();
-          return;
-        }
         await p.stop();
+        if (name == null || my != _turn) return;
         await p.setVolume(Settings.instance.music);
-        await p.play(AssetSource('sounds/$name.ogg'));
+        if (my != _turn) return;
+        await p.setSource(AssetSource('sounds/$name.ogg'));
+        if (my != _turn || _backgrounded) return;
+        await p.resume();
       } catch (_) {}
     }());
   }
 
   /// 소리가 준비되기 전에 부른 음악(준비되면 튼다).
   static String? _pending;
+  static int _turn = 0;
+}
+
+/// 효과음 하나의 플레이어 묶음(돌려 씀 — 가장 오래 낸 것을 끊고 새로 낸다).
+class _Voices {
+  _Voices(this._players);
+  final List<AudioPlayer> _players;
+  int _next = 0;
+
+  static Future<_Voices> load(String path, int count) async {
+    final ps = <AudioPlayer>[];
+    for (var i = 0; i < count; i++) {
+      final p = AudioPlayer();
+      await p.setPlayerMode(PlayerMode.lowLatency);
+      await p.setReleaseMode(ReleaseMode.stop);
+      await p.setSource(AssetSource(path));
+      ps.add(p);
+    }
+    return _Voices(ps);
+  }
+
+  void play(double volume) {
+    final p = _players[_next];
+    _next = (_next + 1) % _players.length;
+    unawaited(() async {
+      try {
+        await p.stop();
+        await p.setVolume(volume);
+        await p.resume();
+      } catch (_) {}
+    }());
+  }
+}
+
+class _Lifecycle with WidgetsBindingObserver {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) =>
+      Sound._onLifecycle(state);
 }

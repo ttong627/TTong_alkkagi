@@ -171,7 +171,8 @@ class StrikeTuning {
     this.minPxPerSec = 60,
     this.fullPxPerSec = 1500,
     this.minShotSpeed = 8,
-    this.pushTravel = 0.15,
+    this.pushTravel = 0.3,
+    this.pushMinPxPerSec = 450,
     this.flickReach = 2.5,
     this.flickMinPxPerSec = 300,
   });
@@ -201,7 +202,12 @@ class StrikeTuning {
   final double minShotSpeed;
 
   /// 돌에 손을 댄 채 밀 때, 이만큼(돌 반지름 비율) 움직여야 민 것으로 본다.
+  /// 0.15 였을 때 손 떨림(약 17dp)만으로 약하게 나가 한 수를 잃었다 → 0.3(2026-10-11 점검).
   final double pushTravel;
+
+  /// 돌에 손을 댄 채 밀 때 이보다 느리면 겨누는 중으로 본다(쏘지 않음 · 화소/초).
+  /// 천천히 끌어도 바로 나가 — 새총처럼 뒤로 끌어 보다 제 돌을 뒤로 쏘곤 했다(2026-10-11 점검).
+  final double pushMinPxPerSec;
 
   /// 튕기기(2026-10-11 형 「검지로 가상의 돌을 튕기는 것」): 손을 뗀 뒤에도 손끝은 그 빠르기로
   /// 날아간다고 본다. 뗀 자리에서 돌 둘레까지 이 거리(돌 반지름 배수) 안이면 떠서 맞힌다. [가정]
@@ -359,7 +365,7 @@ class StrikeReader {
         p.t,
         tune,
       );
-      if (v == null || v.distance < tune.minPxPerSec) return null;
+      if (v == null || v.distance < tune.pushMinPxPerSec) return null;
       return _fire(v, p.pos, v, push: true);
     }
     final r = _enterAt(prev.pos, p.pos, disc);

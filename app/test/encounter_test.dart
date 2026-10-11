@@ -71,7 +71,8 @@ void main() {
     expect(buyLegendary(p, '재질:ice|꺾기+1', 1), isFalse, reason: '이미 산 것');
     expect(buyLegendary(p, '비급|내공 아낌', 9999), isFalse, reason: '엽전 모자람');
     expect(legendaryPrice(1000, math.Random(3)), inInclusiveRange(300, 500));
-    expect(legendaryPrice(0, math.Random(3)), 50);
+    expect(legendaryPrice(0, math.Random(3)), legendaryMinPrice);
+    expect(legendaryMinPrice, 150);
   });
 
   test('은둔 고수: 숨은 캐릭터 둘을 차례로, 다 있으면 비급', () {
