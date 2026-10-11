@@ -46,3 +46,6 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# 점검·실험용 임시 시험(저장소에 넣지 않음)
+test/**/tmp_*.dart
