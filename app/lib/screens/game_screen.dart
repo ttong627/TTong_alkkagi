@@ -23,6 +23,7 @@ import '../ui/ghost_hand.dart';
 import '../ui/kit.dart';
 import '../ui/theme.dart';
 import 'flick_view.dart';
+import 'qi_clash.dart';
 
 /// 한 판 화면: 위에 두 사람 얼굴·남은 돌, 가운데 대전장, 아래 내공 구슬.
 /// 내 돌을 누르면 그 돌을 가까이 보는 화면으로 바뀌고, 거기서 손끝으로 튕긴다.
@@ -301,8 +302,9 @@ class _GameScreenState extends State<GameScreen> {
     if (!mounted) return;
     setState(() {});
     if (_match.clash != null && !_clashing) {
+      // 준비 장면이 대치·북소리를 낸다(바로 연타로 들어가지 않는다 · 2026-10-11 형 지시).
       _clashing = true;
-      Sound.play('clash');
+      Sound.play('clash', 0.7);
       _selected = null;
     }
     if (_wasMoving && !_match.isMoving) {
@@ -780,6 +782,8 @@ class _GameScreenState extends State<GameScreen> {
               Positioned.fill(
                 child: QiClashOverlay(
                   opponent: widget.config.opponentName ?? '상대',
+                  me: _myId,
+                  foe: _foeId,
                   aiTaps: QiClash.aiTaps(widget.config.difficulty, _rand),
                   onDone: (mine, theirs) {
                     _match.resolveClash(mine, theirs);
@@ -1613,134 +1617,4 @@ class _FinisherPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _FinisherPainter old) => true;
-}
-
-/// 내공 겨루기(설계서 §4): 3초 동안 연타. 고수의 연타 수는 정해 두고 막대로 차오른다.
-/// 초당 15회를 넘긴 연타는 무효(0회로 친다).
-class QiClashOverlay extends StatefulWidget {
-  const QiClashOverlay({
-    super.key,
-    required this.opponent,
-    required this.aiTaps,
-    required this.onDone,
-  });
-  final String opponent;
-  final int aiTaps;
-  final void Function(int mine, int theirs) onDone;
-
-  @override
-  State<QiClashOverlay> createState() => _QiClashOverlayState();
-}
-
-class _QiClashOverlayState extends State<QiClashOverlay>
-    with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(
-    vsync: this,
-    duration: Duration(milliseconds: (QiClash.seconds * 1000).round()),
-  );
-  int _taps = 0;
-  String? _result;
-
-  @override
-  void initState() {
-    super.initState();
-    _c.addStatusListener((st) {
-      if (st != AnimationStatus.completed) return;
-      final d = QiClash.swing(_taps, widget.aiTaps);
-      final cap = (QiClash.maxRate * QiClash.seconds).round();
-      setState(() {
-        _result = _taps > cap
-            ? '무효 — 초당 ${QiClash.maxRate}회를 넘겼다'
-            : (d > 0
-                  ? '이겼다! 반발 +${(d * 100).round()}%'
-                  : (d < 0 ? '밀렸다… 반발 ${(d * 100).round()}%' : '팽팽하다'));
-      });
-      Future<void>.delayed(const Duration(milliseconds: 900), () {
-        if (mounted) widget.onDone(_taps, widget.aiTaps);
-      });
-    });
-    // 기기 진동·알림 없이도 시작을 알 수 있게 0.4초 뒤 시작.
-    Future<void>.delayed(const Duration(milliseconds: 400), () {
-      if (mounted) _c.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    final cap = (QiClash.maxRate * QiClash.seconds).toDouble();
-    return GestureDetector(
-      key: const Key('qi-clash'),
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) {
-        if (_c.isAnimating) setState(() => _taps++);
-      },
-      child: Container(
-        color: Colors.black.withValues(alpha: 0.82),
-        padding: const EdgeInsets.all(24),
-        child: AnimatedBuilder(
-          animation: _c,
-          builder: (context, _) {
-            final ai = (widget.aiTaps * _c.value).round();
-            Widget bar(String who, int n, Color c) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  SizedBox(width: 90, child: Text(who, style: t.titleMedium)),
-                  Expanded(
-                    child: LinearProgressIndicator(
-                      value: (n / cap).clamp(0.0, 1.0),
-                      minHeight: 18,
-                      color: c,
-                      backgroundColor: Colors.white12,
-                    ),
-                  ),
-                  SizedBox(
-                    width: 44,
-                    child: Text('$n', textAlign: TextAlign.end),
-                  ),
-                ],
-              ),
-            );
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '내공 겨루기!',
-                  style: t.displaySmall?.copyWith(
-                    color: innerColor,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _result ??
-                      (_c.isAnimating
-                          ? '화면을 마구 두드려라! ${(QiClash.seconds * (1 - _c.value)).toStringAsFixed(1)}초'
-                          : '준비…'),
-                  style: t.titleLarge,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                bar('나', _taps, innerColor),
-                bar(widget.opponent, ai, const Color(0xFFFF6B6B)),
-                const SizedBox(height: 16),
-                Text(
-                  '연타 수가 많은 쪽 돌이 더 세게 튕겨 낸다(반발 ±${(QiClash.maxSwing * 100).round()}%)',
-                  style: t.bodySmall,
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
 }

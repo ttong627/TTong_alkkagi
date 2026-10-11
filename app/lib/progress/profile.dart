@@ -7,7 +7,7 @@ import 'daily.dart';
 
 /// 캐릭터 10종 (설계서 §2.2·§16.3).
 enum Fighter {
-  seokdu('석두', '근력형 · 탄지 파워 +10%', starter: true),
+  seokdu('석두', '근력형 · 탄지 파워 +5%', starter: true),
   yeonbi('연비', '유연형 · 탄지 묘수 +0.1', starter: true),
   cheongmyeong('청명', '집중형 · 어기 +0.3초 · 판 시작 내공 +1칸', starter: true),
   banDal('반달', '통통의 제자 · 맞은 돌 +10%'),
@@ -250,6 +250,9 @@ class Profile {
   /// 입문(강제 수련)을 마쳤나. 마치기 전에는 로비로 못 간다.
   bool tutorialDone = false;
 
+  /// 강호행 난이도 「쉬움」(설계서 §16.16): 고수의 손 오차가 판마다 커진다. 처음엔 쉬움.
+  bool easyMode = true;
+
   /// 출석: 마지막으로 받은 날(yyyymmdd)과 받은 횟수.
   String attendDay = '';
   int attendCount = 0;
@@ -392,8 +395,10 @@ class Profile {
   /// 기인방이 지금 열려 있나(10분).
   bool legendaryOpen(int now) => now < legendaryUntil && legendary.isNotEmpty;
 
+  /// 단계마다 +1.5cm/s(20단계 ×1.25) · 석두 +5%. 예전 +3(×1.5)·+10% 는 같은 손으로 쳐도 단계에 따라
+  /// 너무 달라 손맛(손가락 빠르기)보다 능력치가 앞섰다(2026-10-11 형 「단계별 차이가 너무 많이 나지 않게」).
   double get maxSpeed =>
-      (120 + 3 * level(Stat.power)) * (hero == Fighter.seokdu ? 1.1 : 1);
+      (120 + 1.5 * level(Stat.power)) * (hero == Fighter.seokdu ? 1.05 : 1);
   double get spinScale =>
       (1 + 0.015 * level(Stat.finesse)) +
       (hero == Fighter.yeonbi ? 0.1 : 0) +
@@ -508,6 +513,7 @@ class Profile {
     'hairs': hairs.toList(),
     'robes': robes.toList(),
     'tutorial': tutorialDone,
+    'easy': easyMode,
     'attendDay': attendDay,
     'attendCount': attendCount,
     'missionDay': missionDay,
@@ -605,6 +611,7 @@ class Profile {
     // 입문 칸이 없는 옛 저장(입문이 생기기 전 판)도 새 입문을 한 번 거친다(형 지시 2026-10-11:
     // 처음 할 일을 강제로 익히게). 진행은 그대로 두고 입문만 한다.
     p.tutorialDone = j['tutorial'] as bool? ?? false;
+    p.easyMode = j['easy'] as bool? ?? true;
     p.attendDay = j['attendDay'] as String? ?? '';
     p.attendCount = j['attendCount'] as int? ?? 0;
     p.missionDay = j['missionDay'] as String? ?? '';

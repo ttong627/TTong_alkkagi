@@ -4,6 +4,9 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:alkkagi/game/arena.dart';
+import 'package:alkkagi/game/board_game.dart';
+import 'package:alkkagi/screens/qi_clash.dart';
+import 'package:flame/game.dart';
 import 'package:alkkagi/game/match.dart';
 import 'package:alkkagi/progress/profile.dart';
 import 'package:alkkagi/progress/store.dart';
@@ -238,6 +241,58 @@ void main() {
   }, skip: !on);
 
   // 스토어 스크린샷 1080×1920(9:16): STORE=1 flutter test test/shots → ../store/
+  testWidgets('연출 사진', (t) async {
+    t.view.physicalSize = const Size(412, 915);
+    t.view.devicePixelRatio = 1;
+    ProfileStore.instance.profile
+      ..hero = Fighter.yonga
+      ..tutorialDone = true;
+    for (final (name, ms) in [
+      ('clash_faceoff', 700),
+      ('clash_count', 1500),
+      ('clash_tap', 3300),
+    ]) {
+      await _shot(
+        t,
+        Scaffold(
+          backgroundColor: const Color(0xFF3A2A1A),
+          body: QiClashOverlay(
+            opponent: '묵현',
+            aiTaps: 24,
+            me: 'yonga',
+            foe: 'mukhyeon',
+            onDone: (_, _) {},
+          ),
+        ),
+        name,
+        settleMs: ms,
+      );
+    }
+    // 카메라: 쏜 직후 · 부딪힐 때 · 멈춘 뒤.
+    for (final (name, ms) in [
+      ('cam_shot', 200),
+      ('cam_hit', 700),
+      ('cam_rest', 6000),
+    ]) {
+      final m = Match(
+        const MatchConfig(mode: MatchMode.twoPlayer, arena: Arena.turtleMarket),
+      );
+      final g = BoardGame(
+        m,
+        canTouch: () => false,
+        onSelect: (_) {},
+        selected: () => null,
+      );
+      await _shot(
+        t,
+        _CamDemo(match: m, game: g),
+        name,
+        settleMs: ms,
+      );
+      m.dispose();
+    }
+  }, skip: Platform.environment['SHOTS'] != '1');
+
   testWidgets('스토어 스크린샷', (t) async {
     const w = 412.0, k = 1080 / w, h = 1920 / k;
     t.view.physicalSize = const Size(w * k, h * k);
@@ -337,4 +392,37 @@ void main() {
     await t.pumpWidget(const SizedBox());
     await t.pump(const Duration(seconds: 2));
   }, skip: !store);
+}
+
+/// 판이 뜨자마자 가운데 흰 돌로 위쪽 검은 돌을 세게 친다(카메라 사진용).
+class _CamDemo extends StatefulWidget {
+  const _CamDemo({required this.match, required this.game});
+  final Match match;
+  final BoardGame game;
+
+  @override
+  State<_CamDemo> createState() => _CamDemoState();
+}
+
+class _CamDemoState extends State<_CamDemo> {
+  @override
+  void initState() {
+    super.initState();
+    final s = widget.match.table.stones.firstWhere(
+      (x) => x.team == 0 && x.position.x.abs() < 2,
+    );
+    widget.match.shoot(s, -1.5708, 115, 0);
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: const Color(0xFF3A2A1A),
+    body: Center(
+      child: SizedBox(
+        width: 412,
+        height: 520,
+        child: GameWidget(game: widget.game),
+      ),
+    ),
+  );
 }

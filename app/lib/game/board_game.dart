@@ -4,9 +4,11 @@ import 'dart:ui';
 import 'package:alkkagi_physics/alkkagi_physics.dart' as phys;
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
+import 'package:flutter/widgets.dart' as w show Matrix4, MatrixUtils;
 
 import 'arena.dart';
 import 'board_paint.dart';
+import 'camera.dart';
 import '../audio/sound.dart';
 import 'fx.dart';
 import '../progress/settings.dart';
@@ -41,7 +43,11 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
 
   /// 판 위 연출(잔상·불꽃·흔들림·느린 화면·무공 효과).
   final fx = BattleFx();
+
+  /// 돌을 따라가는 카메라(설정 「카메라 연출」로 끔).
+  final cam = BattleCamera();
   int _seenTurns = 0;
+  w.Matrix4 _cam = w.Matrix4.identity();
 
   /// 어기어석으로 꺾는 중 손가락 자리(화면).
   Offset? _steerTo;
@@ -56,8 +62,15 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
   @override
   Color backgroundColor() => const Color(0x00000000);
 
-  /// 판 좌표(cm) → 이 게임 화면 안 좌표(입문 손가락 자리).
-  Offset screenOf(double x, double y) => _toScreen(x, y);
+  /// 판 좌표(cm) → 이 게임 화면 안 좌표(입문 손가락 자리) — 카메라까지 넣어서.
+  Offset screenOf(double x, double y) =>
+      w.MatrixUtils.transformPoint(_cam, _toScreen(x, y));
+
+  /// 화면 자리 → 판 좌표(cm). 카메라가 움직여 있어도 판 위 같은 자리.
+  Offset worldOf(Offset screen) {
+    final p = BattleCamera.unproject(_cam, screen);
+    return Offset((p.dx - _origin.dx) / _scale, (p.dy - _origin.dy) / _scale);
+  }
 
   /// 돌 반지름의 화면 길이.
   double get stoneRadiusPx => phys.PhysicsConstants.stoneRadius * _scale;
@@ -78,8 +91,21 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
     if (match.turnCount != _seenTurns) {
       _seenTurns = match.turnCount;
       final s = match.table.shooter;
-      if (s != null) fx.onShot(match, s);
+      if (s != null) {
+        fx.onShot(match, s);
+        cam.onShot(
+          Offset(s.position.x, s.position.y),
+          big: match.lastCritical || match.lastMode != StrikeMode.plain,
+        );
+      }
     }
+    cam.enabled = Settings.instance.camera;
+    cam.update(real, [
+      for (final s in match.table.stones)
+        if (!s.out && s.velocity.length > 3)
+          (Offset(s.position.x, s.position.y), s.velocity.length.toDouble()),
+    ]);
+    _cam = cam.matrix(_origin, _scale);
     if (fx.steerLeft <= 0 && match.steersLeft > 0) match.steersLeft = 0;
     if (!match.isMoving || match.clash != null) {
       Sound.slide(0);
@@ -107,6 +133,14 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
       };
       final ended = match.step();
       fx.onStep(match, wasOut);
+      for (final i in match.table.impacts) {
+        cam.onImpact(Offset(i.x, i.y), i.speed);
+      }
+      for (final s in match.table.stones) {
+        if (s.out && !wasOut.contains(s.id)) {
+          cam.onOut(Offset(s.position.x, s.position.y));
+        }
+      }
       if (ended) fx.onTurnEnd(match);
     }
     if (!match.isMoving) _acc = 0;
@@ -121,6 +155,7 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
     canvas.save();
     final shake = fx.shakeOffset();
     canvas.translate(shake.dx, shake.dy);
+    canvas.transform(_cam.storage);
     paintArena(canvas, arena, _toScreen, _scale);
     if (match.fireFloor) {
       // 6장 불꽃 바닥: 붉게.
@@ -197,15 +232,41 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
     if (fx.steerLeft > 0 && shooter != null && to != null) {
       canvas.drawLine(
         _toScreen(shooter.position.x, shooter.position.y),
-        to,
+        // 손가락 자리는 화면 좌표 — 카메라 안 그림 좌표로 되돌린다.
+        BattleCamera.unproject(_cam, to),
         Paint()
           ..color = ultimateColor
           ..strokeWidth = 3
           ..strokeCap = StrokeCap.round,
       );
     }
+    // 판 밖으로 떨어지는 돌: 작아지며 흐려진다.
+    for (final f in fx.falls) {
+      final k = (f.t / FallingStone.life).clamp(0.0, 1.0);
+      canvas.saveLayer(
+        null,
+        Paint()..color = Color.fromRGBO(255, 255, 255, 1 - k),
+      );
+      paintTopStone(
+        canvas,
+        _toScreen(f.pos.dx, f.pos.dy),
+        r * _scale * (1 - 0.6 * k),
+        f.team,
+        f.material,
+        shape: f.shape,
+      );
+      canvas.restore();
+    }
     fx.paintOver(canvas, Size(size.x, size.y), _toScreen, _scale);
     canvas.restore();
+    fx.paintScreen(canvas, Size(size.x, size.y));
+    // 큰 장면: 위아래 검은 띠(영화처럼).
+    if (cam.letterbox > 0.01) {
+      final h = size.y * 0.06 * cam.letterbox;
+      final band = Paint()..color = const Color(0xB3000000);
+      canvas.drawRect(Rect.fromLTWH(0, 0, size.x, h), band);
+      canvas.drawRect(Rect.fromLTWH(0, size.y - h, size.x, h), band);
+    }
   }
 
   /// 어기어석: 느린 화면 동안 손가락을 끌어 놓은 쪽으로 돌을 꺾는다.
@@ -232,9 +293,8 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
     _steerTo = null;
     final s = match.table.shooter;
     if (to == null || s == null || match.steersLeft <= 0) return;
-    final wx = (to.dx - _origin.dx) / _scale,
-        wy = (to.dy - _origin.dy) / _scale;
-    final a = math.atan2(wy - s.position.y, wx - s.position.x);
+    final w = worldOf(to);
+    final a = math.atan2(w.dy - s.position.y, w.dx - s.position.x);
     Buzz.heavy();
     match.steer(a);
     if (match.steersLeft <= 0) fx.steerLeft = 0;
@@ -245,7 +305,8 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
     super.onTapUp(event);
     if (!canTouch() || match.isMoving || match.isOver) return;
     final p = event.canvasPosition;
-    final wx = (p.x - _origin.dx) / _scale, wy = (p.y - _origin.dy) / _scale;
+    final w = worldOf(Offset(p.x, p.y));
+    final wx = w.dx, wy = w.dy;
     phys.Stone? best;
     var bestD = phys.PhysicsConstants.stoneRadius * 2.4;
     for (final s in match.table.stones) {

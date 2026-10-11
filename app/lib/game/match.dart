@@ -238,7 +238,11 @@ class MatchConfig {
     this.demonWorld = false,
     this.art = RebirthArt.none,
     this.rule = MatchRule.annihilate,
+    this.aiErrorScale = 1,
   });
+
+  /// AI 손 오차 배수(1 = [difficulty] 그대로, 클수록 서툴다). 강호행 「쉬움」이 판마다 정한다.
+  final double aiErrorScale;
 
   /// 판의 규칙(대전에서만 — 연습·묘수·목인항은 늘 기본).
   final MatchRule rule;

@@ -23,6 +23,9 @@ class Settings extends ChangeNotifier {
   /// 진동.
   bool vibration = true;
 
+  /// 카메라 연출(돌을 따라 당기고 눕히기). 어지러운 분은 끈다.
+  bool camera = true;
+
   /// 손맛 보정 −0.3~+0.3: 세기 기준(1,500화소/초)에 (1 + 값)을 곱한다.
   /// 빠른 손이면 + 로 올려 같은 손놀림이 덜 세게, 느린 손이면 − 로.
   double feel = 0;
@@ -53,6 +56,7 @@ class Settings extends ChangeNotifier {
     'sfx': sfx,
     'music': music,
     'vibration': vibration,
+    'camera': camera,
     'feel': feel,
     'hitArea': hitArea,
     'leftHanded': leftHanded,
@@ -64,6 +68,7 @@ class Settings extends ChangeNotifier {
     sfx = d('sfx', 0.8).clamp(0.0, 1.0);
     music = d('music', 0.5).clamp(0.0, 1.0);
     vibration = j['vibration'] as bool? ?? true;
+    camera = j['camera'] as bool? ?? true;
     feel = d('feel', 0).clamp(feelMin, feelMax);
     hitArea = j['hitArea'] as bool? ?? true;
     leftHanded = j['leftHanded'] as bool? ?? false;
@@ -115,12 +120,91 @@ class Settings extends ChangeNotifier {
 }
 
 /// 진동(설정에서 끌 수 있다).
+///
+/// 2026-10-11 형 「손맛이 조금 더 전해지도록 진동」: 안드로이드에서는 길이·세기(1~255)를 정해 떤다
+/// (`tanji/haptic` · MainActivity 의 Haptics). 못 쓰는 곳(시험·다른 기기)은 플러터 기본 햅틱으로.
 abstract final class Buzz {
+  static const _ch = MethodChannel('tanji/haptic');
+
+  /// 안드로이드 진동기를 쓸 수 있나(한 번 실패하면 기본 햅틱으로만).
+  static bool _native =
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+  /// 충돌이 한 장면에 몰려도 0.045초에 한 번만 떤다(가장 센 것).
+  static int _lastMs = 0;
+  static const _gapMs = 45;
+
+  /// 마지막으로 낸 진동(시험용 · (길이ms, 세기)).
+  @visibleForTesting
+  static final log = <(int, int)>[];
+
   static void tick() {
-    if (Settings.instance.vibration) HapticFeedback.selectionClick();
+    if (!Settings.instance.vibration) return;
+    if (!_pulse(12, 70)) HapticFeedback.selectionClick();
   }
 
   static void heavy() {
-    if (Settings.instance.vibration) HapticFeedback.heavyImpact();
+    if (!Settings.instance.vibration) return;
+    if (!_pulse(45, 255)) HapticFeedback.heavyImpact();
+  }
+
+  /// 부딪힘·타격: [strength] 0~1 만큼(길이 10~60ms · 세기 50~255).
+  static void impact(double strength) {
+    if (!Settings.instance.vibration) return;
+    final k = strength.clamp(0.0, 1.0);
+    if (k < 0.04) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastMs < _gapMs) return;
+    _lastMs = now;
+    final ms = (10 + 50 * k).round(), amp = (50 + 205 * k).round();
+    if (_pulse(ms, amp)) return;
+    if (k > 0.66) {
+      HapticFeedback.heavyImpact();
+    } else if (k > 0.33) {
+      HapticFeedback.mediumImpact();
+    } else {
+      HapticFeedback.lightImpact();
+    }
+  }
+
+  /// 여러 번 떨기: (길이ms, 세기 0~255 — 0 이면 쉼) 목록.
+  static void pattern(List<(int, int)> steps) {
+    if (!Settings.instance.vibration || steps.isEmpty) return;
+    _lastMs = DateTime.now().millisecondsSinceEpoch;
+    log.addAll(steps.where((s) => s.$2 > 0));
+    if (_native) {
+      _ch
+          .invokeMethod<bool>('pattern', {
+            'ms': [for (final s in steps) s.$1],
+            'amp': [for (final s in steps) s.$2],
+          })
+          .catchError((_) {
+            _native = false;
+            return false;
+          });
+      return;
+    }
+    HapticFeedback.heavyImpact();
+  }
+
+  /// 회심·궁극기: 쿵-쿵 두 번.
+  static void burst() => pattern(const [(0, 0), (40, 255), (60, 0), (70, 200)]);
+
+  /// 장외(돌이 판 밖으로): 길게 묵직하게.
+  static void thud() => pattern(const [(0, 0), (90, 230), (40, 0), (30, 120)]);
+
+  /// 내공 겨루기 심장 박동: 쿵-쿵.
+  static void heartbeat() =>
+      pattern(const [(0, 0), (35, 200), (110, 0), (25, 120)]);
+
+  static bool _pulse(int ms, int amp) {
+    log.add((ms, amp));
+    if (log.length > 64) log.removeRange(0, log.length - 64);
+    if (!_native) return false;
+    _ch.invokeMethod<bool>('pulse', {'ms': ms, 'amp': amp}).catchError((_) {
+      _native = false;
+      return false;
+    });
+    return true;
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:alkkagi_physics/alkkagi_physics.dart';
 import 'package:flutter/material.dart';
 
@@ -82,7 +84,7 @@ class _CampaignScreenState extends State<CampaignScreen> {
     final won = await nav.push<bool>(
       gameRoute(
         GameScreen(
-          config: Campaign.configFor(p, s),
+          config: Campaign.configFor(p, s, easy: p.easyMode),
           title: s.title,
           quips: s.quips,
           boss: true,
@@ -204,6 +206,52 @@ class _CampaignScreenState extends State<CampaignScreen> {
     return '${lock.split(' 이 필요').first} 필요';
   }
 
+  /// 난이도: 쉬움(고수 손이 서툴다 · 2장 통통까지 처음 하는 사람도 깬다) / 보통.
+  Widget _difficultyRow(Profile p) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: GlassPanel(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+      radius: 16,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                '난이도',
+                style: TextStyle(fontFamily: titleFont, fontSize: 18),
+              ),
+              const SizedBox(width: 10),
+              GameChip(
+                key: const Key('diff-easy'),
+                label: '쉬움',
+                selected: p.easyMode,
+                onTap: () => _setEasy(true),
+              ),
+              const SizedBox(width: 8),
+              GameChip(
+                key: const Key('diff-normal'),
+                label: '보통',
+                selected: !p.easyMode,
+                onTap: () => _setEasy(false),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            p.easyMode ? '고수의 손이 서툴러요 — 처음 하는 분도 2장까지 쉽게' : '고수가 제 실력으로 겨뤄요',
+            style: const TextStyle(fontSize: 14, color: Palette.dim),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  void _setEasy(bool v) {
+    setState(() => _store.profile.easyMode = v);
+    unawaited(_store.save());
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = _store.profile;
@@ -228,8 +276,10 @@ class _CampaignScreenState extends State<CampaignScreen> {
       ],
       body: ListView.builder(
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-        itemCount: campaign.length + 1,
-        itemBuilder: (_, i) {
+        itemCount: campaign.length + 2,
+        itemBuilder: (_, j) {
+          if (j == 0) return _difficultyRow(p);
+          final i = j - 1;
           if (i == campaign.length) {
             final open = p.stage >= 7;
             return _StageCard(

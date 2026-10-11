@@ -31,6 +31,7 @@ abstract final class Sound {
     'hit_hyeoncheol': 4,
     'hit_ice': 4,
     'out_thud': 3,
+    'clash_tap': 4,
   };
 
   /// 미리 읽어 두는 효과음 이름(assets/sounds/이름.ogg · `tool/make_audio.py` 로 합성).
@@ -67,6 +68,12 @@ abstract final class Sound {
     'whoosh',
     'countdown',
     'go',
+    // 내공 겨루기 준비·연타·결과(2026-10-11).
+    'clash_ready',
+    'clash_beat',
+    'clash_tap',
+    'clash_win',
+    'clash_lose',
     // 짧은 곡(한 번만).
     'jingle_win',
     'jingle_lose',

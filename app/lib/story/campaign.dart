@@ -41,10 +41,16 @@ abstract final class Campaign {
     return order[(i < 0 ? 0 : i + rebirths) % order.length];
   }
 
-  static MatchConfig configFor(Profile p, Stage s) => playerConfig(
+  static MatchConfig configFor(
+    Profile p,
+    Stage s, {
+    bool easy = false,
+    double? aiErrorScale,
+  }) => playerConfig(
     p,
     arena: s.arena,
     difficulty: s.difficulty,
+    aiErrorScale: aiErrorScale ?? (easy ? easyErrorScale(s) : 1),
     opponentMaterial: s.material,
     opponentShape: s.shape,
     opponentMartial: rivalMartial(s, p.rebirths),
@@ -58,6 +64,9 @@ abstract final class Campaign {
     shiftingFloor: s.shiftingFloor,
     qiClash: true,
   );
+
+  /// 강호행 「쉬움」: 판마다 AI 손 오차 배수(가상 대전으로 맞춘다 · 설계서 §16.16).
+  static double easyErrorScale(Stage s) => 1;
 
   /// 예상 궤적(설계서 §7.1): 1~2장 두 번째 충돌까지, 3~4장 첫 충돌까지, 5~6장 그 절반.
   static double aimAssistFor(Stage s) {
@@ -82,6 +91,7 @@ abstract final class Campaign {
     List<Placement> civilians = const [],
     bool shiftingFloor = false,
     bool qiClash = false,
+    double aiErrorScale = 1,
   }) {
     final h = p.hero;
     final perkKnock = p.perks.contains('장외 시 기');
@@ -119,6 +129,7 @@ abstract final class Campaign {
       civilians: civilians,
       shiftingFloor: shiftingFloor,
       qiClash: qiClash,
+      aiErrorScale: aiErrorScale,
       demonWorld: p.rebirths > 0,
       art: switch (h) {
         Fighter.magyo => RebirthArt.steal,

@@ -4,6 +4,7 @@ import 'package:alkkagi_physics/alkkagi_physics.dart' as phys;
 import 'package:flutter/material.dart';
 
 import '../audio/sound.dart';
+import '../progress/settings.dart';
 import 'fx_colors.dart';
 import 'match.dart';
 import '../ui/theme.dart';
@@ -18,6 +19,14 @@ class BattleFx {
   final _texts = <_Text>[];
   final _trails = <int, List<Offset>>{};
   final _glow = <int, (Color, double)>{};
+  final _streaks = <_Streak>[];
+  final _glints = <_Ring>[];
+
+  /// 판 밖으로 떨어지는 돌(그리기는 BoardGame — 돌 그림을 안다).
+  final falls = <FallingStone>[];
+
+  /// 타격 멈춤(히트스톱): 센 충돌 순간 아주 잠깐 거의 멈춘다(손맛 · 2026-10-11).
+  double _stopLeft = 0;
 
   double _shake = 0;
   double _flash = 0;
@@ -33,6 +42,7 @@ class BattleFx {
 
   /// 물리 시간 배수(1 = 보통, 작을수록 느린 화면).
   double get timeScale {
+    if (_stopLeft > 0) return 0.05;
     if (steerLeft > 0) return 0.2;
     return _slowLeft > 0 ? _slowScale : 1;
   }
@@ -73,9 +83,43 @@ class BattleFx {
     }
   }
 
+  /// 줄무늬 불꽃: [at] 에서 [dir] 둘레(퍼짐 [spread] 라디안)로 [n] 줄.
+  void _streak(
+    Offset at,
+    double dir,
+    double spread,
+    int n,
+    double speed,
+    Color c, {
+    double len = 1.2,
+  }) {
+    for (var i = 0; i < n; i++) {
+      final a = dir + (_rand.nextDouble() - 0.5) * 2 * spread;
+      final sp = speed * (0.5 + _rand.nextDouble() * 0.8);
+      _streaks.add(
+        _Streak(
+          at,
+          Offset(math.cos(a), math.sin(a)) * sp,
+          0.22 + _rand.nextDouble() * 0.18,
+          len * (0.6 + _rand.nextDouble() * 0.8),
+          c,
+        ),
+      );
+    }
+  }
+
   /// 한 수를 쏜 순간.
   void onShot(Match m, phys.Stone s) {
     final at = Offset(s.position.x, s.position.y);
+    // 떠나는 돌 뒤로 바람 줄기·흙먼지(얼마나 세게 쳤는지 보이게).
+    final v = s.velocity;
+    final sp = v.length;
+    if (sp > 1) {
+      final back = math.atan2(-v.y, -v.x);
+      _streak(at, back, 0.5, (6 + sp / 8).round(), sp * 0.35, Colors.white70);
+      _rings.add(_Ring(at, 0.4, 1.5 + sp / 40, 0.25, const Color(0xFFE8D9B0)));
+      Buzz.impact(sp / 120);
+    }
     if (m.lastCritical) {
       Sound.play('critical');
       _text(at.translate(0, -2.5), '회심!', innerColor, size: 34);
@@ -83,7 +127,9 @@ class BattleFx {
       _burst(at, innerColor, 24, 20);
       _flash = 0.35;
       _flashColor = innerColor;
+      Buzz.burst();
     }
+    if (m.lastMode != StrikeMode.plain) Buzz.burst();
     switch (m.lastMode) {
       case StrikeMode.plain:
         break;
@@ -165,6 +211,33 @@ class BattleFx {
       final strong = i.speed >= 60;
       final mid = i.speed >= 20;
       final withShooter = i.a == shooterId || i.b == shooterId;
+      // 손맛: 부딪힌 빠르기만큼 떨린다(같은 순간 여러 번이면 한 번).
+      Buzz.impact(i.speed / 100);
+      if (mid) {
+        // 부딪힌 자리에서 사방으로 튀는 불꽃 줄기.
+        _streak(
+          at,
+          _rand.nextDouble() * math.pi * 2,
+          math.pi,
+          strong ? 14 : 6,
+          i.speed * 0.5,
+          const Color(0xFFFFE9A8),
+          len: strong ? 1.6 : 1,
+        );
+      }
+      if (strong) {
+        _glints.add(_Ring(at, 0, 2.2 + i.speed / 60, 0.22, Colors.white));
+        // 센 충돌은 아주 잠깐 멈춘다(히트스톱).
+        _stopLeft = math.max(_stopLeft, i.speed >= 90 ? 0.09 : 0.06);
+        if (withShooter || i.speed >= 90) {
+          _text(
+            at.translate(0, -1.8),
+            i.speed >= 90 ? '쾅!' : '퍽!',
+            const Color(0xFFFFF2C0),
+            size: i.speed >= 90 ? 34 : 26,
+          );
+        }
+      }
       _burst(
         at,
         const Color(0xFFFFF2C0),
@@ -190,7 +263,10 @@ class BattleFx {
           Sound.play('inner', 0.8);
           _rings.add(_Ring(at, 0.5, 5, 0.45, innerColor));
           _burst(at, innerColor, 30, 40);
+          _streak(at, 0, math.pi, 16, 40, innerColor, len: 2);
           _shake = math.max(_shake, 12);
+          _stopLeft = math.max(_stopLeft, 0.08);
+          Buzz.burst();
         case phys.TechniqueFx.swordQi:
           Sound.technique(phys.Technique.swordQi);
           final c = techniqueColor(phys.Technique.swordQi);
@@ -236,6 +312,7 @@ class BattleFx {
           _rings.add(_Ring(at, 1.5, phys.TerrainConstants.gongRadius, 0.6, c));
           _text(at.translate(0, -2), '경종!', c);
           _shake = math.max(_shake, 8);
+          Buzz.heartbeat();
         case phys.TerrainFx.swallow:
           Sound.play('tech_absorb', 0.7);
           const c = Color(0xFFB07CFF);
@@ -245,6 +322,8 @@ class BattleFx {
           Sound.play('terrain_mine');
           const c = Color(0xFFFF7A2E);
           _burst(at, c, 60, 60, size: 0.45);
+          _streak(at, 0, math.pi, 20, 60, c, len: 2.2);
+          Buzz.burst();
           _rings.add(_Ring(at, 0.5, phys.TerrainConstants.mineRadius, 0.5, c));
           _text(at.translate(0, -2), '폭발!', c, size: 32);
           _shake = math.max(_shake, 20);
@@ -281,6 +360,23 @@ class BattleFx {
         _text(at, '장외!', const Color(0xFFFF6B5B), size: 24);
         _burst(at, const Color(0xFFC9A57A), 20, 15, size: 0.35);
         _shake = math.max(_shake, 5);
+        // 판 밖으로 떨어지며 작아지는 돌(장외가 눈에 보이게).
+        final dir = s.velocity.length > 1
+            ? Offset(s.velocity.x, s.velocity.y)
+            : Offset(at.dx, at.dy);
+        final unit = dir.distance == 0
+            ? const Offset(0, 1)
+            : dir / dir.distance;
+        falls.add(
+          FallingStone(
+            at,
+            unit * math.max(12, s.velocity.length * 0.6),
+            s.team,
+            s.material,
+            s.shape,
+          ),
+        );
+        Buzz.thud();
       }
     }
     // 잔상: 움직이는 돌의 지나온 자리.
@@ -298,6 +394,22 @@ class BattleFx {
   /// 실제 시간으로 연출을 진행한다.
   void update(double dt) {
     clock += dt;
+    if (_stopLeft > 0) _stopLeft -= dt;
+    for (final st in _streaks) {
+      st.pos += st.vel * dt;
+      st.vel *= 1 - 3 * dt;
+      st.life -= dt;
+    }
+    _streaks.removeWhere((st) => st.life <= 0);
+    for (final g in _glints) {
+      g.t += dt;
+    }
+    _glints.removeWhere((g) => g.t >= g.dur);
+    for (final f in falls) {
+      f.pos += f.vel * dt;
+      f.t += dt;
+    }
+    falls.removeWhere((f) => f.t >= FallingStone.life);
     for (final p in _parts) {
       p.pos += p.vel * dt;
       p.vel *= 1 - 2.5 * dt;
@@ -415,6 +527,38 @@ class BattleFx {
       )..layout();
       tp.paint(canvas, pos - Offset(tp.width / 2, tp.height / 2));
     }
+    for (final st in _streaks) {
+      final a = (st.life / 0.4).clamp(0.0, 1.0);
+      final v = st.vel.distance;
+      if (v < 0.01) continue;
+      final tail = st.pos - st.vel / v * st.len;
+      canvas.drawLine(
+        at(tail.dx, tail.dy),
+        at(st.pos.dx, st.pos.dy),
+        Paint()
+          ..color = st.color.withValues(alpha: a)
+          ..strokeWidth = math.max(1.2, scale * 0.12)
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+    for (final g in _glints) {
+      // 번쩍: 네 갈래 빛.
+      final k = g.t / g.dur;
+      final c = at(g.at.dx, g.at.dy);
+      final len = g.r1 * scale * Curves.easeOut.transform(k.clamp(0.0, 1.0));
+      final p = Paint()
+        ..color = Colors.white.withValues(alpha: (1 - k) * 0.95)
+        ..strokeWidth = math.max(2, scale * 0.25 * (1 - k))
+        ..strokeCap = StrokeCap.round;
+      for (final a in const [0.0, math.pi / 2]) {
+        final d = Offset(math.cos(a + 0.4), math.sin(a + 0.4)) * len;
+        canvas.drawLine(c - d, c + d, p);
+      }
+    }
+  }
+
+  /// 화면에 붙어 있는 것(번쩍임·느린 화면 테두리) — 카메라와 상관없이 화면 전체에.
+  void paintScreen(Canvas canvas, Size size) {
     if (_flash > 0) {
       canvas.drawRect(
         Offset.zero & size,
@@ -440,6 +584,27 @@ class BattleFx {
       );
     }
   }
+}
+
+/// 판 밖으로 떨어지는 돌 하나(장외 연출).
+class FallingStone {
+  FallingStone(this.pos, this.vel, this.team, this.material, this.shape);
+  static const double life = 0.5;
+  Offset pos;
+  final Offset vel;
+  final int team;
+  final phys.StoneMaterial material;
+  final phys.StoneShape shape;
+  double t = 0;
+}
+
+class _Streak {
+  _Streak(this.pos, this.vel, this.life, this.len, this.color);
+  Offset pos;
+  Offset vel;
+  double life;
+  final double len;
+  final Color color;
 }
 
 class _Part {
