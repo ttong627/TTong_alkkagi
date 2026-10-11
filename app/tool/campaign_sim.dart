@@ -70,6 +70,7 @@ void main() {
         if (x.isNotEmpty) double.parse(x),
     ];
     if (scales.isEmpty) scales.add(null);
+    final power = double.tryParse(Platform.environment['POWER'] ?? '');
     final (ae, se) = hand == 'novice'
         ? (11.5 * math.pi / 180, 0.35)
         : (7.9 * math.pi / 180, 0.25);
@@ -77,7 +78,13 @@ void main() {
       if (want.first.isNotEmpty && !want.contains(s.id)) continue;
       final p = Profile()..tutorialDone = true;
       for (final sc in scales) {
-        final cfg = Campaign.configFor(p, s, easy: easy, aiErrorScale: sc);
+        final cfg = Campaign.configFor(
+          p,
+          s,
+          easy: easy,
+          aiErrorScale: sc,
+          aiPowerScale: power,
+        );
         final sw = Stopwatch()..start();
         var wins = 0;
         for (var i = 0; i < n; i++) {
@@ -87,7 +94,7 @@ void main() {
         print(
           '${s.id}\t${s.boss}\t${easy ? '쉬움' : '보통'}\t$hand\t'
           '이김 $wins/$n = ${(100 * wins / n).toStringAsFixed(0)}%\t'
-          '(오차 ×${cfg.aiErrorScale.toStringAsFixed(2)} · ${sw.elapsed.inSeconds}초)',
+          '(오차 ×${cfg.aiErrorScale.toStringAsFixed(2)} · 세기 ×${cfg.aiPowerScale.toStringAsFixed(2)} · ${sw.elapsed.inSeconds}초)',
         );
       }
     }

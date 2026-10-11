@@ -239,7 +239,11 @@ class MatchConfig {
     this.art = RebirthArt.none,
     this.rule = MatchRule.annihilate,
     this.aiErrorScale = 1,
+    this.aiPowerScale = 1,
   });
+
+  /// AI 세기 배수(1 = 그대로). 늘 세게 치는 고수(통통)를 「쉬움」에서 누그러뜨린다.
+  final double aiPowerScale;
 
   /// AI 손 오차 배수(1 = [difficulty] 그대로, 클수록 서툴다). 강호행 「쉬움」이 판마다 정한다.
   final double aiErrorScale;

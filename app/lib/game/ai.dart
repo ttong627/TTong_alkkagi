@@ -50,6 +50,7 @@ class _Request {
     this.generals = const {},
     this.jewel,
     this.errorScale = 1,
+    this.powerScale = 1,
     this.angleError,
     this.speedError,
   });
@@ -61,6 +62,9 @@ class _Request {
 
   /// 손 오차 배수([MatchConfig.aiErrorScale]).
   final double errorScale;
+
+  /// 세기 배수([MatchConfig.aiPowerScale]).
+  final double powerScale;
 
   /// 판 규칙([MatchRule.index])·장수 돌 자리(stones 의 번호 → 편)·보주 자리.
   final int rule;
@@ -143,7 +147,8 @@ _Request _requestFor(
     rule: match.rule.index,
     generals: generals,
     jewel: jewel,
-    errorScale: match.config.aiErrorScale,
+    errorScale: search == null ? match.config.aiErrorScale : 1,
+    powerScale: search == null ? match.config.aiPowerScale : 1,
     angleError: angleError,
     speedError: speedError,
   );
@@ -280,7 +285,9 @@ AiShot _plan(_Request r) {
   return AiShot(
     best.stoneId,
     best.angle + jitter(r.angleError ?? diff.angleError * r.errorScale),
-    best.speed * (1 + jitter(r.speedError ?? diff.speedError * r.errorScale)),
+    best.speed *
+        r.powerScale *
+        (1 + jitter(r.speedError ?? diff.speedError * r.errorScale)),
     best.hit,
     mode: best.mode,
   );

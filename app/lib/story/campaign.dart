@@ -46,11 +46,13 @@ abstract final class Campaign {
     Stage s, {
     bool easy = false,
     double? aiErrorScale,
+    double? aiPowerScale,
   }) => playerConfig(
     p,
     arena: s.arena,
     difficulty: s.difficulty,
-    aiErrorScale: aiErrorScale ?? (easy ? easyErrorScale(s) : 1),
+    aiErrorScale: aiErrorScale ?? aiTuning(s, easy: easy).$1,
+    aiPowerScale: aiPowerScale ?? aiTuning(s, easy: easy).$2,
     opponentMaterial: s.material,
     opponentShape: s.shape,
     opponentMartial: rivalMartial(s, p.rebirths),
@@ -65,8 +67,8 @@ abstract final class Campaign {
     qiClash: true,
   );
 
-  /// 강호행 「쉬움」: 판마다 AI 손 오차 배수(가상 대전으로 맞춘다 · 설계서 §16.16).
-  static double easyErrorScale(Stage s) => 1;
+  /// 판마다 고수의 (손 오차 배수, 세기 배수) — 가상 대전으로 맞춘다(설계서 §16.16 · tool/campaign_sim.dart).
+  static (double, double) aiTuning(Stage s, {bool easy = false}) => (1, 1);
 
   /// 예상 궤적(설계서 §7.1): 1~2장 두 번째 충돌까지, 3~4장 첫 충돌까지, 5~6장 그 절반.
   static double aimAssistFor(Stage s) {
@@ -92,6 +94,7 @@ abstract final class Campaign {
     bool shiftingFloor = false,
     bool qiClash = false,
     double aiErrorScale = 1,
+    double aiPowerScale = 1,
   }) {
     final h = p.hero;
     final perkKnock = p.perks.contains('장외 시 기');
@@ -130,6 +133,7 @@ abstract final class Campaign {
       shiftingFloor: shiftingFloor,
       qiClash: qiClash,
       aiErrorScale: aiErrorScale,
+      aiPowerScale: aiPowerScale,
       demonWorld: p.rebirths > 0,
       art: switch (h) {
         Fighter.magyo => RebirthArt.steal,
