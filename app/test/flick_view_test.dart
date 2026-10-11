@@ -35,7 +35,7 @@ void main() {
 
   testWidgets('가까이 보기: 아래에서 손끝을 밀어 돌 가운데를 맞히면 위쪽으로 쏜다', (tester) async {
     final (m, shots) = await open(tester);
-    expect(find.text('손끝을 미끄러뜨려 돌을 맞히세요'), findsOneWidget);
+    expect(find.text('검지로 돌을 튕기세요'), findsOneWidget);
     final pad = tester.getRect(find.byKey(const Key('flick-pad')));
     await tester.flingFrom(
       Offset(pad.center.dx, pad.bottom - 8),
@@ -82,6 +82,31 @@ void main() {
     expect(shots, hasLength(1));
     expect(shots.single.hit, 1);
     expect(shots.single.angle, closeTo(-math.pi / 2, 0.05));
+    m.dispose();
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('검지로 튕기기: 돌 앞에서 손이 떠나도 그 빠르기로 날아가 맞힌다(위쪽 타격)', (tester) async {
+    final (m, shots) = await open(tester);
+    final pad = tester.getRect(find.byKey(const Key('flick-pad')));
+    // 화면과 같은 배치 계산: 위 30% 작은 지도, 아래 78 안내 글, 가운데 바닥에 돌.
+    final h = pad.height, w = pad.width;
+    final miniH = h * 0.3, floorH = h - miniH - 78;
+    final r = math.min(w * 0.28, floorH * 0.3);
+    final c = Offset(pad.left + w / 2, pad.top + miniH + floorH * 0.5);
+    // 돌 아래 2.5R 에서 시작해 돌 가장자리 1R 앞(가운데에서 2R)에서 손을 뗀다 — 60ms.
+    await tester.timedDragFrom(
+      Offset(c.dx, c.dy + r * 2.5),
+      Offset(0, -r * 0.5),
+      const Duration(milliseconds: 60),
+    );
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(shots, hasLength(1));
+    expect(shots.single.flick, isTrue);
+    expect(shots.single.angle, closeTo(-math.pi / 2, 0.05));
+    expect(shots.single.hit, greaterThan(0.5));
     m.dispose();
     await tester.pumpWidget(const SizedBox());
   });
