@@ -19,8 +19,15 @@ echo "[단계] 앱 켜기"
 a shell am start -n "$PKG/.MainActivity"
 
 disc() { a logcat -d -s flutter:I | grep -o 'disc cx=[0-9]* cy=[0-9]* r=[0-9]*' | tail -1; }
+# 에뮬레이터가 끊기면(첫 실행: 앱을 켜고 72초 뒤 「waiting for device」) 바로 실패로 끝낸다.
+alive() { [ "$(timeout 10 adb get-state 2>/dev/null)" = device ]; }
 D=""
-for i in $(seq 1 60); do sleep 2; D=$(disc); [ -n "$D" ] && break; done
+END=$((SECONDS + 150))
+while [ "$SECONDS" -lt "$END" ]; do
+  sleep 2
+  alive || { echo "실패: 에뮬레이터 연결이 끊김"; timeout 10 adb devices; exit 1; }
+  D=$(disc); [ -n "$D" ] && break
+done
 sleep 3; D=$(disc) # 화면이 커지는 연출(0.38초) 동안 찍힌 자리가 아니라 다 커진 뒤 자리.
 if [ -z "$D" ]; then
   echo "실패: 가까이 보기 화면이 뜨지 않음"; a logcat -d | grep -iE "flutter|AndroidRuntime" | tail -60; exit 1

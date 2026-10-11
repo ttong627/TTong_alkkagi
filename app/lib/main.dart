@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'input/touch_feed.dart';
+import 'progress/settings.dart';
 import 'progress/store.dart';
 import 'screens/home_screen.dart';
 
@@ -13,6 +14,7 @@ Future<void> main() async {
   TouchFeed.instance.start();
   // 기기에 저장한 진행(캐릭터·내공·재화·강호행)을 읽는다.
   await ProfileStore.load();
+  await Settings.load();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(const AlkkagiApp());
 }

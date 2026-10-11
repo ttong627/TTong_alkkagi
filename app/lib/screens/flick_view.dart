@@ -4,7 +4,6 @@ import 'dart:math' as math;
 import 'package:alkkagi_physics/alkkagi_physics.dart' as phys;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter/services.dart';
 
 import '../e2e.dart';
 import '../game/arena.dart';
@@ -14,6 +13,7 @@ import '../game/flick.dart';
 import '../game/match.dart';
 import '../game/predict.dart';
 import '../input/touch_feed.dart';
+import '../progress/settings.dart';
 
 /// 재질마다 기(氣) 빛깔.
 const _qiColors = {
@@ -113,6 +113,7 @@ class _FlickViewState extends State<FlickView>
   void dispose() {
     _nativeSub?.cancel();
     _ticker.dispose();
+    Settings.saveAreas();
     _frame.dispose();
     super.dispose();
   }
@@ -272,9 +273,12 @@ class _FlickViewState extends State<FlickView>
   }
 
   void _start(FlickSample first) {
-    final reader = _reader = StrikeReader(_disc!);
+    final reader = _reader = StrikeReader(
+      _disc!,
+      profile: Settings.instance.touchProfile,
+    );
     reader.down(first);
-    if (reader.touched) HapticFeedback.selectionClick();
+    if (reader.touched) Buzz.tick();
   }
 
   /// 점 하나를 넣는다. 쳐 냈으면 참.
@@ -287,7 +291,7 @@ class _FlickViewState extends State<FlickView>
       _fire(shot);
       return true;
     }
-    if (!wasTouched && reader.touched) HapticFeedback.selectionClick();
+    if (!wasTouched && reader.touched) Buzz.tick();
     final guess = reader.predict();
     _aimAngle = guess?.$1;
     _power = guess?.$2 ?? 0;
@@ -335,7 +339,7 @@ class _FlickViewState extends State<FlickView>
       'hit=${shot.hit.toStringAsFixed(2)} area=${_reader?.strikeArea} '
       'profile=${TouchProfile.shared.count}',
     );
-    HapticFeedback.heavyImpact();
+    Buzz.heavy();
     _burst(shot);
     _nPoints = null;
     setState(() {
@@ -383,7 +387,7 @@ class _FlickViewState extends State<FlickView>
 
   /// 위아래 타격점을 말로.
   static String? _describeHit(double hit) {
-    if (TouchProfile.shared.range == null) return null;
+    if (Settings.instance.touchProfile.range == null) return null;
     if (hit <= -phys.PhysicsConstants.liftThreshold) return '아래를 맞아 떠서 날아감';
     if (hit >= phys.PhysicsConstants.liftThreshold) return '위를 맞아 튀어 오름';
     if (hit < -0.15) return '조금 아래(끌어치기)';
@@ -414,9 +418,14 @@ class _FlickViewState extends State<FlickView>
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 4, 16, 0),
+              // 왼손잡이면 단추를 오른쪽으로(설계서 §16.6).
               child: Row(
+                textDirection: Settings.instance.leftHanded
+                    ? TextDirection.rtl
+                    : TextDirection.ltr,
                 children: [
                   TextButton.icon(
+                    key: const Key('flick-cancel'),
                     onPressed: _launch == null ? widget.onCancel : null,
                     icon: const Icon(Icons.arrow_back),
                     label: const Text('다른 돌 고르기'),
@@ -447,7 +456,12 @@ class _FlickViewState extends State<FlickView>
                   if (_disc == null ||
                       _disc!.center != c ||
                       _disc!.radius != r) {
-                    _disc = StoneDisc(c, r, mass: widget.stone.mass);
+                    _disc = StoneDisc(
+                      c,
+                      r,
+                      mass: widget.stone.mass,
+                      tune: Settings.instance.tuning,
+                    );
                   }
                   if (e2eFlick) {
                     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -785,6 +799,9 @@ class _ModeBar extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
       child: Row(
+        textDirection: Settings.instance.leftHanded
+            ? TextDirection.rtl
+            : TextDirection.ltr,
         children: [
           for (var i = 0; i < maxQi; i++)
             Padding(
@@ -799,7 +816,11 @@ class _ModeBar extends StatelessWidget {
           Expanded(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
+              reverse: Settings.instance.leftHanded,
               child: Row(
+                textDirection: Settings.instance.leftHanded
+                    ? TextDirection.rtl
+                    : TextDirection.ltr,
                 children: [
                   for (final m in StrikeMode.values)
                     Padding(

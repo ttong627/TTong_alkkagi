@@ -4,11 +4,11 @@ import 'dart:ui';
 import 'package:alkkagi_physics/alkkagi_physics.dart' as phys;
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
-import 'package:flutter/services.dart';
 
 import 'arena.dart';
 import 'board_paint.dart';
 import 'fx.dart';
+import '../progress/settings.dart';
 import 'fx_colors.dart';
 import 'match.dart';
 
@@ -196,7 +196,7 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
     final wx = (to.dx - _origin.dx) / _scale,
         wy = (to.dy - _origin.dy) / _scale;
     final a = math.atan2(wy - s.position.y, wx - s.position.x);
-    HapticFeedback.heavyImpact();
+    Buzz.heavy();
     match.steer(a);
     if (match.steersLeft <= 0) fx.steerLeft = 0;
   }
@@ -218,7 +218,7 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
       }
     }
     if (best == null) return;
-    HapticFeedback.selectionClick();
+    Buzz.tick();
     onSelect(best);
   }
 }

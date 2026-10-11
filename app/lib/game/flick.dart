@@ -24,14 +24,32 @@ class TouchProfile {
   /// 앱 전체가 함께 쓰는 하나.
   static final shared = TouchProfile();
 
+  /// 위아래 타격점을 끈 설정: 넓이를 받아도 판단하지 않는다.
+  static final off = TouchProfile(keep: 0, minSamples: 1 << 30);
+
   final int keep;
   final int minSamples;
   final _areas = <double>[];
 
   int get count => _areas.length;
 
+  /// 모은 넓이(저장용).
+  List<double> get areas => List.unmodifiable(_areas);
+
+  /// 저장해 둔 넓이를 되살린다.
+  void restore(Iterable<double> v) {
+    _areas
+      ..clear()
+      ..addAll(v.where((a) => a.isFinite && a > 0));
+    while (_areas.length > keep) {
+      _areas.removeAt(0);
+    }
+  }
+
+  void clear() => _areas.clear();
+
   void add(double? area) {
-    if (area == null || !area.isFinite || area <= 0) return;
+    if (keep <= 0 || area == null || !area.isFinite || area <= 0) return;
     _areas.add(area);
     if (_areas.length > keep) _areas.removeAt(0);
   }

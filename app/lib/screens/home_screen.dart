@@ -13,6 +13,7 @@ import 'free_play_screen.dart';
 import 'legendary_shop_screen.dart';
 import 'odds_screen.dart';
 import 'puzzle_screen.dart';
+import 'settings_screen.dart';
 import 'shop_screen.dart';
 import 'stats_screen.dart';
 import 'training_screen.dart';
@@ -218,6 +219,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               label: '자유 대전',
               help: '혼자·둘이·연습 (보상 없음)',
               onTap: () => _open(const FreePlayScreen()),
+            ),
+            _MenuButton(
+              icon: Icons.settings,
+              label: '설정',
+              help: '소리·진동·손맛 보정·왼손잡이',
+              onTap: () => _open(const SettingsScreen()),
             ),
             const SizedBox(height: 16),
             Text(
