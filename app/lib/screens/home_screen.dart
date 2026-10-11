@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -55,13 +56,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _tour = false;
   String? _heroLine;
 
+  /// 재화 칸을 눌렀을 때 뜨는 짧은 설명(진기).
+  String? _tip;
+  Timer? _tipTimer;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _updater.addListener(_onUpdate);
     _store.addListener(_onUpdate);
-    _updater.run();
+    // 입문(강제) 중에 새 판을 깔고 앱이 닫히면 안 된다 — 입문을 마친 뒤 로비에서 확인한다.
+    if (_store.profile.tutorialDone) _updater.run();
     if (e2eFlick) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _open(const FreePlayScreen(autoPractice: true)),
@@ -75,6 +81,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _tipTimer?.cancel();
     _store.removeListener(_onUpdate);
     _heroStrike.dispose();
     _updater
@@ -110,6 +117,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (!mounted) return;
       setState(() => _tour = true);
       Sound.lobby();
+      _updater.run();
       return;
     }
     if (p.hero == null) {
@@ -133,6 +141,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     setState(() => _heroLine = lines[_rand.nextInt(lines.length)]);
     Future<void>.delayed(const Duration(milliseconds: 1800), () {
       if (mounted) setState(() => _heroLine = null);
+    });
+  }
+
+  /// 진기 칸을 누르면: 무엇이고 어디에 쓰는지 한 줄.
+  void _explainStamina() {
+    final p = _store.profile;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    Sound.play('ui_tap', 0.7);
+    _tipTimer?.cancel();
+    setState(
+      () => _tip =
+          '진기 ${p.staminaNow(now).floor()}/${p.staminaMax}\n'
+          '강호유랑·투기장에 써요 · 6분에 1씩 참',
+    );
+    _tipTimer = Timer(const Duration(milliseconds: 3200), () {
+      if (mounted) setState(() => _tip = null);
     });
   }
 
@@ -262,33 +286,66 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           ),
                         ),
                         const Spacer(),
-                        GestureDetector(
-                          onTap: () => _open(const SettingsScreen()),
-                          child: Image.asset(Art.icon('settings'), width: 40),
+                        // 누르는 자리는 48dp 이상(그림은 40).
+                        Semantics(
+                          button: true,
+                          label: '설정',
+                          child: GestureDetector(
+                            key: const Key('home-settings'),
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => _open(const SettingsScreen()),
+                            child: SizedBox(
+                              width: 52,
+                              height: 52,
+                              child: Center(
+                                child: Image.asset(
+                                  Art.icon('settings'),
+                                  width: 40,
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+                    // 글자가 커져 모자라면 칸 안에서 작아진다(옆으로 넘치지 않는다).
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        CurrencyPill(
-                          icon: 'coin',
-                          value: p.coins,
-                          onTap: () => _open(const ShopScreen()),
+                        Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: CurrencyPill(
+                              icon: 'coin',
+                              value: p.coins,
+                              onTap: () => _open(const ShopScreen()),
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 6),
-                        CurrencyPill(
-                          icon: 'silver',
-                          value: p.silver,
-                          onTap: () => _open(const LookScreen()),
+                        Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: CurrencyPill(
+                              icon: 'silver',
+                              value: p.silver,
+                              onTap: () => _open(const LookScreen()),
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 6),
-                        CurrencyPill(
-                          icon: 'stamina',
-                          value: p.staminaNow(now).floor(),
+                        Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: CurrencyPill(
+                              icon: 'stamina',
+                              value: p.staminaNow(now).floor(),
+                              onTap: _explainStamina,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -336,71 +393,119 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               ),
                             ),
                           ),
+                        // 양옆 메뉴: 남는 높이에 맞춰 줄어든다(큰 단추 밑에 깔리지 않는다).
                         Positioned(
                           left: 8,
-                          top: 12,
-                          child: Column(
-                            children: [
-                              IconTile(
-                                key: const Key('menu-attendance'),
-                                icon: 'attendance',
-                                label: '출석',
-                                size: 46,
-                                badge: Attendance.canClaim(p, day),
-                                onTap: () => _open(const DailyScreen(tab: 0)),
-                              ),
-                              const SizedBox(height: 10),
-                              IconTile(
-                                key: const Key('menu-missions'),
-                                icon: 'mission',
-                                label: '임무',
-                                size: 46,
-                                badge: Missions.hasClaimable(p, day),
-                                onTap: () => _open(const DailyScreen(tab: 1)),
-                              ),
-                              const SizedBox(height: 10),
-                              IconTile(
-                                icon: 'medal',
-                                label: '업적',
-                                size: 46,
-                                badge: Achievements.hasClaimable(p),
-                                onTap: () => _open(const DailyScreen(tab: 2)),
-                              ),
-                            ],
+                          top: 8,
+                          bottom: 8,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.topLeft,
+                            child: Column(
+                              children: [
+                                IconTile(
+                                  key: const Key('menu-attendance'),
+                                  icon: 'attendance',
+                                  label: '출석',
+                                  size: 46,
+                                  badge: Attendance.canClaim(p, day),
+                                  onTap: () => _open(const DailyScreen(tab: 0)),
+                                ),
+                                const SizedBox(height: 8),
+                                IconTile(
+                                  key: const Key('menu-missions'),
+                                  icon: 'mission',
+                                  label: '임무',
+                                  size: 46,
+                                  badge: Missions.hasClaimable(p, day),
+                                  onTap: () => _open(const DailyScreen(tab: 1)),
+                                ),
+                                const SizedBox(height: 8),
+                                IconTile(
+                                  icon: 'medal',
+                                  label: '업적',
+                                  size: 46,
+                                  badge: Achievements.hasClaimable(p),
+                                  onTap: () => _open(const DailyScreen(tab: 2)),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                         Positioned(
                           right: 8,
-                          top: 12,
-                          child: Column(
-                            children: [
-                              IconTile(
-                                icon: 'shop',
-                                label: '만물상',
-                                size: 46,
-                                onTap: () => _open(const ShopScreen()),
-                              ),
-                              const SizedBox(height: 10),
-                              if (p.legendaryOpen(now)) ...[
+                          top: 8,
+                          bottom: 8,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.topRight,
+                            child: Column(
+                              children: [
                                 IconTile(
-                                  icon: 'legend',
-                                  label: '기인방!',
+                                  icon: 'shop',
+                                  label: '만물상',
                                   size: 46,
-                                  badge: true,
-                                  onTap: () =>
-                                      _open(const LegendaryShopScreen()),
+                                  onTap: () => _open(const ShopScreen()),
                                 ),
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 8),
+                                if (p.legendaryOpen(now)) ...[
+                                  IconTile(
+                                    icon: 'legend',
+                                    label: '기인방!',
+                                    size: 46,
+                                    badge: true,
+                                    onTap: () =>
+                                        _open(const LegendaryShopScreen()),
+                                  ),
+                                  const SizedBox(height: 8),
+                                ],
+                                IconTile(
+                                  icon: 'codex',
+                                  label: '도감',
+                                  size: 46,
+                                  onTap: () => _open(const CodexScreen()),
+                                ),
                               ],
-                              IconTile(
-                                icon: 'codex',
-                                label: '도감',
-                                size: 46,
-                                onTap: () => _open(const CodexScreen()),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
+                        if (_tip != null)
+                          Positioned(
+                            top: 4,
+                            left: 0,
+                            right: 0,
+                            child: Center(
+                              child: GestureDetector(
+                                key: const Key('stamina-tip'),
+                                onTap: () => setState(() => _tip = null),
+                                child: Container(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 240,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Palette.paper,
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: const Color(0xFF2A1A12),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    _tip!,
+                                    style: const TextStyle(
+                                      fontFamily: bodyFont,
+                                      fontSize: 16,
+                                      color: Color(0xFF2A1A12),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -433,41 +538,46 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
+                    // 다섯 칸을 똑같이 나누고, 글자가 커져 모자라면 칸 안에서 작아진다(옆으로 넘치지 않는다).
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        IconTile(
-                          icon: 'training',
-                          label: '목인항',
-                          size: 50,
-                          badge: p.trainingDay != day,
-                          onTap: () => _open(const TrainingScreen()),
-                        ),
-                        IconTile(
-                          icon: 'arena',
-                          label: '투기장',
-                          size: 50,
-                          onTap: () => _open(const ArenaScreen()),
-                        ),
-                        IconTile(
-                          icon: 'wander',
-                          label: '유랑',
-                          size: 50,
-                          onTap: () => _open(const WanderScreen()),
-                        ),
-                        IconTile(
-                          icon: 'stats',
-                          label: '성장',
-                          size: 50,
-                          badge: Stat.values.any(p.canRaise),
-                          onTap: () => _open(const StatsScreen()),
-                        ),
-                        IconTile(
-                          icon: 'chest',
-                          label: '더보기',
-                          size: 50,
-                          onTap: _more,
-                        ),
+                        for (final t in [
+                          IconTile(
+                            icon: 'training',
+                            label: '목인항',
+                            size: 50,
+                            badge: p.trainingDay != day,
+                            onTap: () => _open(const TrainingScreen()),
+                          ),
+                          IconTile(
+                            icon: 'arena',
+                            label: '투기장',
+                            size: 50,
+                            onTap: () => _open(const ArenaScreen()),
+                          ),
+                          IconTile(
+                            icon: 'wander',
+                            label: '유랑',
+                            size: 50,
+                            onTap: () => _open(const WanderScreen()),
+                          ),
+                          IconTile(
+                            icon: 'stats',
+                            label: '성장',
+                            size: 50,
+                            badge: Stat.values.any(p.canRaise),
+                            onTap: () => _open(const StatsScreen()),
+                          ),
+                          IconTile(
+                            icon: 'chest',
+                            label: '더보기',
+                            size: 50,
+                            onTap: _more,
+                          ),
+                        ])
+                          Expanded(
+                            child: FittedBox(fit: BoxFit.scaleDown, child: t),
+                          ),
                       ],
                     ),
                   ),
@@ -592,8 +702,21 @@ class _Spotlight extends StatefulWidget {
   State<_Spotlight> createState() => _SpotlightState();
 }
 
-class _SpotlightState extends State<_Spotlight> {
+class _SpotlightState extends State<_Spotlight>
+    with SingleTickerProviderStateMixin {
   Rect? _rect;
+
+  /// 엉뚱한 데를 누르면 단추 둘레가 부르르 떤다.
+  late final _shake = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 420),
+  );
+
+  @override
+  void dispose() {
+    _shake.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -620,37 +743,53 @@ class _SpotlightState extends State<_Spotlight> {
         onTapUp: (d) {
           if (r != null && r.inflate(8).contains(d.localPosition)) {
             widget.onTap();
+          } else {
+            Sound.play('error', 0.7);
+            _shake.forward(from: 0);
           }
         },
-        child: Stack(
-          children: [
-            Positioned.fill(child: CustomPaint(painter: _HolePainter(r))),
-            if (r != null) ...[
-              Positioned.fill(
-                child: Ghost(
-                  builder: (t) => GhostTapPainter(
-                    at: r.center + const Offset(40, 0),
-                    t: t,
-                    size: 80,
-                    ring: 44,
-                  ),
+        child: AnimatedBuilder(
+          animation: _shake,
+          builder: (context, _) {
+            // 좌우로 흔들며 잦아든다.
+            final dx =
+                math.sin(_shake.value * math.pi * 7) * 9 * (1 - _shake.value);
+            return Stack(
+              children: [
+                Positioned.fill(
+                  child: CustomPaint(painter: _HolePainter(r, dx)),
                 ),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                top: r.top - 70,
-                child: const Center(
-                  child: OutlinedText(
-                    '여기를 눌러 강호로!',
-                    size: 24,
-                    title: true,
-                    color: Palette.gold,
+                if (r != null) ...[
+                  Positioned.fill(
+                    child: Ghost(
+                      builder: (t) => GhostTapPainter(
+                        at: r.center + const Offset(40, 0),
+                        t: t,
+                        size: 80,
+                        ring: 44,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ],
-          ],
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: r.top - 70,
+                    child: Transform.translate(
+                      offset: Offset(dx, 0),
+                      child: const Center(
+                        child: OutlinedText(
+                          '여기를 눌러 강호로!',
+                          size: 24,
+                          title: true,
+                          color: Palette.gold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
         ),
       ),
     );
@@ -658,13 +797,14 @@ class _SpotlightState extends State<_Spotlight> {
 }
 
 class _HolePainter extends CustomPainter {
-  _HolePainter(this.hole);
+  _HolePainter(this.hole, [this.dx = 0]);
   final Rect? hole;
+  final double dx;
 
   @override
   void paint(Canvas canvas, Size size) {
     final all = Path()..addRect(Offset.zero & size);
-    final h = hole;
+    final h = hole?.shift(Offset(dx, 0));
     final path = h == null
         ? all
         : Path.combine(
@@ -690,7 +830,8 @@ class _HolePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _HolePainter old) => old.hole != hole;
+  bool shouldRepaint(covariant _HolePainter old) =>
+      old.hole != hole || old.dx != dx;
 }
 
 /// 시험판 자동 업데이트 알림 줄. 할 일이 없으면 보이지 않는다.
@@ -702,20 +843,17 @@ class UpdateBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final u = updater;
     final build = u.target?.build;
+    // 한 줄 알림(길면 줄임표). 단추가 있으면 오른쪽 끝에.
     final (String text, Widget? action) = switch (u.stage) {
       UpdateStage.idle || UpdateStage.checking => ('', null),
       UpdateStage.needsPermission => (
-        '새 판(빌드 $build)이 있습니다. 처음 한 번만 「이 출처 허용」을 켜 주세요. '
-            '그다음부터는 저절로 업데이트됩니다.',
+        '새 판 $build — 설치 허용을 켜 주세요',
         FilledButton(onPressed: u.openPermission, child: const Text('허용하러 가기')),
       ),
       UpdateStage.downloading => ('새 판(빌드 $build) 받는 중 ${u.percent}%', null),
-      UpdateStage.installing => (
-        '새 판(빌드 $build) 설치 중 — 끝나면 앱이 닫힙니다. 다시 열어 주세요.',
-        null,
-      ),
+      UpdateStage.installing => ('새 판 설치 중 · 끝나면 다시 열어 주세요', null),
       UpdateStage.failed => (
-        '업데이트하지 못했습니다: ${u.message}',
+        '업데이트 실패 · ${u.message}',
         TextButton(onPressed: u.run, child: const Text('다시 시도')),
       ),
     };
@@ -727,19 +865,28 @@ class UpdateBanner extends StatelessWidget {
         color: scheme.secondaryContainer,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+          child: Row(
             children: [
-              Text(text, style: TextStyle(color: scheme.onSecondaryContainer)),
-              if (u.stage == UpdateStage.downloading) ...[
-                const SizedBox(height: 8),
-                LinearProgressIndicator(value: u.percent / 100),
-              ],
-              if (action != null) ...[
-                const SizedBox(height: 8),
-                Align(alignment: Alignment.centerRight, child: action),
-              ],
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      text,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: scheme.onSecondaryContainer),
+                    ),
+                    if (u.stage == UpdateStage.downloading) ...[
+                      const SizedBox(height: 6),
+                      LinearProgressIndicator(value: u.percent / 100),
+                    ],
+                  ],
+                ),
+              ),
+              if (action != null) ...[const SizedBox(width: 6), action],
             ],
           ),
         ),

@@ -43,33 +43,41 @@ class _CampaignScreenState extends State<CampaignScreen> {
     final p = _store.profile;
     final s = campaign[i];
     final nav = Navigator.of(context);
+    // 「건너뛰기」 한 번이면 서장 · 인사 · 장 시작 대사 모두 건너뛰고 바로 판으로.
+    var skipped = false;
     if (!p.codex.contains('서장')) {
+      skipped =
+          await nav.push<bool>(
+            gameRoute<bool>(
+              const DialogueScreen(
+                title: '서장 · 기명석',
+                lines: prologue,
+                scene: 'lobby',
+              ),
+            ),
+          ) ??
+          false;
+      p.codex.add('서장');
+      await _store.save();
+      if (!mounted) return;
+    }
+    if (!skipped) {
+      Sound.play('jingle_chapter');
       await nav.push(
-        gameRoute<void>(
-          const DialogueScreen(
-            title: '서장 · 기명석',
-            lines: prologue,
-            scene: 'lobby',
+        gameRoute<bool>(
+          DialogueScreen(
+            title: s.title,
+            scene: s.arena.name,
+            lines: [
+              if (p.hero case final h?)
+                (s.speaker, heroGreeting(h.label, h.trait)),
+              ...s.intro,
+            ],
           ),
         ),
       );
-      p.codex.add('서장');
-      await _store.save();
+      if (!mounted) return;
     }
-    Sound.play('jingle_chapter');
-    await nav.push(
-      gameRoute<void>(
-        DialogueScreen(
-          title: s.title,
-          scene: s.arena.name,
-          lines: [
-            if (p.hero case final h?)
-              (s.speaker, heroGreeting(h.label, h.trait)),
-            ...s.intro,
-          ],
-        ),
-      ),
-    );
     Match? last;
     final won = await nav.push<bool>(
       gameRoute(
@@ -108,7 +116,7 @@ class _CampaignScreenState extends State<CampaignScreen> {
     );
     if (!won || !mounted) return;
     await nav.push(
-      gameRoute<void>(
+      gameRoute<bool>(
         DialogueScreen(title: s.title, lines: s.outro, scene: s.arena.name),
       ),
     );
@@ -148,19 +156,31 @@ class _CampaignScreenState extends State<CampaignScreen> {
         ),
       ),
     );
-    if (won == true) {
+    // 큰 보상은 하루 첫 승리만(2026-10-11 경제 점검: 무제한이던 것). 그 뒤로는 엽전 30.
+    final day = today();
+    final big = won == true && day.compareTo(p.seclusionDay) > 0;
+    if (big) {
       p.coins += 200;
       p.tokens += 2;
+      p.seclusionDay = day;
+    } else if (won == true) {
+      p.coins += 30;
     }
     await _store.save();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(won == true ? '폐관 고수를 꺾었다 — 엽전 +200 · 징표 +2' : '아직 이르다'),
+        content: Text(
+          won == true
+              ? (big
+                    ? '폐관 고수를 꺾었다 — 엽전 +200 · 징표 +2'
+                    : '또 꺾었다 — 엽전 +30 (큰 보상은 하루 한 번)')
+              : '아직 이르다',
+        ),
       ),
     );
     setState(() {});
-    await afterRound(context);
+    if (won == true) await afterRound(context);
   }
 
   /// 1장을 처음 깨면 문파를 고른다(설계서 §2.1 · 한 번 고르면 환생 때까지 그대로).
@@ -168,25 +188,20 @@ class _CampaignScreenState extends State<CampaignScreen> {
     final t = await showDialog<Technique>(
       context: context,
       barrierDismissible: false,
-      builder: (c) => SimpleDialog(
-        title: const Text('기명석이 빛난다 — 문파 각성'),
-        children: [
-          for (final (tech, school) in schools)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(c, tech),
-              child: ListTile(
-                leading: CircleAvatar(backgroundColor: techniqueColor(tech)),
-                title: Text('$school · ${tech.label}'),
-                subtitle: Text(martialHelp(tech).split(' · ').first),
-              ),
-            ),
-        ],
-      ),
+      builder: (_) => const AwakenDialog(),
     );
     if (t == null) return;
     _store.profile.school = t;
     _store.profile.codex.add('문파:${t.name}');
     await _store.save();
+  }
+
+  /// 잠긴 까닭을 한눈에 읽히게 줄인다(「앞 판(…)을 먼저 깨세요」 → 「1장 먼저」).
+  static String _lockShort(String lock, int i) {
+    if (lock.startsWith('앞 판') && i > 0) {
+      return '${campaign[i - 1].title.split(' ').first} 먼저';
+    }
+    return '${lock.split(' 이 필요').first} 필요';
   }
 
   @override
@@ -236,7 +251,9 @@ class _CampaignScreenState extends State<CampaignScreen> {
             scene: s.arena.name,
             face: Art.bossId(s.boss),
             title: s.title,
-            sub: lock ?? '${s.boss} · ${s.arena.label}',
+            sub: lock == null
+                ? '${s.boss} · ${s.arena.label}'
+                : _lockShort(lock, i),
             stars: p.stars[s.id] ?? 0,
             locked: lock != null,
             done: p.done.contains(s.id),
@@ -282,7 +299,8 @@ class _StageCard extends StatelessWidget {
                 onTap!();
               },
         child: Container(
-          height: 128,
+          // 글자가 커져도 칸이 늘어난다(고정 높이 128 은 넘쳤다).
+          constraints: const BoxConstraints(minHeight: 112),
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
@@ -299,90 +317,96 @@ class _StageCard extends StatelessWidget {
             ],
           ),
           child: Stack(
-            fit: StackFit.expand,
             children: [
-              Image.asset(
-                Art.background(scene),
-                fit: BoxFit.cover,
-                alignment: const Alignment(0, 0.3),
-              ),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.black.withValues(alpha: locked ? 0.8 : 0.65),
-                      Colors.black.withValues(alpha: 0.1),
-                    ],
-                  ),
+              Positioned.fill(
+                child: Image.asset(
+                  Art.background(scene),
+                  fit: BoxFit.cover,
+                  alignment: const Alignment(0, 0.3),
                 ),
               ),
-              Row(
-                children: [
-                  const SizedBox(width: 10),
-                  Opacity(
-                    opacity: locked ? 0.45 : 1,
-                    child: Portrait(
-                      id: face,
-                      size: 86,
-                      ring: locked ? Colors.white24 : Palette.gold,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: OutlinedText(
-                            title,
-                            size: 20,
-                            title: true,
-                            align: TextAlign.start,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          sub,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            color: Palette.text,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            for (var k = 0; k < 3; k++)
-                              Image.asset(
-                                Art.icon(k < stars ? 'star' : 'star_empty'),
-                                width: 24,
-                              ),
-                          ],
-                        ),
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.black.withValues(alpha: locked ? 0.8 : 0.65),
+                        Colors.black.withValues(alpha: 0.1),
                       ],
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: locked
-                        ? Image.asset(Art.icon('lock'), width: 40)
-                        : (done
-                              ? const Icon(
-                                  Icons.check_circle,
-                                  color: Palette.jade,
-                                  size: 40,
-                                )
-                              : const Icon(
-                                  Icons.play_circle_fill,
-                                  color: Palette.gold,
-                                  size: 46,
-                                )),
-                  ),
-                ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 10),
+                    Opacity(
+                      opacity: locked ? 0.45 : 1,
+                      child: Portrait(
+                        id: face,
+                        size: 86,
+                        ring: locked ? Colors.white24 : Palette.gold,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: OutlinedText(
+                              title,
+                              size: 20,
+                              title: true,
+                              align: TextAlign.start,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            sub,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              color: Palette.text,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              for (var k = 0; k < 3; k++)
+                                Image.asset(
+                                  Art.icon(k < stars ? 'star' : 'star_empty'),
+                                  width: 24,
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: locked
+                          ? Image.asset(Art.icon('lock'), width: 40)
+                          : (done
+                                ? const Icon(
+                                    Icons.check_circle,
+                                    color: Palette.jade,
+                                    size: 40,
+                                  )
+                                : const Icon(
+                                    Icons.play_circle_fill,
+                                    color: Palette.gold,
+                                    size: 46,
+                                  )),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -466,4 +490,195 @@ Future<void> showRewardDialog(
       ),
     ),
   );
+}
+
+/// 문파마다 짧은 한마디(읽지 않아도 그림·색으로 고르게, 글은 한 줄만).
+String _schoolLine(Technique t) => switch (t) {
+  Technique.swordQi => '일직선으로 쭉 밀고 나가요',
+  Technique.stomp => '둘레 돌까지 밖으로 밀어요',
+  Technique.taiji => '궤적이 휘어 돌아가요',
+  Technique.clone => '두 개 맞히면 내 돌이 둘로',
+  _ => '',
+};
+
+/// 문파 각성 창(설계서 §2.1): 큰 카드 넷 가운데 하나를 누르고, 「정말 이걸로?」에 답해야 정해진다.
+/// 고른 [Technique] 으로 닫힌다. 한 번 고르면 환생 때까지 그대로라서 밖을 눌러 닫을 수는 없다.
+class AwakenDialog extends StatefulWidget {
+  const AwakenDialog({super.key});
+
+  @override
+  State<AwakenDialog> createState() => _AwakenDialogState();
+}
+
+class _AwakenDialogState extends State<AwakenDialog> {
+  Technique? _pick;
+
+  String _name(Technique t) => schools.firstWhere((e) => e.$1 == t).$2;
+
+  @override
+  Widget build(BuildContext context) {
+    final pick = _pick;
+    return PopScope(
+      canPop: false,
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        child: GlassPanel(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+          child: SingleChildScrollView(
+            child: pick == null ? _cards() : _confirm(pick),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _cards() => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      const OutlinedText('문파 각성', size: 30, title: true, color: Palette.gold),
+      const SizedBox(height: 4),
+      // 영구 선택이라는 것을 한 번만, 눈에 띄게.
+      const Text(
+        '환생 전까지 바꿀 수 없어요',
+        key: Key('awaken-warn'),
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 16, color: Palette.gold),
+      ),
+      const SizedBox(height: 10),
+      for (var r = 0; r < schools.length; r += 2)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var c = r; c < r + 2 && c < schools.length; c++) ...[
+                  if (c > r) const SizedBox(width: 10),
+                  Expanded(
+                    child: _SchoolCard(
+                      key: Key('awaken-${schools[c].$1.name}'),
+                      tech: schools[c].$1,
+                      name: schools[c].$2,
+                      onTap: () {
+                        Sound.play('ui_tap');
+                        setState(() => _pick = schools[c].$1);
+                      },
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+    ],
+  );
+
+  Widget _confirm(Technique t) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      const OutlinedText('정말 이걸로?', size: 30, title: true, color: Palette.gold),
+      const SizedBox(height: 10),
+      SizedBox(
+        width: 190,
+        child: _SchoolCard(tech: t, name: _name(t), onTap: null),
+      ),
+      const SizedBox(height: 8),
+      const Text(
+        '환생 전까지 바꿀 수 없어요',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 16),
+      ),
+      const SizedBox(height: 12),
+      Row(
+        children: [
+          Expanded(
+            child: GameButton(
+              key: const Key('awaken-no'),
+              label: '다시 고를래',
+              color: Palette.skyDeep,
+              height: 52,
+              fontSize: 19,
+              onTap: () => setState(() => _pick = null),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: GameButton(
+              key: const Key('awaken-yes'),
+              label: '이걸로!',
+              color: Palette.red,
+              height: 52,
+              fontSize: 22,
+              sound: 'unlock',
+              onTap: () => Navigator.pop(context, t),
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+/// 문파 카드: 무공 빛깔 동그라미(글자 하나) + 이름 + 한 줄.
+class _SchoolCard extends StatelessWidget {
+  const _SchoolCard({
+    super.key,
+    required this.tech,
+    required this.name,
+    required this.onTap,
+  });
+  final Technique tech;
+  final String name;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = techniqueColor(tech);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          color: Colors.black.withValues(alpha: 0.35),
+          border: Border.all(color: color, width: 2.5),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color,
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: Text(
+                name.characters.first,
+                style: const TextStyle(
+                  fontFamily: titleFont,
+                  fontSize: 30,
+                  color: Color(0xFF2A1A12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            OutlinedText(name, size: 24, title: true),
+            const SizedBox(height: 2),
+            Text(
+              _schoolLine(tech),
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 15),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
