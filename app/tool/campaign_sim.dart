@@ -82,6 +82,10 @@ void main() {
     if (scales.isEmpty) scales.add(null);
     final power = double.tryParse(Platform.environment['POWER'] ?? '');
     final blunder = double.tryParse(Platform.environment['BLUNDER'] ?? '');
+    final style = AiStyle.values
+        .where((x) => x.name == Platform.environment['STYLE'])
+        .firstOrNull;
+    final qi = int.tryParse(Platform.environment['QI'] ?? '');
     final (ae, se) = hand == 'novice'
         ? (11.5 * math.pi / 180, 0.35)
         : (7.9 * math.pi / 180, 0.25);
@@ -96,6 +100,8 @@ void main() {
           aiErrorScale: sc,
           aiPowerScale: power,
           aiBlunder: blunder,
+          aiStyle: style,
+          bossQi: qi,
         );
         final sw = Stopwatch()..start();
         var wins = 0;
@@ -107,7 +113,7 @@ void main() {
         print(
           '${s.id}\t${s.boss}\t${easy ? '쉬움' : '보통'}\t$hand\t'
           '이김 $wins/$n = ${(100 * wins / n).toStringAsFixed(0)}%\t'
-          '(내 돌 잃음: 내가 친 수 ${(selfOuts / n).toStringAsFixed(1)} · 상대 ${(foeOuts / n).toStringAsFixed(1)} · 오차 ×${cfg.aiErrorScale.toStringAsFixed(2)} · 세기 ×${cfg.aiPowerScale.toStringAsFixed(2)} · 실수 ${cfg.aiBlunder.toStringAsFixed(2)} · ${sw.elapsed.inSeconds}초)',
+          '(내 돌 잃음: 내가 친 수 ${(selfOuts / n).toStringAsFixed(1)} · 상대 ${(foeOuts / n).toStringAsFixed(1)} · 오차 ×${cfg.aiErrorScale.toStringAsFixed(2)} · 세기 ×${cfg.aiPowerScale.toStringAsFixed(2)} · 실수 ${cfg.aiBlunder.toStringAsFixed(2)} · ${cfg.aiStyle.name} 내공${cfg.opponentStartQi} · ${sw.elapsed.inSeconds}초)',
         );
       }
     }
