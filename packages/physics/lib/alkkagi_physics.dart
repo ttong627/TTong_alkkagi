@@ -10,3 +10,4 @@ export 'src/materials.dart';
 export 'src/scenes.dart';
 export 'src/table.dart';
 export 'src/techniques.dart';
+export 'src/terrain.dart';

@@ -44,7 +44,13 @@ class _Request {
     this.style = 0,
     this.qi = 0,
     this.martial = 0,
+    this.weather = 0,
+    this.features = const [],
   });
+  final int weather;
+
+  /// (종류, x, y, 각도).
+  final List<(int, double, double, double)> features;
   final List<StoneData> stones;
   final int team;
   final int difficulty;
@@ -79,6 +85,10 @@ Future<AiShot> chooseAiShot(Match match, {int? seed}) {
       style: match.config.aiStyle.index,
       qi: match.qi(match.turn),
       martial: match.config.opponentMartial.index,
+      weather: match.config.weather.index,
+      features: [
+        for (final f in match.table.features) (f.kind.index, f.x, f.y, f.angle),
+      ],
     ),
   );
 }
@@ -119,7 +129,7 @@ Future<AiShot> _choose(_Request r) async {
   // 자객: 판 가장자리에 가까운 상대 돌 2개만 노린다.
   final targets = <StoneData>[
     for (final s in r.stones)
-      if (!s.out && s.team != r.team) s,
+      if (!s.out && s.team == 1 - r.team) s,
   ];
   if (style == AiStyle.assassin && targets.length > 2) {
     targets.sort(
@@ -151,6 +161,11 @@ Future<AiShot> _choose(_Request r) async {
                 arena: arena,
                 inner: inner,
                 technique: inner ? martial : Technique.none,
+                weather: Weather.values[r.weather],
+                features: [
+                  for (final (k, x, y, a) in r.features)
+                    Feature(FeatureKind.values[k], x, y, angle: a),
+                ],
               );
               if (style == AiStyle.ram) {
                 // 통통: 가까운 돌부터.
@@ -216,8 +231,17 @@ double scoreShot(
   Arena arena = Arena.turtleMarket,
   bool inner = false,
   Technique technique = Technique.none,
+  Weather weather = Weather.clear,
+  List<Feature> features = const [],
 }) {
-  final t = Table(floorFactor: arena.floorFactor, boundary: arena.boundary);
+  final t = Table(
+    floorFactor: arena.floorFactor,
+    boundary: arena.boundary,
+    weather: weather,
+  );
+  for (final f in features) {
+    t.addFeature(f);
+  }
   final placed = <Stone?>[];
   for (final s in stones) {
     placed.add(
@@ -244,7 +268,8 @@ double scoreShot(
   var score = 0.0;
   for (final s in placed) {
     if (s == null || !s.out) continue;
-    score += s.team == team ? -12 : 10;
+    // 내 돌 −12, 상대 돌 +10, 백성 돌 −5.
+    score += s.team == team ? -12 : (s.team == 2 ? -5 : 10);
   }
   final me = placed[shooter]!;
   if (!me.out) {

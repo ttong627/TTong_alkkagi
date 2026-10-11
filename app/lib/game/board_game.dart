@@ -97,6 +97,16 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
     final shake = fx.shakeOffset();
     canvas.translate(shake.dx, shake.dy);
     paintArena(canvas, arena, _toScreen, _scale);
+    if (match.fireFloor) {
+      // 6장 불꽃 바닥: 붉게.
+      canvas.drawRect(
+        Rect.fromPoints(_toScreen(-25, -25), _toScreen(25, 25)),
+        Paint()..color = const Color(0x33FF5A1F),
+      );
+    }
+    for (final f in match.table.features) {
+      paintFeature(canvas, f, _toScreen, _scale);
+    }
     fx.paintUnder(canvas, match, _toScreen, _scale);
     final pick = canTouch() ? selected() : null;
     const r = phys.PhysicsConstants.stoneRadius;
@@ -128,6 +138,14 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
         shape: s.shape,
       );
     }
+    paintWeather(
+      canvas,
+      Size(size.x, size.y),
+      match,
+      _toScreen,
+      _scale,
+      fx.clock,
+    );
     final shooter = match.table.shooter;
     final to = _steerTo;
     if (fx.steerLeft > 0 && shooter != null && to != null) {

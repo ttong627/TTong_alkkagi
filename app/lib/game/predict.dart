@@ -17,10 +17,18 @@ List<Offset> predictPath(
 }) {
   final a = assist ?? match.config.aimAssist;
   if (a <= 0) return const [];
+  // 지금 바닥(야우 감속·6장 불꽃 바닥이 들어간 값)과 지물을 그대로. 혹한은 같이 계산하고,
+  // 광풍은 바람이 어디로 불지 알려 주지 않는다(바람 없을 때의 길).
   final t = Table(
-    floorFactor: match.config.arena.floorFactor,
+    floorFactor: match.table.floorFactor,
     boundary: match.config.arena.boundary,
+    weather: match.config.weather == Weather.frost
+        ? Weather.frost
+        : Weather.clear,
   );
+  for (final f in match.table.features) {
+    t.addFeature(f);
+  }
   Stone? me;
   for (final s in match.table.stones) {
     if (s.out) continue;

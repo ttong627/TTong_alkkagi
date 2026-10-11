@@ -92,6 +92,26 @@ class CodexScreen extends StatelessWidget {
                 ),
             ],
           ),
+          const SizedBox(height: 16),
+          Text('겪은 천기 · 지물', style: t.titleMedium),
+          Wrap(
+            spacing: 16,
+            runSpacing: 12,
+            children: [
+              for (final w in Weather.values.skip(1))
+                entry(
+                  p.codex.contains('천기:${w.name}'),
+                  const Icon(Icons.cloud, size: 36),
+                  w.label,
+                ),
+              for (final f in FeatureKind.values)
+                entry(
+                  p.codex.contains('지물:${f.name}'),
+                  const Icon(Icons.landscape, size: 36),
+                  f.label,
+                ),
+            ],
+          ),
         ],
       ),
     );

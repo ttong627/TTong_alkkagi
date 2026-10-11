@@ -23,6 +23,9 @@ class BattleFx {
   double _slowLeft = 0;
   double _slowScale = 1;
 
+  /// 흐른 시간(초) — 비·바람 그림이 움직이게.
+  double clock = 0;
+
   /// 어기어석으로 꺾을 수 있는 남은 시간(실제 초). 이 동안 화면이 아주 느리다.
   double steerLeft = 0;
 
@@ -175,6 +178,36 @@ class BattleFx {
           _text(at.translate(0, -2), '흡성탄지', c);
       }
     }
+    for (final e in t.terrainEvents) {
+      final at = Offset(e.x, e.y);
+      switch (e.fx) {
+        case phys.TerrainFx.gong:
+          const c = Color(0xFFF2CF7A);
+          _rings.add(_Ring(at, 1.5, phys.TerrainConstants.gongRadius, 0.6, c));
+          _text(at.translate(0, -2), '경종!', c);
+          _shake = math.max(_shake, 8);
+        case phys.TerrainFx.swallow:
+          const c = Color(0xFFB07CFF);
+          _rings.add(_Ring(at, phys.TerrainConstants.holeRadius, 0.3, 0.5, c));
+          _text(at.translate(0, -2), '흡입!', c);
+        case phys.TerrainFx.mine:
+          const c = Color(0xFFFF7A2E);
+          _burst(at, c, 60, 60, size: 0.45);
+          _rings.add(_Ring(at, 0.5, phys.TerrainConstants.mineRadius, 0.5, c));
+          _text(at.translate(0, -2), '폭발!', c, size: 32);
+          _shake = math.max(_shake, 20);
+          _flash = math.max(_flash, 0.5);
+          _flashColor = c;
+        case phys.TerrainFx.frostStop:
+          const c = Color(0xFFBFEFFF);
+          _burst(at, c, 16, 10);
+          _text(at.translate(0, -2), '결빙', c);
+        case phys.TerrainFx.bamboo:
+          const c = Color(0xFF5FE08A);
+          _rings.add(_Ring(at, 0.3, 2.5, 0.3, c));
+          _text(at.translate(0, -2), '청죽!', c, size: 22);
+      }
+    }
     for (final s in t.stones) {
       if (s.out && !wasOut.contains(s.id)) {
         final at = Offset(s.position.x, s.position.y);
@@ -197,6 +230,7 @@ class BattleFx {
 
   /// 실제 시간으로 연출을 진행한다.
   void update(double dt) {
+    clock += dt;
     for (final p in _parts) {
       p.pos += p.vel * dt;
       p.vel *= 1 - 2.5 * dt;

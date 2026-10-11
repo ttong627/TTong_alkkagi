@@ -33,6 +33,10 @@ abstract final class Campaign {
     opponentStartQi: s.bossQi,
     opponentName: s.boss,
     aimAssist: aimAssistFor(s),
+    weather: s.weather,
+    features: s.features,
+    civilians: s.civilians,
+    shiftingFloor: s.shiftingFloor,
   );
 
   /// 예상 궤적(설계서 §7.1): 1~2장 두 번째 충돌까지, 3~4장 첫 충돌까지, 5~6장 그 절반.
@@ -53,6 +57,10 @@ abstract final class Campaign {
     int opponentStartQi = 0,
     String? opponentName,
     double aimAssist = 1,
+    Weather weather = Weather.clear,
+    List<Feature> features = const [],
+    List<Placement> civilians = const [],
+    bool shiftingFloor = false,
   }) {
     final h = p.hero;
     final perkKnock = p.perks.contains('장외 시 기');
@@ -85,15 +93,33 @@ abstract final class Campaign {
       knockoutQiMax: h == Fighter.mukgaek ? 2 : (perkKnock ? 99 : 0),
       critWidth: h == Fighter.jeonggak ? 0.2 : CriticalRule.maxOffset,
       aimAssist: aimAssist,
+      weather: weather,
+      features: features,
+      civilians: civilians,
+      shiftingFloor: shiftingFloor,
     );
   }
 
   /// 판이 끝났다. 이겼으면 보상을 주고 무엇을 받았는지 돌려준다.
-  static Reward finish(Profile p, Stage s, {required bool won}) {
+  /// [civiliansLost] 는 3장에서 떨어뜨린 백성 돌 수 — 하나에 엽전 [civilianPenalty] 를 뺀다(0 아래로는 안 감).
+  static Reward finish(
+    Profile p,
+    Stage s, {
+    required bool won,
+    int civiliansLost = 0,
+  }) {
     p.codex.add('고수:${s.boss}');
-    if (!won) return const Reward(won: false);
+    if (s.weather != Weather.clear) p.codex.add('천기:${s.weather.name}');
+    for (final f in s.features) {
+      p.codex.add('지물:${f.kind.name}');
+    }
+    final fine = civiliansLost * civilianPenalty;
+    if (!won) {
+      p.coins = (p.coins - fine).clamp(0, 1 << 30);
+      return Reward(won: false, fine: fine);
+    }
     final first = !p.done.contains(s.id);
-    final coins = s.coins(first: first);
+    final coins = (s.coins(first: first) - fine).clamp(0, 1 << 30);
     final silver = first && s.chapter != null ? 5 : 0;
     p.coins += coins;
     p.silver += silver;
@@ -114,6 +140,7 @@ abstract final class Campaign {
       silver: silver,
       hero: hero,
       awaken: s.id == 'c1' && p.school == null,
+      fine: fine,
     );
   }
 }
@@ -127,6 +154,7 @@ class Reward {
     this.silver = 0,
     this.hero,
     this.awaken = false,
+    this.fine = 0,
   });
   final bool won;
   final bool first;
@@ -136,4 +164,7 @@ class Reward {
 
   /// 1장을 처음 깨 문파를 고를 때다.
   final bool awaken;
+
+  /// 백성 돌을 떨어뜨려 물어 준 엽전.
+  final int fine;
 }

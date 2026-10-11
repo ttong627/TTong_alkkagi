@@ -5,6 +5,7 @@ import 'package:forge2d/forge2d.dart';
 import 'constants.dart';
 import 'materials.dart';
 import 'techniques.dart';
+import 'terrain.dart';
 
 /// 물리 엔진을 한 번 준비한다. 판([Table])을 만들기 전에 반드시 기다린다.
 Future<void> initializePhysics() => initializeForge2D();
@@ -121,9 +122,14 @@ class TurnResult {
 class Table {
   Table({
     this.minDamping = PhysicsConstants.minDamping,
-    this.floorFactor = 1.0,
+    double floorFactor = 1.0,
     this.boundary = Boundary.square,
-  }) : world = World(
+    this.weather = Weather.clear,
+    this.windSeed = 0,
+  }) : _floorFactor = weather == Weather.nightRain
+           ? floorFactor * 0.5
+           : floorFactor,
+       world = World(
          gravity: Vector2.zero(),
          definition: WorldDef(gravity: Vector2.zero(), hitEventThreshold: 0.01),
        );
@@ -132,8 +138,44 @@ class Table {
   final double minDamping;
 
   /// 바닥 감속 배수(대전장마다 다름). 1 이면 재질 × 모양 그대로.
-  /// 흙바닥은 크게(잘 멈춤), 기름·얼음 바닥은 작게(잘 미끄러짐) 준다.
-  final double floorFactor;
+  /// 흙바닥은 크게(잘 멈춤), 기름·얼음 바닥은 작게(잘 미끄러짐) 준다. 야우면 절반.
+  double get floorFactor => _floorFactor;
+  double _floorFactor;
+
+  /// 바닥 배수를 바꾼다(6장 얼음·불꽃이 바뀌는 바닥). 바닥에 붙은 돌의 감속을 다시 맞춘다.
+  set floorFactor(double v) {
+    _floorFactor = v;
+    for (final s in stones) {
+      if (!s.out && !s.airborne) {
+        s.body.linearDamping = dampingOf(s.material, s.shape);
+      }
+    }
+  }
+
+  /// 날씨(천기).
+  final Weather weather;
+
+  /// 광풍 바람 방향을 정하는 씨앗(같은 씨앗이면 같은 바람 — 판정이 같게).
+  final int windSeed;
+
+  /// 판 위 지물.
+  final List<Feature> features = [];
+  final Map<Feature, Body> _featureBodies = {};
+
+  /// 이번 스텝에 지형이 일으킨 일(연출용).
+  final List<TerrainEvent> terrainEvents = [];
+
+  final Map<int, int> _frostHits = {};
+  int _windStep = 0;
+
+  /// 지금 바람 방향(라디안). 광풍이 아니면 null.
+  double? get windAngle => weather == Weather.gale
+      ? ((windSeed * 7919 +
+                    (_windStep ~/ TerrainConstants.galeSteps) * 104729) %
+                360) *
+            math.pi /
+            180
+      : null;
 
   /// 판 모양.
   final Boundary boundary;
@@ -222,6 +264,39 @@ class Table {
     return stone;
   }
 
+  /// 지물을 놓는다(나뭇가지·조약돌·청죽·경종·블랙홀·지뢰석).
+  void addFeature(Feature f) {
+    features.add(f);
+    final body = world.createBody(
+      BodyDef(type: BodyType.static, position: Vector2(f.x, f.y)),
+    );
+    final geometry = f.kind == FeatureKind.branch
+        ? Polygon.box(f.size, TerrainConstants.branchHalfThickness)
+        : Circle(radius: f.size);
+    if (f.kind == FeatureKind.branch) {
+      body.setTransform(Vector2(f.x, f.y), Rot.fromAngle(f.angle));
+    }
+    final restitution = switch (f.kind) {
+      FeatureKind.branch => 0.3,
+      FeatureKind.pebble => 0.5,
+      FeatureKind.bamboo => TerrainConstants.bambooRestitution,
+      FeatureKind.gong => 0.6,
+      FeatureKind.blackHole || FeatureKind.mine => 0.2,
+    };
+    body.createShape(
+      geometry,
+      ShapeDef(
+        material: SurfaceMaterial(friction: 0.2, restitution: restitution),
+        enableContactEvents: true,
+        enableHitEvents: true,
+        // 블랙홀은 부딪히지 않고 빨아들이기만 한다.
+        filter: f.kind == FeatureKind.blackHole ? Filter(maskBits: 0) : null,
+      ),
+    );
+    body.userData = f;
+    _featureBodies[f] = body;
+  }
+
   /// 한 수를 쏜다.
   ///
   /// [angle] 라디안(오른쪽 0, 반시계 방향), [speed] 처음 속도(cm/s),
@@ -254,6 +329,7 @@ class Table {
     _absorbLeft = 0;
     _absorbAt = null;
     _enemiesHit.clear();
+    _frostHits.clear();
     _impactScale = impactScale;
     final s = (inner ? speed * innerSpeed : speed).clamp(
       0.0,
@@ -310,9 +386,12 @@ class Table {
       }
     }
     _beforeStep(shooter);
+    terrainEvents.clear();
+    _terrainBefore();
     world.step(PhysicsConstants.step);
     _turnSteps++;
     _collectImpacts();
+    _terrainAfter();
     for (final s in stones) {
       if (!s.out && s.airborne) _fall(s);
     }
@@ -414,6 +493,102 @@ class Table {
       _swordQiLeft--;
       if (_swordQiLeft == 0 && !shooter.airborne && !shooter.out) {
         shooter.body.linearDamping = dampingOf(shooter.material, shooter.shape);
+      }
+    }
+  }
+
+  /// 한 스텝 앞: 광풍·블랙홀.
+  void _terrainBefore() {
+    const dt = PhysicsConstants.step;
+    final wind = windAngle;
+    if (wind != null) {
+      _windStep++;
+      final push = Vector2(math.cos(wind), math.sin(wind))
+        ..scale(TerrainConstants.galeAccel * dt);
+      for (final s in stones) {
+        if (s.out || s.velocity.length <= PhysicsConstants.restSpeed) continue;
+        s.body.linearVelocity = s.velocity + push;
+      }
+    }
+    for (final f in features) {
+      if (f.kind != FeatureKind.blackHole) continue;
+      final c = Vector2(f.x, f.y);
+      for (final s in stones) {
+        if (s.out || s.airborne) continue;
+        final d = c - s.position;
+        final len = d.length;
+        if (len > TerrainConstants.holeRadius) continue;
+        if (len <= TerrainConstants.holeSwallow) {
+          s.out = true;
+          s.body.linearVelocity = Vector2.zero();
+          s.body.isEnabled = false;
+          terrainEvents.add(TerrainEvent(TerrainFx.swallow, f.x, f.y));
+          continue;
+        }
+        d.scale(TerrainConstants.holePull * dt / len);
+        s.body.linearVelocity = s.velocity + d;
+      }
+    }
+  }
+
+  /// 한 스텝 뒤: 지물에 부딪힌 돌(경종·지뢰석·청죽)과 혹한.
+  void _terrainAfter() {
+    for (final h in world.contactEvents.hit) {
+      final ua = h.shapeA.body.userData, ub = h.shapeB.body.userData;
+      final f = ua is Feature ? ua : (ub is Feature ? ub : null);
+      final st = ua is Stone ? ua : (ub is Stone ? ub : null);
+      if (f == null || st == null) continue;
+      switch (f.kind) {
+        case FeatureKind.gong:
+          for (final s in stones) {
+            if (s.out || s.team == st.team) continue;
+            final d = s.position - Vector2(f.x, f.y);
+            final len = d.length;
+            if (len <= 0.01 || len > TerrainConstants.gongRadius) continue;
+            d.scale(TerrainConstants.gongPush / len);
+            s.body.linearVelocity = s.velocity + d;
+          }
+          terrainEvents.add(TerrainEvent(TerrainFx.gong, f.x, f.y));
+        case FeatureKind.mine:
+          final c = Vector2(f.x, f.y);
+          st.out = true;
+          st.body.linearVelocity = Vector2.zero();
+          st.body.isEnabled = false;
+          for (final s in stones) {
+            if (s.out) continue;
+            final d = s.position - c;
+            final len = d.length;
+            if (len <= 0.01 || len > TerrainConstants.mineRadius) continue;
+            d.scale(TerrainConstants.minePush / len);
+            s.body.linearVelocity = s.velocity + d;
+          }
+          _featureBodies.remove(f)?.destroy();
+          features.remove(f);
+          terrainEvents.add(TerrainEvent(TerrainFx.mine, f.x, f.y));
+        case FeatureKind.bamboo:
+          terrainEvents.add(
+            TerrainEvent(TerrainFx.bamboo, h.point.x, h.point.y),
+          );
+        case FeatureKind.branch || FeatureKind.pebble || FeatureKind.blackHole:
+          break;
+      }
+    }
+    if (weather == Weather.frost) {
+      for (final i in impacts) {
+        for (final id in [i.a, i.b]) {
+          final n = (_frostHits[id] ?? 0) + 1;
+          _frostHits[id] = n;
+          final s = stones[id];
+          if (n >= TerrainConstants.frostStopAt) {
+            s.body.linearVelocity = Vector2.zero();
+            terrainEvents.add(
+              TerrainEvent(TerrainFx.frostStop, s.position.x, s.position.y),
+            );
+          } else {
+            s.body.linearVelocity = s.velocity
+              ..scale(TerrainConstants.frostSlow);
+          }
+        }
       }
     }
   }

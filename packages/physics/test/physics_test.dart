@@ -492,6 +492,125 @@ void main() {
     });
   });
 
+  group('1-12 지형·날씨 (설계서 §9.3·§9.4·§10.2)', () {
+    double rollX({Weather w = Weather.clear}) {
+      final t = Table(weather: w);
+      final s = t.addStone(-18, 0);
+      t.shoot(s, 0, 30, 0);
+      t.runTurn();
+      final x = s.position.x;
+      t.dispose();
+      return x;
+    }
+
+    test('야우: 감속 −50% 라 같은 힘에 더 멀리', () {
+      expect(rollX(w: Weather.nightRain), greaterThan(rollX() + 5));
+    });
+
+    test('광풍: 바람에 밀려 곧게 가지 않는다(같은 씨앗이면 같은 길)', () {
+      double y(int seed) {
+        final t = Table(weather: Weather.gale, windSeed: seed);
+        final s = t.addStone(-18, 0);
+        t.shoot(s, 0, 40, 0);
+        t.runTurn();
+        final v = s.position.y;
+        t.dispose();
+        return v;
+      }
+
+      expect(y(3).abs(), greaterThan(0.5));
+      expect(y(3), y(3));
+    });
+
+    test('청죽은 반발 1.5배 · 조약돌보다 세게 튕겨 낸다', () {
+      double back(FeatureKind k) {
+        final t = Table();
+        t.addFeature(Feature(k, 0, 0));
+        final s = t.addStone(-8, 0);
+        t.shoot(s, 0, 40, 0);
+        var minVx = 0.0;
+        while (t.step() == TurnStatus.moving) {
+          minVx = math.min(minVx, s.velocity.x);
+        }
+        t.dispose();
+        return -minVx;
+      }
+
+      expect(
+        back(FeatureKind.bamboo),
+        greaterThan(back(FeatureKind.pebble) * 1.5),
+      );
+      expect(back(FeatureKind.bamboo), greaterThan(40), reason: '들어온 것보다 세게');
+    });
+
+    test('경종을 맞히면 8cm 안의 상대 돌이 바깥으로', () {
+      final t = Table();
+      t.addFeature(const Feature(FeatureKind.gong, 0, 0));
+      final me = t.addStone(-8, 0);
+      final foe = t.addStone(0, 5, team: 1);
+      final friend = t.addStone(0, -5);
+      t.shoot(me, 0, 40, 0);
+      var rang = false;
+      while (t.step() == TurnStatus.moving) {
+        rang |= t.terrainEvents.any((e) => e.fx == TerrainFx.gong);
+      }
+      expect(rang, isTrue);
+      expect(foe.position.y, greaterThan(6));
+      expect(friend.position.y, closeTo(-5, 1e-6), reason: '내 편은 그대로');
+      t.dispose();
+    });
+
+    test('블랙홀은 빨아들여 장외 · 지뢰석은 맞힌 돌이 터져 장외, 한 번 뒤 사라짐', () {
+      final t = Table();
+      t.addFeature(const Feature(FeatureKind.blackHole, 0, 0));
+      final s = t.addStone(-4, 0);
+      t.shoot(s, 0, 15, 0);
+      t.runTurn();
+      expect(s.out, isTrue);
+      t.dispose();
+
+      final t2 = Table();
+      t2.addFeature(const Feature(FeatureKind.mine, 0, 0));
+      final me = t2.addStone(-8, 0);
+      final near = t2.addStone(0, 3.5, team: 1);
+      t2.shoot(me, 0, 40, 0);
+      t2.runTurn();
+      expect(me.out, isTrue);
+      expect(near.position.y, greaterThan(5));
+      expect(t2.features, isEmpty);
+      t2.dispose();
+    });
+
+    test('혹한: 세 번째 충돌에서 그 수에는 멈춘다', () {
+      final t = Table(weather: Weather.frost);
+      final me = t.addStone(
+        -10,
+        0,
+        material: StoneMaterial.hyeoncheol,
+        shape: StoneShape.sphere,
+      );
+      t.addStone(-7, 0.2, team: 1);
+      t.addStone(-4.5, -0.2, team: 1);
+      t.addStone(-2, 0.2, team: 1);
+      t.shoot(me, 0, 120, 0);
+      var stopped = false;
+      while (t.step() == TurnStatus.moving) {
+        stopped |= t.terrainEvents.any((e) => e.fx == TerrainFx.frostStop);
+      }
+      expect(stopped, isTrue);
+      t.dispose();
+    });
+
+    test('바닥 배수를 바꾸면 돌 감속이 바로 바뀐다(6장 얼음·불꽃)', () {
+      final t = Table();
+      final s = t.addStone(0, 0);
+      final before = s.body.linearDamping;
+      t.floorFactor = 0.5;
+      expect(s.body.linearDamping, closeTo(math.max(0.3, before * 0.5), 1e-9));
+      t.dispose();
+    });
+  });
+
   test('1-09 결정성: 같은 입력 200판 두 번 계산 → 200/200 같음', () {
     var same = 0;
     for (var i = 0; i < 200; i++) {

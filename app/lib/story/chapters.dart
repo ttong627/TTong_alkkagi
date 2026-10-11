@@ -24,6 +24,10 @@ class Stage {
     this.rival,
     this.martial = Technique.none,
     this.bossQi = 0,
+    this.weather = Weather.clear,
+    this.features = const [],
+    this.civilians = const [],
+    this.shiftingFloor = false,
   });
 
   final String id;
@@ -50,6 +54,18 @@ class Stage {
   /// 보스 판 시작 내공 칸.
   final int bossQi;
 
+  /// 천기(날씨, 설계서 §9.3).
+  final Weather weather;
+
+  /// 판 위 지물·장애물(설계서 §9.1·§9.4).
+  final List<Feature> features;
+
+  /// 백성 돌(3장): 떨어뜨리면 하나에 엽전 [civilianPenalty] 을 뺀다.
+  final List<Placement> civilians;
+
+  /// 6장: 수마다 빙판(×0.6)과 불꽃(×1.3) 바닥이 바뀐다.
+  final bool shiftingFloor;
+
   final List<Line> intro;
   final List<Line> outro;
 
@@ -59,6 +75,9 @@ class Stage {
     return first ? base * 2 : base;
   }
 }
+
+/// 3장 백성 돌 하나를 떨어뜨렸을 때 빼는 엽전(정한 값 — 설계서 §9.1 은 「감점」만 적었다).
+const int civilianPenalty = 10;
 
 /// 서장 대사(처음 강호행을 열 때 한 번).
 const List<Line> prologue = [
@@ -127,7 +146,9 @@ const List<Stage> campaign = [
     martial: Technique.swordQi,
     bossQi: 1,
     needStage: 2,
+    weather: Weather.nightRain,
     intro: [
+      ('해설', '객잔 등불이 꺼지고 밤비가 들이친다. 내 돌 둘레만 겨우 보이고, 바닥은 젖어 잘 멈추지 않는다.'),
       ('묵현', '사부가 날 막았지만 오래 못 버틸 거다. 그 돌을 내놔라.'),
       ('묵현', '검기(劍氣) — 사부가 나에게만 가르친 기술이다.'),
     ],
@@ -144,10 +165,18 @@ const List<Stage> campaign = [
     difficulty: Difficulty.normal,
     style: AiStyle.assassin,
     needStage: 3,
+    civilians: [
+      Placement(-6, -1, team: 2, shape: StoneShape.flat),
+      Placement(0, 2, team: 2, shape: StoneShape.flat),
+      Placement(6, -1, team: 2, shape: StoneShape.flat),
+      Placement(-3, 4, team: 2, shape: StoneShape.flat),
+      Placement(3, -4, team: 2, shape: StoneShape.flat),
+    ],
     intro: [
       ('해설', '북적이는 거북 장터. 사람들 사이에서 차가운 기운이 느껴진다.'),
       ('자객', '묵현 님의 명이다. 판 끝에 선 돌부터 하나씩 떨어뜨려 주지.'),
       ('해설', '자객은 판 가장자리에 가까운 돌만 노린다. 안쪽으로 모아 두어라.'),
+      ('해설', '판 가운데 납작한 회색 돌은 장터 백성이다. 판 밖으로 떨어뜨리면 하나에 엽전 10 을 물어 준다.'),
     ],
     outro: [('자객', '…이런 실력이라니. 묵현 님께 전해야겠군.')],
   ),
@@ -162,9 +191,17 @@ const List<Stage> campaign = [
     difficulty: Difficulty.normal,
     style: AiStyle.spinner,
     needStage: 4,
+    features: [
+      Feature(FeatureKind.branch, -6, 0, angle: 0.35),
+      Feature(FeatureKind.branch, 6, 2, angle: -0.5),
+      Feature(FeatureKind.pebble, 0, -3),
+      Feature(FeatureKind.pebble, -2, 4),
+      Feature(FeatureKind.pebble, 3, -1),
+    ],
     intro: [
       ('쿠비', '이 숲을 지나려면 통행료를 내라! 없으면 돌로 내든가!'),
       ('쿠비', '내 구형 돌은 끌어치기의 왕이지. 맞고 돌아오는 걸 보면 놀랄걸?'),
+      ('해설', '숲길에 나뭇가지와 조약돌이 박혀 있다. 맞으면 힘을 잃고 꺾인다 — 돌아 맞히는 수를 노려라.'),
     ],
     outro: [
       ('쿠비', '너 같은 놈 처음 본다! 좋아, 오늘부터 형님이라 부르마. 내 제자 놈을 데려가라.'),
@@ -184,7 +221,11 @@ const List<Stage> campaign = [
     martial: Technique.stomp,
     bossQi: 2,
     needStage: 4,
-    intro: [('묵현', '사부의 검기로는 안 됐지. 그래서 권사의 진각을 익혔다.')],
+    weather: Weather.gale,
+    intro: [
+      ('해설', '숲 어귀에 광풍이 분다. 바람은 5초마다 방향을 바꾸며 굴러가는 돌을 옆으로 민다.'),
+      ('묵현', '사부의 검기로는 안 됐지. 그래서 권사의 진각을 익혔다.'),
+    ],
     outro: [('묵현', '왜… 왜 그 돌은 너를 고른 거지?')],
   ),
   Stage(
@@ -198,9 +239,15 @@ const List<Stage> campaign = [
     difficulty: Difficulty.hard,
     style: AiStyle.calculator,
     needStage: 5,
+    features: [
+      Feature(FeatureKind.bamboo, -7, 0),
+      Feature(FeatureKind.bamboo, 7, 0),
+      Feature(FeatureKind.gong, 0, 0),
+    ],
     intro: [
       ('로직', '모든 수는 계산할 수 있습니다. 당신의 다음 수도요.'),
       ('로직', '대리석 위에서는 작은 각도 하나가 승부를 가릅니다.'),
+      ('로직', '양쪽 청죽은 맞은 돌을 1.5배로 튕겨 내고, 가운데 경종을 울리면 둘레 상대 돌이 밀려납니다.'),
     ],
     outro: [
       ('로직', '계산 밖의 수… 흥미롭군요. 힌트를 드리지요: 선을 그리면, 기가 따릅니다.'),
@@ -220,7 +267,11 @@ const List<Stage> campaign = [
     martial: Technique.clone,
     bossQi: 3,
     needStage: 5,
-    intro: [('묵현', '대회 전날 밤이다. 살수의 분신까지 익혔다. 이번엔 끝을 내자.')],
+    weather: Weather.frost,
+    intro: [
+      ('해설', '혹한의 밤. 부딪힐수록 돌이 얼어붙어 무거워지고, 세 번째 충돌에서는 그 자리에 멈춘다.'),
+      ('묵현', '대회 전날 밤이다. 살수의 분신까지 익혔다. 이번엔 끝을 내자.'),
+    ],
     outro: [
       ('묵현', '…「탄지는 마음으로 튕기는 것」. 사부의 말이 이제야 들리는군.'),
       ('묵현', '가라. 결승의 맹주는 사부의 사형, 용린석의 주인이다.'),
@@ -239,9 +290,11 @@ const List<Stage> campaign = [
     martial: Technique.stomp,
     bossQi: 3,
     needStage: 6,
+    shiftingFloor: true,
     intro: [
       ('맹주', '사제의 기명석을 가진 아이로구나. 용린석이 너를 기다렸다.'),
       ('맹주', '빙판 위에서는 한 번의 실수가 판 밖이다. 내공을 아끼지 마라.'),
+      ('해설', '본단 바닥은 한 수마다 빙판과 불꽃 바닥이 번갈아 바뀐다. 불꽃 바닥에서는 돌이 빨리 멈춘다.'),
     ],
     outro: [
       ('맹주', '훌륭하다. 이 용린석을 기명석에 끼워라.'),

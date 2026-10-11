@@ -608,6 +608,9 @@ class _MiniBoardPainter extends CustomPainter {
     final o = Offset(size.width / 2, size.height / 2);
     Offset at(double x, double y) => o + Offset(x, y) * scale;
     paintArena(canvas, match.config.arena, at, scale);
+    for (final f in match.table.features) {
+      paintFeature(canvas, f, at, scale);
+    }
     for (final s in match.table.stones) {
       if (s.out) continue;
       paintTopStone(
@@ -694,6 +697,9 @@ class _FloorPainter extends CustomPainter {
     Offset at(double x, double y) =>
         disc.center + Offset(x - sx, y - sy) * scale;
     paintArena(canvas, arena, at, scale);
+    for (final f in match.table.features) {
+      paintFeature(canvas, f, at, scale);
+    }
     for (final s in match.table.stones) {
       if (s.out || identical(s, stone)) continue;
       paintTopStone(

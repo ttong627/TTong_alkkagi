@@ -134,7 +134,23 @@ class MatchConfig {
     this.critWidth = 0.15,
     this.layout,
     this.shotLimit,
+    this.weather = Weather.clear,
+    this.features = const [],
+    this.civilians = const [],
+    this.shiftingFloor = false,
   });
+
+  /// 천기(날씨, 설계서 §9.3).
+  final Weather weather;
+
+  /// 판 위 지물·장애물(설계서 §9.4·§10.2).
+  final List<Feature> features;
+
+  /// 백성 돌(편 2, 3장): 떨어뜨리면 감점.
+  final List<Placement> civilians;
+
+  /// 6장: 수마다 얼음(×0.6)과 불꽃(×1.3) 바닥이 바뀐다.
+  final bool shiftingFloor;
 
   /// 묘수풀이: 정해진 돌 놓기(내 돌 = 편 0). null 이면 보통 줄.
   final List<Placement>? layout;
@@ -225,7 +241,15 @@ class Match extends ChangeNotifier {
     : table = Table(
         floorFactor: config.arena.floorFactor,
         boundary: config.arena.boundary,
+        weather: config.weather,
+        windSeed: DateTime.now().millisecondsSinceEpoch & 0xffff,
       ) {
+    for (final f in config.features) {
+      table.addFeature(f);
+    }
+    for (final c in config.civilians) {
+      table.addStone(c.x, c.y, team: 2, material: c.material, shape: c.shape);
+    }
     final layout = config.layout;
     if (layout != null) {
       for (final pl in layout) {
@@ -429,7 +453,18 @@ class Match extends ChangeNotifier {
 
   int _aliveBefore = 0;
 
+  /// 떨어진 백성 돌 수(3장 감점).
+  int get civiliansLost =>
+      table.stones.where((s) => s.team == 2 && s.out).length;
+
+  /// 6장 바닥이 지금 불꽃인가.
+  bool fireFloor = false;
+
   void _finishTurn() {
+    if (config.shiftingFloor) {
+      fireFloor = !fireFloor;
+      table.floorFactor = fireFloor ? 1.3 : config.arena.floorFactor;
+    }
     if (config.training) return;
     // 내가 상대 돌을 떨어뜨리면 내공(묵객·기인방 「장외 시 기」).
     if (_turn == 0 && config.knockoutQiChance > 0) {

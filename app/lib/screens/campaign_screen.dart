@@ -42,14 +42,23 @@ class _CampaignScreenState extends State<CampaignScreen> {
         builder: (_) => DialogueScreen(title: s.title, lines: s.intro),
       ),
     );
+    Match? last;
     final won = await nav.push<bool>(
       MaterialPageRoute(
-        builder: (_) =>
-            GameScreen(config: Campaign.configFor(p, s), title: s.title),
+        builder: (_) => GameScreen(
+          config: Campaign.configFor(p, s),
+          title: s.title,
+          onTurnEnd: (m) => last = m,
+        ),
       ),
     );
     if (won == null || !mounted) return;
-    final r = Campaign.finish(p, s, won: won);
+    final r = Campaign.finish(
+      p,
+      s,
+      won: won,
+      civiliansLost: last?.civiliansLost ?? 0,
+    );
     await _store.save();
     if (!mounted) return;
     await showDialog<void>(
@@ -61,10 +70,12 @@ class _CampaignScreenState extends State<CampaignScreen> {
               ? [
                   '엽전 +${r.coins}${r.first ? ' (처음 깬 판 ×2)' : ''}',
                   if (r.silver > 0) '은자 +${r.silver}',
+                  if (r.fine > 0) '백성 돌 배상 −${r.fine}',
                   if (r.hero != null)
                     '새 캐릭터: ${r.hero!.label} — ${r.hero!.trait}',
                 ].join('\n')
-              : '${s.boss}에게 졌습니다. 목인항에서 내공을 쌓거나 다시 도전하세요.',
+              : '${s.boss}에게 졌습니다. 목인항에서 내공을 쌓거나 다시 도전하세요.'
+                    '${r.fine > 0 ? '\n백성 돌 배상 −${r.fine}' : ''}',
         ),
         actions: [
           FilledButton(
@@ -197,7 +208,11 @@ class _CampaignScreenState extends State<CampaignScreen> {
               subtitle: Text(
                 lock ??
                     '${s.boss} · ${s.arena.label} · ${s.material.label} ${s.shape.label}'
-                        '${s.martial.cost > 0 ? ' · 무공 ${s.martial.label}' : ''}',
+                        '${s.martial.cost > 0 ? ' · 무공 ${s.martial.label}' : ''}'
+                        '${s.weather != Weather.clear ? ' · 천기 ${s.weather.label}' : ''}'
+                        '${s.features.isNotEmpty ? ' · 지물 ${{for (final f in s.features) f.kind.label}.join('·')}' : ''}'
+                        '${s.civilians.isNotEmpty ? ' · 백성 돌 ${s.civilians.length}' : ''}'
+                        '${s.shiftingFloor ? ' · 빙판↔불꽃 바닥' : ''}',
               ),
               enabled: lock == null,
               onTap: lock == null ? () => _play(i) : null,

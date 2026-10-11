@@ -135,6 +135,50 @@ void main() {
       expect(c.steers, 2);
     });
 
+    test('지형·날씨가 판 설정과 판에 들어간다(설계서 §9.1·§9.3·§9.4)', () {
+      final p = Profile();
+      Stage st(String id) => campaign.firstWhere((s) => s.id == id);
+      expect(Campaign.configFor(p, st('c3')).civilians.length, 5);
+      expect(Campaign.configFor(p, st('c4')).features.length, 5);
+      expect(Campaign.configFor(p, st('c5')).features.length, 3);
+      expect(Campaign.configFor(p, st('c6')).shiftingFloor, isTrue);
+      expect(Campaign.configFor(p, st('r1')).weather, Weather.nightRain);
+      expect(Campaign.configFor(p, st('r2')).weather, Weather.gale);
+      expect(Campaign.configFor(p, st('r3')).weather, Weather.frost);
+      // 판을 실제로 만들어 본다: 백성 돌은 편 2, 처음 줄 돌과 지물·백성 돌이 2cm 안에 겹치지 않는다.
+      for (final s in campaign) {
+        final m = Match(Campaign.configFor(p, s));
+        expect(
+          m.table.stones.where((x) => x.team == 2).length,
+          s.civilians.length,
+        );
+        final things = [
+          for (final f in s.features) (f.x, f.y),
+          for (final c in s.civilians) (c.x, c.y),
+        ];
+        for (final stone in m.table.stones.where((x) => x.team != 2)) {
+          final pos = stone.body.position;
+          for (final (x, y) in things) {
+            final d = (pos.x - x) * (pos.x - x) + (pos.y - y) * (pos.y - y);
+            expect(d, greaterThan(4), reason: '${s.id} ($x,$y)');
+          }
+        }
+        m.dispose();
+      }
+    });
+
+    test('백성 돌을 떨어뜨리면 하나에 엽전 10 을 물어 준다(0 아래로는 안 감)', () {
+      final p = Profile()..coins = 15;
+      final c3 = campaign.firstWhere((s) => s.id == 'c3');
+      final win = Campaign.finish(p, c3, won: true, civiliansLost: 2);
+      expect(win.fine, 20);
+      expect(win.coins, 120 - 20); // 3장 = 30 + 3×10 = 60, 처음 깬 판 ×2 = 120
+      expect(p.coins, 15 + 100);
+      final lose = Campaign.finish(p, c3, won: false, civiliansLost: 20);
+      expect(lose.fine, 200);
+      expect(p.coins, 0);
+    });
+
     test('강호행은 9판(6장 + 숙적 3)이고 id 가 겹치지 않는다', () {
       expect(campaign.length, 9);
       expect(campaign.map((s) => s.id).toSet().length, 9);
