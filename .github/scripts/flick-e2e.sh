@@ -10,6 +10,14 @@ a() { timeout "${T:-30}" adb "$@"; }
 echo "[단계] 부팅 확인"
 for i in $(seq 1 90); do [ "$(a shell getprop sys.boot_completed | tr -d '\r')" = 1 ] && break; sleep 2; done
 for i in $(seq 1 60); do a shell pm path android >/dev/null 2>&1 && break; sleep 2; done
+# 앱 탓인지 가르기: 앱을 켜기 전 20초 동안 에뮬레이터가 살아 있는지 본다.
+echo "[단계] 앱 없이 20초 유지 확인"
+for i in $(seq 1 10); do
+  sleep 2
+  [ "$(timeout 10 adb get-state 2>/dev/null)" = device ] || {
+    echo "실패: 앱을 켜기 전에 에뮬레이터가 꺼짐(앱과 무관)"; ls -la /tmp/android-runner/ 2>&1 | tail; exit 1; }
+done
+echo "앱 없이 20초 살아 있음"
 echo "[단계] 설치"
 ok=0
 for i in 1 2 3; do T=180 a install -r "$1" && { ok=1; break; }; echo "설치 다시 ($i)"; sleep 5; done
@@ -22,7 +30,9 @@ evidence() {
   echo "----- 기기 기록 마지막 120줄 -----"; tail -120 "$LOGF"
   echo "----- 에뮬레이터 프로세스 -----"; ps aux | grep -E "qemu|emulator" | grep -v grep | head
   echo "----- 호스트 메모리 -----"; free -m
-  echo "----- 호스트 커널 기록(메모리 부족·강제 종료) -----"; sudo dmesg 2>/dev/null | grep -iE "oom|killed process|qemu" | tail -20
+  echo "----- 호스트 커널 기록(메모리 부족·강제 종료) -----"; sudo dmesg 2>/dev/null | grep -iE "oom|killed process|qemu|segfault|trap" | tail -20
+  echo "----- 에뮬레이터 충돌 기록 -----"; ls -la /tmp/android-runner/ 2>&1 | tail; find /tmp/android-runner -type f 2>/dev/null | head
+  echo "----- 앱 기록(flutter·충돌) -----"; grep -E "flutter|AndroidRuntime|FATAL|TTong.alkkagi|DEBUG  " "$LOGF" | tail -60
 }
 trap 'st=$?; [ "$st" != 0 ] && evidence; exit $st' EXIT
 echo "[단계] 앱 켜기"

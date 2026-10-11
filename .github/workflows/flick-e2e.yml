@@ -22,6 +22,11 @@ jobs:
   flick:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # 안드로이드 34 에뮬레이터가 앱 켠 뒤 수 초 만에 꺼진다(2026-10-11 5번). 30 과 나란히 돌려 어느 쪽 문제인지 가른다.
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [34, 30]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -53,7 +58,7 @@ jobs:
           # 앱이 첫 화면을 그릴 때 에뮬레이터가 통째로 꺼졌다(2026-10-11 기록: 앱 켠 뒤 7초, 호스트 메모리 9.4GB 남음·
           # OOM 없음, 그래픽 오류 「Failed to find ColorBuffer」). 가상 Vulkan 을 꺼서 OpenGL 로 그리게 한다.
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -feature -Vulkan
-          api-level: 34
+          api-level: ${{ matrix.api }}
           target: google_apis
           arch: x86_64
           disable-animations: true
