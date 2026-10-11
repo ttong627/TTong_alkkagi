@@ -1,0 +1,15 @@
+{
+  "_설명": "재미나이 앱(구독 · gemini.google.com 음악 만들기)으로 뽑을 배경음악 주문서 — 형 지시 「배경음악과 효과음 등 소리도 재미나이에서 뽑아서」(2026-10-11). 유료 API 키는 쓰지 않는다. 받은 파일은 tool/audio/gen/<id>.(mp3|wav) 로 두고 올리면, 클라우드가 반복 이음매·음량을 맞춰 OGG 로 넣는다.",
+  "common": "Instrumental only, no vocals, no lyrics. Traditional Korean/East-Asian wuxia martial-arts game soundtrack using gayageum, geomungo, daegeum, haegeum, taepyeongso, janggu, buk drum, jing gong and kkwaenggwari. Clean modern game mix, punchy but not muddy, suitable as a seamless looping background track for a mobile game.",
+  "tracks": [
+    {"id": "bgm_lobby", "use": "로비", "secs": 60, "prompt": "Calm, warm and welcoming main-menu theme. Daegeum flute sings the melody, gayageum answers, light janggu in a relaxed 12/8 semachi rhythm, around 90 BPM, hopeful mood of a young hero leaving the mountain village."},
+    {"id": "bgm_dustyYard", "use": "1장 흙먼지 마당", "secs": 60, "prompt": "Bright, light and playful village-yard battle theme. Gayageum sanjo-style plucking leads, bouncy janggu, cheerful and easy-going, about 100 BPM, beginner-friendly energy."},
+    {"id": "bgm_oilyTable", "use": "2장 주막(기름진 난장)", "secs": 60, "prompt": "Rowdy, comical tavern brawl theme. Haegeum slides mischievously, gayageum plays along, fast jajinmori rhythm on janggu and small buk hits, about 120 BPM, slapstick fun."},
+    {"id": "bgm_turtleMarket", "use": "3장 거북 장터", "secs": 60, "prompt": "Festive market-street fight. Kkwaenggwari, janggu and buk drive a whirling hwimori rhythm, taepyeongso calls out loudly over the crowd, about 140 BPM, exciting festival chaos."},
+    {"id": "bgm_kubiForest", "use": "4장 깊은 숲", "secs": 60, "prompt": "Mysterious deep-forest duel. Breathy daegeum with deep vibrato and bends wandering through mist, sparse slow jungmori rhythm, low drones, about 80 BPM, tense but beautiful."},
+    {"id": "bgm_logicMarble", "use": "5장 서원(철벽의 진인)", "secs": 60, "prompt": "Dignified scholar-hall battle of wits. Geomungo leads with deep, weighty plucks, gayageum answers in counterpoint, steady stately pulse never stopping, about 90 BPM, intelligent and solemn."},
+    {"id": "bgm_murimIce", "use": "6장 천하제일 탄지대회(빙판)", "secs": 60, "prompt": "Grand championship finale on a frozen arena. Thundering buk, jing and kkwaenggwari in fast hwimori, majestic taepyeongso and haegeum melody, about 150 BPM, epic and heroic."},
+    {"id": "bgm_boss", "use": "숙적·고수 대결", "secs": 60, "prompt": "Intense rival boss battle. Aggressive scraping haegeum in a dark minor gyemyeon mode, relentless buk drums pushing forward, sudden jing hits, about 145 BPM, dangerous and urgent."},
+    {"id": "bgm_clash", "use": "내공 겨루기(연타 3초 + 준비)", "secs": 30, "prompt": "Short, extremely tense inner-energy duel cue. Heartbeat-like buk double hits accelerating, rising tremolo haegeum and low drone swelling, then a frantic climax, about 160 BPM, nail-biting suspense."}
+  ]
+}

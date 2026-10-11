@@ -1,0 +1,34 @@
+[
+ {
+  "engine": "agy",
+  "id": "seokdu",
+  "pose": "idle",
+  "ok": false,
+  "file": null,
+  "secs": 184.4
+ },
+ {
+  "engine": "agy",
+  "id": "seokdu",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\seokdu_attack.png",
+  "secs": 29.7
+ },
+ {
+  "engine": "agy",
+  "id": "mukhyeon",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\mukhyeon_idle.png",
+  "secs": 19.3
+ },
+ {
+  "engine": "agy",
+  "id": "mukhyeon",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\mukhyeon_attack.png",
+  "secs": 23.7
+ }
+]

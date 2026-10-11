@@ -1,0 +1,34 @@
+[
+ {
+  "engine": "codex",
+  "id": "seokdu",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\seokdu_idle.png",
+  "secs": 28.2
+ },
+ {
+  "engine": "codex",
+  "id": "seokdu",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\seokdu_attack.png",
+  "secs": 49.4
+ },
+ {
+  "engine": "codex",
+  "id": "mukhyeon",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\mukhyeon_idle.png",
+  "secs": 30.1
+ },
+ {
+  "engine": "codex",
+  "id": "mukhyeon",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\mukhyeon_attack.png",
+  "secs": 60.2
+ }
+]
