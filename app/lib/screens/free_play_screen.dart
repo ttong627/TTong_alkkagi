@@ -27,6 +27,7 @@ class _FreePlayScreenState extends State<FreePlayScreen> {
   StoneShape _shape = StoneShape.round;
   Arena _arena = Arena.dustyYard;
   Technique _martial = Technique.swordQi;
+  MatchRule _rule = MatchRule.annihilate;
 
   @override
   void initState() {
@@ -52,6 +53,7 @@ class _FreePlayScreenState extends State<FreePlayScreen> {
             opponentMartial: mode == MatchMode.twoPlayer
                 ? _martial
                 : Technique.none,
+            rule: _rule,
           ),
         ),
       ),
@@ -66,6 +68,40 @@ class _FreePlayScreenState extends State<FreePlayScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
         children: [
+          _Section(
+            title: '규칙',
+            icon: 'medal',
+            trailing: HelpButton(
+              title: '규칙',
+              lines: [
+                for (final r in MatchRule.values)
+                  (null, '${r.label}: ${r.help}'),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final r in MatchRule.values)
+                      GameChip(
+                        key: Key('rule-${r.name}'),
+                        label: r.label,
+                        selected: _rule == r,
+                        onTap: () => setState(() => _rule = r),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _rule.help,
+                  style: const TextStyle(fontSize: 14, color: Palette.dim),
+                ),
+              ],
+            ),
+          ),
           _Section(
             title: '난이도',
             icon: 'rank',

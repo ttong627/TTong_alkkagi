@@ -105,6 +105,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // 조작 방식(2026-10-11 형 지시 「조작 방식 고르기」): 튕기기가 어려우면 당겨 쏘기.
+          Text('조작 방식', style: t.titleMedium),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              GameChip(
+                key: const Key('control-flick'),
+                label: '검지로 튕기기',
+                selected: !s.pull,
+                onTap: () => _set(() => s.pull = false),
+              ),
+              GameChip(
+                key: const Key('control-pull'),
+                label: '잡고 당겨 쏘기',
+                selected: s.pull,
+                onTap: () => _set(() => s.pull = true),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            s.pull
+                ? '돌을 누른 채 뒤로 당겼다 놓으면 반대쪽으로 · 금빛 칸에서 놓으면 회심'
+                : '손끝으로 돌을 툭 쳐서 · 가운데는 곧게, 가장자리는 비스듬히',
+            style: t.bodySmall,
+          ),
+          const Divider(),
           Text('소리', style: t.titleMedium),
           ListTile(
             title: const Text('효과음'),

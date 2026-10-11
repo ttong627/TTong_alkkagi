@@ -17,6 +17,7 @@ import '../progress/daily.dart';
 import '../progress/profile.dart';
 import '../progress/settings.dart';
 import '../progress/store.dart';
+import '../story/puzzles.dart' show trickStars;
 import '../ui/art.dart';
 import '../ui/ghost_hand.dart';
 import '../ui/kit.dart';
@@ -37,7 +38,11 @@ class GameScreen extends StatefulWidget {
     this.coach = false,
     this.stageId,
     this.coachLines = const [],
+    this.timeLimit,
   });
+
+  /// 시간 제한(초 · 묘수풀이 트릭샷). 겨누는 동안만 줄고, 다 되면 실패. 별은 남은 시간으로.
+  final int? timeLimit;
 
   /// 고수전(강호행·폐관수련동)이면 이길 때 절명기 연출(설계서 §4).
   final bool boss;
@@ -84,6 +89,29 @@ class _GameScreenState extends State<GameScreen> {
   String? _quip;
   String? _quipBy;
   Timer? _quipTimer;
+
+  /// 시간 제한 판: 남은 시간(초)과 재는 시계.
+  double _timeLeft = 0;
+  Timer? _clock;
+
+  void _tickClock(Timer _) {
+    if (!mounted) return;
+    final running =
+        !_paused &&
+        !_intro &&
+        !_clashing &&
+        _result == null &&
+        !_match.isOver &&
+        !_match.isMoving;
+    if (!running) return;
+    setState(() => _timeLeft = math.max(0, _timeLeft - 0.1));
+    if (_timeLeft <= 0) {
+      Sound.play('error');
+      _match.timeUp();
+    } else if (_timeLeft <= 5 && (_timeLeft * 10).round() % 10 == 0) {
+      Sound.play('countdown', 0.6);
+    }
+  }
 
   /// 절명기 연출 중이면 그 이름(설계서 §4: 보스의 마지막 돌 장외).
   String? _finisher;
@@ -159,6 +187,10 @@ class _GameScreenState extends State<GameScreen> {
       Sound.music(widget.config.arena);
     }
     _newMatch();
+    if (widget.timeLimit case final sec?) {
+      _clock = Timer.periodic(const Duration(milliseconds: 100), _tickClock);
+      _timeLeft = sec.toDouble();
+    }
     _intro = _showIntro;
     if (_intro) {
       Sound.play('go');
@@ -251,6 +283,7 @@ class _GameScreenState extends State<GameScreen> {
         ..removeListener(_onMatch)
         ..dispose();
       _newMatch();
+      _timeLeft = (widget.timeLimit ?? 0).toDouble();
     });
   }
 
@@ -417,9 +450,13 @@ class _GameScreenState extends State<GameScreen> {
       _record(Deed.play);
       if (won && widget.config.mode == MatchMode.vsAi) _record(Deed.win);
     }
+    final limit = widget.timeLimit;
     final stars = widget.config.mode == MatchMode.twoPlayer
         ? 0
-        : starsFor(won: won, myLeft: _match.alive(0), myStart: _myStart);
+        : (limit != null
+              // 트릭샷: 남은 시간으로 별.
+              ? (won ? trickStars(_timeLeft / limit) : 0)
+              : starsFor(won: won, myLeft: _match.alive(0), myStart: _myStart));
     GameScreen.lastStars = stars;
     if (widget.stageId != null) recordStars(p, widget.stageId!, stars);
     unawaited(_store.save());
@@ -431,7 +468,7 @@ class _GameScreenState extends State<GameScreen> {
       if (mounted) _restart();
       return;
     }
-    final String title;
+    String title;
     if (_match.isDraw) {
       title = '비김';
     } else if (widget.config.mode == MatchMode.twoPlayer) {
@@ -443,6 +480,14 @@ class _GameScreenState extends State<GameScreen> {
     } else {
       title = won ? '승리!' : '패배';
     }
+    // 규칙 판은 어떻게 끝났는지 한 줄 덧붙인다.
+    final why = switch (_match.rule) {
+      MatchRule.general when !_match.isDraw => '장수가 떨어졌다',
+      MatchRule.score => '${_match.scores[0]} : ${_match.scores[1]}',
+      MatchRule.shots => '남은 돌 ${_match.alive(0)} : ${_match.alive(1)}',
+      _ => null,
+    };
+    if (why != null) title = '$title\n$why';
     Sound.play(won ? 'jingle_win' : 'jingle_lose');
     setState(() => _result = _Result(title, won, stars, _match.bonusCoins));
   }
@@ -458,6 +503,7 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void dispose() {
     _quipTimer?.cancel();
+    _clock?.cancel();
     _myStrike.dispose();
     _foeStrike.dispose();
     Sound.slide(0);
@@ -595,6 +641,32 @@ class _GameScreenState extends State<GameScreen> {
                       ],
                     ),
                   ),
+                  if (widget.timeLimit != null)
+                    Padding(
+                      key: const Key('time-left'),
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.timer_outlined,
+                            size: 22,
+                            color: _timeLeft <= 5
+                                ? const Color(0xFFFF6B5B)
+                                : Palette.gold,
+                          ),
+                          const SizedBox(width: 4),
+                          OutlinedText(
+                            _timeLeft.ceil().toString(),
+                            size: 24,
+                            title: true,
+                            color: _timeLeft <= 5
+                                ? const Color(0xFFFF6B5B)
+                                : Palette.gold,
+                          ),
+                        ],
+                      ),
+                    ),
                   if (widget.title != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
@@ -653,6 +725,7 @@ class _GameScreenState extends State<GameScreen> {
                         const SizedBox(height: 2),
                         Text(
                           widget.info?.call() ??
+                              _match.ruleStatus ??
                               '${widget.config.arena.chapter} · ${widget.config.arena.label}',
                           style: t.bodySmall,
                           textAlign: TextAlign.center,
@@ -1319,7 +1392,7 @@ class _ResultOverlayState extends State<ResultOverlay>
                   Transform.scale(
                     scale: 0.4 + 0.6 * pop,
                     child: OutlinedText(
-                      widget.title,
+                      widget.title.split('\n').first,
                       size: 54,
                       title: true,
                       color: widget.won
@@ -1327,6 +1400,9 @@ class _ResultOverlayState extends State<ResultOverlay>
                           : const Color(0xFFB0B8C8),
                     ),
                   ),
+                  // 규칙 판은 어떻게 끝났는지 한 줄(점수·남은 돌·장수).
+                  if (widget.title.contains('\n'))
+                    OutlinedText(widget.title.split('\n').last, size: 22),
                   const SizedBox(height: 8),
                   if (widget.stars > 0 || widget.won)
                     Row(

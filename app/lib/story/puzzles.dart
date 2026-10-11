@@ -1,3 +1,5 @@
+import 'package:alkkagi_physics/alkkagi_physics.dart';
+
 import '../game/arena.dart';
 import '../game/match.dart';
 
@@ -13,6 +15,10 @@ class Puzzle {
     required this.shots,
     required this.layout,
     this.reward = 20,
+    this.arena = puzzleArena,
+    this.features = const [],
+    this.civilians = const [],
+    this.seconds,
   });
   final int id;
   final String title;
@@ -24,7 +30,39 @@ class Puzzle {
 
   /// 처음 풀면 수련 포인트.
   final int reward;
+
+  /// 판(바닥 미끄러움·판 모양).
+  final Arena arena;
+
+  /// 판 위 지물(조약돌·나뭇가지·청죽·경종·지뢰석).
+  final List<Feature> features;
+
+  /// 백성 돌(짚빛): 하나라도 떨어뜨리면 실패.
+  final List<Placement> civilians;
+
+  /// 시간 제한(초 · 겨누는 동안만 줄어듦). null 이면 없음.
+  final int? seconds;
+
+  /// 이 판의 설정(내 돌 재질·모양·힘은 [base] 에서).
+  MatchConfig config([
+    MatchConfig base = const MatchConfig(mode: MatchMode.practice),
+  ]) => MatchConfig(
+    mode: MatchMode.practice,
+    arena: arena,
+    layout: layout,
+    shotLimit: shots,
+    features: features,
+    civilians: civilians,
+    myMaterial: base.myMaterial,
+    myShape: base.myShape,
+    powerScale: base.powerScale,
+    spinScale: base.spinScale,
+  );
 }
+
+/// 시간 제한 판의 별: 남은 시간 60% 넘게 ★★★ · 30% 넘게 ★★ · 그 밖 ★.
+int trickStars(double timeLeftFraction) =>
+    timeLeftFraction >= 0.6 ? 3 : (timeLeftFraction >= 0.3 ? 2 : 1);
 
 /// 목인항 묘수풀이. 가상 시험(test/puzzle_test.dart)으로 모두 풀 수 있음을 확인했다.
 const puzzles = [

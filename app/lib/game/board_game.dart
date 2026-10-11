@@ -155,6 +155,13 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
         ring: canTouch() && match.canShoot(s),
         selected: identical(s, pick),
       );
+      if (match.isGeneral(s)) {
+        paintGeneralMark(
+          canvas,
+          _toScreen(s.position.x, s.position.y),
+          r * _scale,
+        );
+      }
     }
     for (final s in match.table.stones) {
       if (s.out || !s.airborne) continue;
@@ -169,6 +176,13 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
         s.material,
         shape: s.shape,
       );
+      if (match.isGeneral(s)) {
+        paintGeneralMark(
+          canvas,
+          ground.translate(0, -s.z * _scale),
+          r * _scale * (1 + s.z * 0.08),
+        );
+      }
     }
     paintWeather(
       canvas,

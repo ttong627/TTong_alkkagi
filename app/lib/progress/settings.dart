@@ -33,6 +33,9 @@ class Settings extends ChangeNotifier {
   /// 왼손잡이: 가까이 보기 화면 단추를 오른쪽으로.
   bool leftHanded = false;
 
+  /// 조작 방식: false = 검지로 튕기기(기본), true = 돌을 잡고 당겨 쏘기([PullReader]).
+  bool pull = false;
+
   static const double feelMin = -0.3, feelMax = 0.3;
 
   /// 지금 손맛 보정이 들어간 쳐 내기 설정.
@@ -53,6 +56,7 @@ class Settings extends ChangeNotifier {
     'feel': feel,
     'hitArea': hitArea,
     'leftHanded': leftHanded,
+    'pull': pull,
   };
 
   void apply(Map<String, Object?> j) {
@@ -63,6 +67,7 @@ class Settings extends ChangeNotifier {
     feel = d('feel', 0).clamp(feelMin, feelMax);
     hitArea = j['hitArea'] as bool? ?? true;
     leftHanded = j['leftHanded'] as bool? ?? false;
+    pull = j['pull'] as bool? ?? false;
   }
 
   static Future<void> load() async {
