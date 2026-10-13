@@ -148,7 +148,9 @@ void main() {
       final s = campaign.firstWhere((s) => s.id == 'c6');
       final c = Campaign.configFor(p, s);
       expect(c.martial, Technique.stomp);
-      expect(c.opponentMaterial, StoneMaterial.hyeoncheol);
+      // 고수의 돌은 판 표(현철)를 보통 난이도 표가 청옥으로 누그러뜨린다(2026-10-14 · 설계서 §16.21).
+      expect(s.material, StoneMaterial.hyeoncheol);
+      expect(c.opponentMaterial, StoneMaterial.cheongok);
       expect(c.aiStyle, AiStyle.master);
       // 시작 내공은 판 표(3)를 보통 난이도 표가 2로 누그러뜨린다(설계서 §16.16).
       expect(c.opponentStartQi, Campaign.tune(s).bossQi ?? s.bossQi);
