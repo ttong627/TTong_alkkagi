@@ -208,8 +208,8 @@ AiShot _plan(_Request r) {
   if (style == AiStyle.assassin && targets.length > 2) {
     targets.sort(
       (a, b) => arena.boundary
-          .edgeDistance(a.x, a.y)
-          .compareTo(arena.boundary.edgeDistance(b.x, b.y)),
+          .edgeDistance(a.x, a.y, arena.half)
+          .compareTo(arena.boundary.edgeDistance(b.x, b.y, arena.half)),
     );
     targets.removeRange(2, targets.length);
   }
@@ -348,6 +348,7 @@ double scoreShot(
     floorFactor: arena.floorFactor,
     boundary: arena.boundary,
     weather: weather,
+    half: arena.half,
   );
   for (final f in features) {
     t.addFeature(f);
@@ -391,7 +392,9 @@ double scoreShot(
   }
   final me = placed[shooter]!;
   if (!me.out) {
-    score += arena.boundary.edgeDistance(me.position.x, me.position.y) * 0.1;
+    score +=
+        arena.boundary.edgeDistance(me.position.x, me.position.y, arena.half) *
+        0.1;
   }
   t.dispose();
   return score;

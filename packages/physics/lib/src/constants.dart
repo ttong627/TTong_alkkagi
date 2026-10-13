@@ -60,4 +60,11 @@ abstract final class PhysicsConstants {
 
   /// 돌 바닥이 이 높이(cm)보다 높이 떠 있으면 다른 돌 위를 넘어간다(부딪히지 않는다).
   static const double clearHeight = 0.6;
+
+  /// 쏜 돌이 처음 부딪힌 순간 남는 빠르기 비율(맞은 돌이 받는 힘은 그대로).
+  ///
+  /// 2026-10-14 형 「반탄력이 너무 커서 내 공격에 내 돌이 죽고 있어」: 반발(청옥 0.85)로 쏜 돌이 옆·뒤로
+  /// 튕겨 판 밖으로 나갔다(비껴 맞힐 때 · 무거운 돌을 맞힐 때). 회전으로 더 나가는 몫은 따로 더한다.
+  /// `Table.settle` 이 켜진 게임 판에서만. [가정 — 실기기로 맞춘다]
+  static const double shooterRecoilKeep = 0.45;
 }

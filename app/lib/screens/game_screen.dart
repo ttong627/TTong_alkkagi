@@ -401,7 +401,7 @@ class _GameScreenState extends State<GameScreen> {
   Alignment get _zoomFrom {
     final s = _selected;
     if (s == null) return Alignment.center;
-    const h = phys.PhysicsConstants.halfBoard;
+    final h = _match.table.half;
     return Alignment(s.position.x / h * 0.85, s.position.y / h * 0.6);
   }
 

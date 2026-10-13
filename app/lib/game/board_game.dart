@@ -78,7 +78,8 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
-    const span = phys.PhysicsConstants.board + margin * 2;
+    // 경기장마다 판 크기가 다르다(2026-10-14) — 판 전체가 보이게.
+    final span = match.table.half * 2 + margin * 2;
     _scale = math.min(size.x, size.y) / span;
     _origin = Offset(size.x / 2, size.y / 2);
   }
@@ -156,18 +157,24 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
     final shake = fx.shakeOffset();
     canvas.translate(shake.dx, shake.dy);
     canvas.transform(_cam.storage);
-    paintArena(canvas, arena, _toScreen, _scale);
+    paintArena(canvas, arena, _toScreen, _scale, h: match.table.half);
     if (match.fireFloor) {
       // 6장 불꽃 바닥: 붉게.
       canvas.drawRect(
-        Rect.fromPoints(_toScreen(-25, -25), _toScreen(25, 25)),
+        Rect.fromPoints(
+          _toScreen(-match.table.half - 4, -match.table.half - 4),
+          _toScreen(match.table.half + 4, match.table.half + 4),
+        ),
         Paint()..color = const Color(0x33FF5A1F),
       );
     }
     if (match.config.demonWorld) {
       // 환생 세계: 같은 판이 어두운 마교 세계로(설계서 §10.2).
       canvas.drawRect(
-        Rect.fromPoints(_toScreen(-25, -25), _toScreen(25, 25)),
+        Rect.fromPoints(
+          _toScreen(-match.table.half - 4, -match.table.half - 4),
+          _toScreen(match.table.half + 4, match.table.half + 4),
+        ),
         Paint()..color = const Color(0x664A1460),
       );
     }

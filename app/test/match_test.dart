@@ -67,8 +67,13 @@ void main() {
       final m = Match(MatchConfig(mode: MatchMode.vsAi, arena: arena));
       expect(m.table.boundary, arena.boundary);
       expect(m.table.floorFactor, arena.floorFactor);
+      expect(m.table.half, arena.half, reason: '경기장마다 판 크기');
       for (final s in m.table.stones) {
-        final edge = arena.boundary.edgeDistance(s.position.x, s.position.y);
+        final edge = arena.boundary.edgeDistance(
+          s.position.x,
+          s.position.y,
+          arena.half,
+        );
         expect(
           edge,
           greaterThan(2 * PhysicsConstants.stoneRadius),
@@ -77,6 +82,21 @@ void main() {
       }
       m.dispose();
     }
+  });
+
+  // 2026-10-14 형 「경기장 크기를 다양하게 · 돌의 간격도 조금 많이 떨어뜨려줘」.
+  test('판 크기는 작은 판·보통 판·큰 판 셋 다 있고, 돌 간격은 예전(3.4)보다 넓다', () {
+    expect(Arena.values.map((a) => a.sizeLabel).toSet(), {
+      '작은 판',
+      '보통 판',
+      '큰 판',
+    });
+    for (final arena in Arena.values) {
+      final (_, gap) = lineUp(arena.boundary, arena.half);
+      expect(gap, greaterThan(3.4 * 1.15), reason: arena.label);
+    }
+    final (_, plain) = lineUp(Boundary.square, PhysicsConstants.halfBoard);
+    expect(plain, 4.4);
   });
 
   test('AI 점수는 대전장 판 모양으로 매긴다(둥근 판 모서리 = 장외)', () {

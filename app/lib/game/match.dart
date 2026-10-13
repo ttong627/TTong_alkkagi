@@ -347,11 +347,24 @@ class MatchConfig {
   final Arena arena;
 }
 
-/// 처음 줄 세울 때 돌 사이 간격(cm). 둥근 판에서도 모서리 돌이 안쪽에 오게 잡았다.
-const double startGap = 3.4;
+/// 처음 줄 세울 때 돌 사이 간격(cm) — 판이 허락하는 만큼([lineUp]).
+///
+/// 2026-10-14 형 「돌의 간격도 조금 많이 떨어뜨려줘」: 예전 3.4 → 4.4(약 30% 넓게).
+const double startGap = 4.4;
 
-/// 처음 줄의 판 중심에서 떨어진 거리(cm).
+/// 처음 줄의 판 중심에서 떨어진 거리(cm) — 보통 판(21) 기준. 판 크기에 비례한다([lineUp]).
 const double startRow = 12;
+
+/// 판 크기에 맞춘 처음 줄: (줄 거리, 돌 간격). 네모 판은 끝 돌이 가장자리에서 2.6 안쪽,
+/// 둥근 판은 모서리 돌이 가장자리에서 3 안쪽에 오도록 간격을 줄인다.
+(double row, double gap) lineUp(Boundary boundary, double half) {
+  final row = startRow * half / PhysicsConstants.halfBoard;
+  final reach = (stonesPerTeam - 1) / 2;
+  final maxX = boundary == Boundary.square
+      ? half - 2.6
+      : math.sqrt(math.max(0, (half - 3) * (half - 3) - row * row));
+  return (row, math.min(startGap, maxX / reach));
+}
 
 /// 한 편 돌 수.
 const int stonesPerTeam = 8;
@@ -370,6 +383,10 @@ class Match extends ChangeNotifier {
         // 무게중심(둥근 돌이 맞으면 덜 구름 · 2026-10-14)은 대전에만. 묘수풀이·트릭샷은 정해 둔 풀이가
         // 예전 물리로 찾은 것이라 그대로 둔다.
         settle: config.layout == null,
+        // 판 크기도 대전에만(묘수풀이·트릭샷 배치는 보통 판 21 로 짰다).
+        half: config.layout == null
+            ? config.arena.half
+            : PhysicsConstants.halfBoard,
       ) {
     for (final f in config.features) {
       table.addFeature(f);
@@ -400,21 +417,22 @@ class Match extends ChangeNotifier {
       table.addStone(0, 0, team: 1, shape: StoneShape.sphere);
       return;
     }
+    final (row, gap) = lineUp(config.arena.boundary, table.half);
     for (var i = 0; i < stonesPerTeam; i++) {
-      final x = (i - (stonesPerTeam - 1) / 2) * startGap;
+      final x = (i - (stonesPerTeam - 1) / 2) * gap;
       table.addStone(
         x,
-        startRow,
+        row,
         material: config.myMaterial,
         shape: config.myShape,
         team: 0,
       );
     }
     for (var i = 0; i < stonesPerTeam; i++) {
-      final x = (i - (stonesPerTeam - 1) / 2) * startGap;
+      final x = (i - (stonesPerTeam - 1) / 2) * gap;
       table.addStone(
         x,
-        -startRow,
+        -row,
         material: config.opponentMaterial,
         shape: config.opponentShape,
         team: 1,

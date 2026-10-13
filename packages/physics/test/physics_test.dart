@@ -655,6 +655,33 @@ void main() {
       t.dispose();
     });
 
+    // 2026-10-14 형 「반탄력이 너무 커서 내 공격에 내 돌이 죽고 있어」.
+    test('반탄력: 비껴 맞혀도 쏜 돌이 멀리 튕겨 나가지 않는다', () {
+      (double, double) run({required bool settle}) {
+        final t = Table(settle: settle);
+        final me = t.addStone(1.6, 10, shape: StoneShape.flat);
+        final tg = t.addStone(0, 0, shape: StoneShape.flat);
+        t.shoot(me, -math.pi / 2, 80, 0);
+        Vector2? at;
+        var guard = 0;
+        while (t.status == TurnStatus.moving && guard++ < 1200) {
+          t.step();
+          if (at == null && t.impacts.isNotEmpty) at = me.position.clone();
+        }
+        final shooterAfter = me.out
+            ? double.infinity
+            : (me.position - at!).length;
+        final target = tg.out ? double.infinity : tg.position.length;
+        t.dispose();
+        return (shooterAfter, target);
+      }
+
+      final (meNew, tgNew) = run(settle: true);
+      final (meOld, _) = run(settle: false);
+      expect(meNew, lessThan(meOld * 0.5), reason: '쏜 돌 튕김 $meNew (예전 $meOld)');
+      expect(tgNew, greaterThan(3), reason: '맞은 돌은 그래도 밀린다');
+    });
+
     test('바닥 배수를 바꾸면 돌 감속이 바로 바뀐다(6장 얼음·불꽃)', () {
       final t = Table();
       final s = t.addStone(0, 0);

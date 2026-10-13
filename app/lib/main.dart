@@ -51,7 +51,7 @@ class AlkkagiApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '탄지무림 알까기',
+      title: '알까기 · 탄지무림',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
       navigatorObservers: [BackSoundObserver()],
