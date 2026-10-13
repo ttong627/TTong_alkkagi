@@ -197,6 +197,8 @@ void main() {
     await _shot(t, const HomeScreen(), 'lobby');
     await _shot(t, const DailyScreen(tab: 0), 'daily_attend');
     await _shot(t, const DailyScreen(tab: 1), 'daily_missions');
+    await _shot(t, const DailyScreen(tab: 2), 'daily_quests');
+    await _shot(t, const DailyScreen(tab: 4), 'daily_bag');
     await _shot(t, const HeroPickScreen(), 'hero_pick');
     await _shot(t, const TutorialScreen(), 'tutorial');
     await _shot(

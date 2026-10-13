@@ -7,6 +7,7 @@ import '../audio/sound.dart';
 import '../e2e.dart';
 import '../progress/daily.dart';
 import '../progress/profile.dart';
+import '../progress/quests.dart';
 import '../progress/store.dart';
 import '../story/campaign.dart';
 import '../story/chapters.dart';
@@ -417,8 +418,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   icon: 'mission',
                                   label: '임무',
                                   size: 46,
-                                  badge: Missions.hasClaimable(p, day),
-                                  onTap: () => _open(const DailyScreen(tab: 1)),
+                                  // 일일 임무 + 주간·월간·연간 퀘스트(2026-10-14).
+                                  badge:
+                                      Missions.hasClaimable(p, day) ||
+                                      Quests.hasClaimable(p, day),
+                                  onTap: () => _open(
+                                    DailyScreen(
+                                      tab: Missions.hasClaimable(p, day)
+                                          ? 1
+                                          : (Quests.hasClaimable(p, day)
+                                                ? 2
+                                                : 1),
+                                    ),
+                                  ),
                                 ),
                                 const SizedBox(height: 8),
                                 IconTile(
@@ -426,7 +438,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   label: '업적',
                                   size: 46,
                                   badge: Achievements.hasClaimable(p),
-                                  onTap: () => _open(const DailyScreen(tab: 2)),
+                                  onTap: () => _open(const DailyScreen(tab: 3)),
+                                ),
+                                const SizedBox(height: 8),
+                                IconTile(
+                                  key: const Key('menu-bag'),
+                                  icon: 'shop',
+                                  label: '가방',
+                                  size: 46,
+                                  badge: Item.values.any(
+                                    (i) => Bag.canCraft(p, i),
+                                  ),
+                                  onTap: () => _open(const DailyScreen(tab: 4)),
                                 ),
                               ],
                             ),

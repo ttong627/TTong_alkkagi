@@ -315,6 +315,14 @@ class Profile {
   /// 받은 업적.
   final achieved = <String>{};
 
+  /// 가방: 재료·일회용 아이템 이름 → 개수(quests.dart · 2026-10-14).
+  final bag = <String, int>{};
+
+  /// 주간·월간·연간 퀘스트: 기간 열쇠 · 센 수('week:win' 등) · 받은 것('week:0' 등).
+  final questKeys = <String, String>{};
+  final questCounts = <String, int>{};
+  final questClaimed = <String>{};
+
   /// 판마다 얻은 별(가장 좋았던 것).
   final stars = <String, int>{};
 
@@ -570,6 +578,10 @@ class Profile {
     'missionClaimed': missionClaimed.toList(),
     'lifetime': {for (final e in lifetime.entries) e.key.name: e.value},
     'achieved': achieved.toList(),
+    'bag': bag,
+    'questKeys': questKeys,
+    'questCounts': questCounts,
+    'questClaimed': questClaimed.toList(),
     'stars': stars,
     'seenHints': seenHints.toList(),
     'seclusionDay': seclusionDay,
@@ -670,6 +682,18 @@ class Profile {
     }
     p.missionClaimed.addAll((j['missionClaimed'] as List? ?? []).cast<int>());
     p.achieved.addAll((j['achieved'] as List? ?? []).cast<String>());
+    for (final e in (j['bag'] as Map? ?? {}).entries) {
+      if (e.value is int && (e.value as int) > 0) {
+        p.bag['${e.key}'] = e.value as int;
+      }
+    }
+    for (final e in (j['questKeys'] as Map? ?? {}).entries) {
+      if (e.value is String) p.questKeys['${e.key}'] = e.value as String;
+    }
+    for (final e in (j['questCounts'] as Map? ?? {}).entries) {
+      if (e.value is int) p.questCounts['${e.key}'] = e.value as int;
+    }
+    p.questClaimed.addAll((j['questClaimed'] as List? ?? []).cast<String>());
     final st2 = j['stars'] as Map? ?? {};
     for (final e in st2.entries) {
       if (e.value is int) {
@@ -713,6 +737,8 @@ class Profile {
       if (missionCounts[d] case final v?) missionCounts[d] = i(v);
       if (lifetime[d] case final v?) lifetime[d] = i(v);
     }
+    bag.updateAll((_, v) => i(v));
+    questCounts.updateAll((_, v) => i(v));
   }
 
   String encode() => jsonEncode(toJson());

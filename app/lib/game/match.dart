@@ -585,6 +585,42 @@ class Match extends ChangeNotifier {
   /// [team] 의 내공 칸 수(0~[maxQi]).
   int qi(int team) => _qi[team];
 
+  /// 내공 단약(일회용 아이템 · 2026-10-14): [team] 내공 +[n] 칸.
+  void addQi(int team, int n) {
+    _qi[team] = math.min(maxQi, _qi[team] + n);
+    notifyListeners();
+  }
+
+  /// 철벽 부적(일회용 아이템 · 2026-10-14): [team] 돌의 감속을 그 편이 다시 칠 때까지 × 이만큼.
+  static const double guardScale = 2.5;
+  int? _guardTeam;
+
+  /// 철벽이 걸린 편(없으면 null).
+  int? get guardTeam => _guardTeam;
+
+  /// [team] 돌에 철벽을 건다(이미 걸려 있으면 그대로).
+  void guard(int team) {
+    if (_guardTeam != null) return;
+    _guardTeam = team;
+    for (final s in table.stones) {
+      if (s.team == team && !s.out) {
+        table.setDampingScale(s, s.dampingScale * guardScale);
+      }
+    }
+    notifyListeners();
+  }
+
+  void _unguard() {
+    final team = _guardTeam;
+    if (team == null) return;
+    for (final s in table.stones) {
+      if (s.team == team) {
+        table.setDampingScale(s, s.dampingScale / guardScale);
+      }
+    }
+    _guardTeam = null;
+  }
+
   /// [team] 이 이 방식으로 칠 수 있나(내공이 모자라면 못 친다).
   bool canUse(int team, StrikeMode mode) => _qi[team] >= mode.cost;
 
@@ -604,6 +640,8 @@ class Match extends ChangeNotifier {
     if (!canShoot(s)) return;
     touchedThisTurn.clear();
     final team = s.team;
+    // 철벽은 그 편이 다시 칠 때 풀린다(상대 한 수 동안만).
+    if (_guardTeam == team) _unguard();
     final m = canUse(team, mode) ? mode : StrikeMode.plain;
     _qi[team] -= m.cost;
     final mine = team == 0;

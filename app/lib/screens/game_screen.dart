@@ -15,6 +15,7 @@ import '../game/fx_colors.dart';
 import '../game/match.dart';
 import '../progress/daily.dart';
 import '../progress/profile.dart';
+import '../progress/quests.dart';
 import '../progress/settings.dart';
 import '../progress/store.dart';
 import '../story/puzzles.dart' show trickStars;
@@ -162,6 +163,85 @@ class _GameScreenState extends State<GameScreen> {
   void _say(int first) {
     if (widget.quips.length < first + 2) return;
     _show(widget.quips[first + _rand.nextInt(2)], _foeId);
+  }
+
+  /// 회심 부적을 썼다 — 다음 내 한 수는 반드시 회심.
+  bool _critCharm = false;
+
+  /// 일회용 아이템을 쓸 수 있는 판(혼자 하기 계열 · 묘수풀이·목인항·입문 빼고 · 2026-10-14).
+  bool get _itemsAllowed =>
+      widget.config.mode == MatchMode.vsAi &&
+      widget.config.layout == null &&
+      !widget.config.training &&
+      !widget.coach;
+
+  /// 지금 쓸 수 있나(내 차례 · 돌이 멈춤 · 판이 안 끝남).
+  bool get _myCalmTurn =>
+      _match.turn == 0 &&
+      !_match.isMoving &&
+      !_aiTurn &&
+      !_aiThinking &&
+      _result == null;
+
+  /// 가방 창: 아이템 셋과 남은 수 · 「쓰기」.
+  Future<void> _openItems() async {
+    Sound.play('ui_open');
+    final used = await showModalBottomSheet<Item>(
+      context: context,
+      backgroundColor: Palette.panel,
+      builder: (c) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const OutlinedText('일회용 아이템', size: 24, title: true),
+              const SizedBox(height: 8),
+              for (final it in Item.values)
+                _itemRow(c, it, Bag.count(_store.profile, it.key)),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (used == null || !mounted || !_myCalmTurn) return;
+    if (!Bag.take(_store.profile, used.key)) return;
+    unawaited(_store.save());
+    switch (used) {
+      case Item.critCharm:
+        _critCharm = true;
+        _show('회심 부적 — 다음 한 수는 반드시 회심!', _myId);
+      case Item.guardCharm:
+        _match.guard(0);
+        _show('철벽 부적 — 상대가 칠 동안 내 돌이 버틴다', _myId);
+      case Item.qiPill:
+        _match.addQi(0, 2);
+        _show('내공 단약 — 내공 2칸!', _myId);
+    }
+    Sound.play('unlock');
+    Buzz.heavy();
+    setState(() {});
+  }
+
+  Widget _itemRow(BuildContext c, Item it, int n) {
+    final usable =
+        n > 0 &&
+        _myCalmTurn &&
+        switch (it) {
+          Item.critCharm => !_critCharm,
+          Item.guardCharm => _match.guardTeam == null,
+          Item.qiPill => _match.qi(0) < maxQi,
+        };
+    return ListTile(
+      key: Key('item-${it.name}'),
+      title: Text('${it.label}  ×$n'),
+      subtitle: Text(it.help),
+      trailing: FilledButton(
+        onPressed: usable ? () => Navigator.pop(c, it) : null,
+        child: const Text('쓰기'),
+      ),
+    );
   }
 
   void _show(String line, String? by, [int ms = 2600]) {
@@ -391,12 +471,15 @@ class _GameScreenState extends State<GameScreen> {
       // 정각: 회심 가운데 폭이 넓다.
       critical:
           shot.critical ||
+          _critCharm ||
           (widget.config.critWidth > CriticalRule.maxOffset &&
               shot.offset <= widget.config.critWidth &&
               shot.power >= CriticalRule.minPower &&
               shot.power <= CriticalRule.maxPower),
       curl: shot.curl,
     );
+    // 회심 부적은 한 번 친 수에 쓰인다(내공 타격이면 회심이 없으니 그대로 남긴다).
+    if (_match.lastMode == StrikeMode.plain) _critCharm = false;
     if (_match.lastCritical) {
       _record(Deed.critical);
       _say(0);
@@ -632,6 +715,15 @@ class _GameScreenState extends State<GameScreen> {
                             icon: Icons.pause_rounded,
                             onTap: () => _setPaused(true),
                           ),
+                        if (_itemsAllowed) ...[
+                          const SizedBox(width: 6),
+                          _RoundIcon(
+                            key: const Key('items'),
+                            icon: Icons.backpack_rounded,
+                            label: '아이템',
+                            onTap: _openItems,
+                          ),
+                        ],
                         Expanded(
                           child: _Fighter(
                             id: _foeId,
@@ -875,14 +967,20 @@ class _Result {
 
 /// 둥근 아이콘 단추(일시정지 등).
 class _RoundIcon extends StatelessWidget {
-  const _RoundIcon({super.key, required this.icon, required this.onTap});
+  const _RoundIcon({
+    super.key,
+    required this.icon,
+    required this.onTap,
+    this.label = '잠시 멈춤',
+  });
   final IconData icon;
   final VoidCallback onTap;
+  final String label;
 
   @override
   Widget build(BuildContext context) => Semantics(
     button: true,
-    label: '잠시 멈춤',
+    label: label,
     child: GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
