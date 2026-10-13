@@ -1,3 +1,5 @@
+import 'package:alkkagi_physics/alkkagi_physics.dart';
+
 import 'daily.dart';
 import 'profile.dart';
 
@@ -81,6 +83,10 @@ abstract final class Bag {
     for (final i in Item.values) {
       if (i.key == key) return i.label;
     }
+    if (key.startsWith('frag:')) {
+      final m = StoneMaterial.values.byName(key.substring(5));
+      return '${m.label} 조각';
+    }
     return key;
   }
 }
@@ -108,13 +114,16 @@ enum QuestPeriod {
   }
 }
 
-/// 기간 퀘스트 셋(기간마다 같은 셋 — 길게 보는 목표).
+/// 기간 퀘스트 셋(기간마다 같은 셋 — 길게 보는 목표). 2026-10-14: 돌 조각도 준다(형 「이벤트에서 조각」).
 const questPool = {
   QuestPeriod.week: [
     Mission(
       Deed.win,
       10,
-      Reward(coins: 300, bag: {'mat:ore': 5, 'mat:herb': 3}),
+      Reward(
+        coins: 300,
+        bag: {'mat:ore': 5, 'mat:herb': 3, 'frag:warmJade': 2},
+      ),
     ),
     Mission(Deed.knock, 60, Reward(bag: {'mat:jade': 5, 'item:critCharm': 1})),
     Mission(Deed.critical, 12, Reward(bag: {'mat:silk': 2, 'item:qiPill': 1})),
@@ -123,12 +132,15 @@ const questPool = {
     Mission(
       Deed.win,
       40,
-      Reward(coins: 1000, bag: {'mat:scale': 1, 'item:guardCharm': 2}),
+      Reward(
+        coins: 1000,
+        bag: {'mat:scale': 1, 'item:guardCharm': 2, 'frag:dragonScale': 4},
+      ),
     ),
     Mission(
       Deed.knock,
       250,
-      Reward(bag: {'mat:scale': 2, 'item:critCharm': 2}),
+      Reward(bag: {'mat:scale': 2, 'item:critCharm': 2, 'frag:warmJade': 5}),
     ),
     Mission(
       Deed.train,
@@ -150,7 +162,11 @@ const questPool = {
         },
       ),
     ),
-    Mission(Deed.knock, 2500, Reward(silver: 30, bag: {'mat:scale': 10})),
+    Mission(
+      Deed.knock,
+      2500,
+      Reward(silver: 30, bag: {'mat:scale': 10, 'frag:taegeuk': 15}),
+    ),
     Mission(Deed.train, 6000, Reward(tokens: 20, bag: {'mat:silk': 30})),
   ],
 };

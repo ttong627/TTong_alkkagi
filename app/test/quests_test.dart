@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:alkkagi/game/match.dart';
 import 'package:alkkagi/progress/daily.dart';
+import 'package:alkkagi/progress/encounters.dart';
 import 'package:alkkagi/progress/profile.dart';
 import 'package:alkkagi/progress/quests.dart';
 import 'package:alkkagi_physics/alkkagi_physics.dart';
@@ -59,6 +60,21 @@ void main() {
     final knockM = questPool[QuestPeriod.month]![1];
     expect(Quests.progress(p, QuestPeriod.week, knockW, '20261020'), 5);
     expect(Quests.progress(p, QuestPeriod.month, knockM, '20261020'), 35);
+  });
+
+  // 2026-10-14 형 「기연이나 이벤트에서 조각을 모아서 완성하는 돌」.
+  test('판마다 돌 조각 12% · 천년온옥이 가장 흔하고 태극석이 가장 드물다', () {
+    final p = Profile();
+    final r = math.Random(3);
+    var got = 0;
+    for (var i = 0; i < 20000; i++) {
+      if (rollShard(p, r) != null) got++;
+    }
+    expect(got / 20000, closeTo(shardChance, 0.01));
+    final warm = p.bag[shardKey(StoneMaterial.warmJade)]!;
+    final taeg = p.bag[shardKey(StoneMaterial.taegeuk)]!;
+    expect(warm, greaterThan(taeg * 3));
+    expect(Bag.label(shardKey(StoneMaterial.dragonScale)), '용린석 조각');
   });
 
   test('일일 임무 보상에도 재료가 들어 있다', () {

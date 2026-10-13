@@ -16,6 +16,12 @@ const materialColors = {
   StoneMaterial.obsidian: Color(0xFF6A4E9A),
   StoneMaterial.granite: Color(0xFF8C8478),
   StoneMaterial.diamond: Color(0xFFCDEFFF),
+  StoneMaterial.jageum: Color(0xFFB07CE0),
+  StoneMaterial.uncheol: Color(0xFF8A4A3A),
+  StoneMaterial.hancheol: Color(0xFF6E9AC8),
+  StoneMaterial.warmJade: Color(0xFFF0D2B0),
+  StoneMaterial.dragonScale: Color(0xFFE8B040),
+  StoneMaterial.taegeuk: Color(0xFFE8E8F0),
 };
 
 /// 편 색: 0 = 흰 돌, 1 = 검은 돌.
@@ -73,6 +79,56 @@ Color stoneShine(int team) =>
   (StoneMaterial.diamond, _) => (
     const Color(0xFF7FA6C8),
     const Color(0xFF1E3550),
+  ),
+  // 2026-10-14 등급 돌: 자금석(보랏빛 금) · 운철(검붉은 쇠) · 한철(푸른 쇠) ·
+  // 천년온옥(따뜻한 흰 옥) · 용린석(금빛 비늘) · 태극석(흑백).
+  (StoneMaterial.jageum, 0) => (
+    const Color(0xFFF2E2FF),
+    const Color(0xFFA77BD0),
+  ),
+  (StoneMaterial.jageum, _) => (
+    const Color(0xFF5A3A7A),
+    const Color(0xFF1C0F2A),
+  ),
+  (StoneMaterial.uncheol, 0) => (
+    const Color(0xFFEDE0DA),
+    const Color(0xFF9A7A6C),
+  ),
+  (StoneMaterial.uncheol, _) => (
+    const Color(0xFF5A3A32),
+    const Color(0xFF1E100C),
+  ),
+  (StoneMaterial.hancheol, 0) => (
+    const Color(0xFFE6F0FA),
+    const Color(0xFF7F9AB6),
+  ),
+  (StoneMaterial.hancheol, _) => (
+    const Color(0xFF3E5670),
+    const Color(0xFF0E1A28),
+  ),
+  (StoneMaterial.warmJade, 0) => (
+    const Color(0xFFFFF6EC),
+    const Color(0xFFE8C9A8),
+  ),
+  (StoneMaterial.warmJade, _) => (
+    const Color(0xFF9A7A5A),
+    const Color(0xFF3A2614),
+  ),
+  (StoneMaterial.dragonScale, 0) => (
+    const Color(0xFFFFF2C8),
+    const Color(0xFFD9A43A),
+  ),
+  (StoneMaterial.dragonScale, _) => (
+    const Color(0xFF8A5E1A),
+    const Color(0xFF2E1C06),
+  ),
+  (StoneMaterial.taegeuk, 0) => (
+    const Color(0xFFFFFFFF),
+    const Color(0xFFB8B8C0),
+  ),
+  (StoneMaterial.taegeuk, _) => (
+    const Color(0xFF3A3A44),
+    const Color(0xFF0A0A0E),
   ),
 };
 
@@ -318,6 +374,81 @@ void _drawStone(Canvas c, StoneMaterial m, StoneShape shape, int team) {
           Paint()..color = rainbow[i % rainbow.length].withValues(alpha: 0.8),
         );
       }
+    case StoneMaterial.jageum ||
+        StoneMaterial.uncheol ||
+        StoneMaterial.hancheol:
+      // 쇠 무리: 깎은 둥근 결 + 금(자금석)·불티(운철)·서리(한철).
+      for (var k = 10; k <= 96; k += 7) {
+        c.drawCircle(
+          Offset.zero,
+          k.toDouble(),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.2
+            ..color = ink.withValues(alpha: 0.2),
+        );
+      }
+      final spark = switch (m) {
+        StoneMaterial.jageum => const Color(0xFFFFD25A),
+        StoneMaterial.uncheol => const Color(0xFFFF7A3A),
+        _ => const Color(0xFFDFF4FF),
+      };
+      for (var i = 0; i < 16; i++) {
+        c.drawCircle(
+          Offset(rand.nextDouble() * 170 - 85, rand.nextDouble() * 170 - 85),
+          1.5 + rand.nextDouble() * 3,
+          Paint()..color = spark.withValues(alpha: 0.75),
+        );
+      }
+    case StoneMaterial.warmJade:
+      // 천년온옥: 가운데서 번지는 따스한 빛.
+      c.drawCircle(
+        const Offset(-20, -20),
+        70,
+        Paint()
+          ..color = const Color(0xFFFFE0C0).withValues(alpha: 0.45)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 26),
+      );
+    case StoneMaterial.dragonScale:
+      // 용린석: 겹친 비늘.
+      for (var row = -2; row <= 2; row++) {
+        for (var col = -3; col <= 3; col++) {
+          final o = Offset(col * 34.0 + (row.isOdd ? 17 : 0), row * 30.0);
+          c.drawArc(
+            Rect.fromCircle(center: o, radius: 20),
+            0,
+            math.pi,
+            false,
+            Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 3
+              ..color = ink.withValues(alpha: 0.45),
+          );
+        }
+      }
+    case StoneMaterial.taegeuk:
+      // 태극석: 음양.
+      const r = 70.0;
+      final dark = Paint()..color = const Color(0xFF15151A);
+      final light = Paint()..color = const Color(0xFFF6F6F8);
+      c.drawArc(
+        Rect.fromCircle(center: Offset.zero, radius: r),
+        -math.pi / 2,
+        math.pi,
+        true,
+        dark,
+      );
+      c.drawArc(
+        Rect.fromCircle(center: Offset.zero, radius: r),
+        math.pi / 2,
+        math.pi,
+        true,
+        light,
+      );
+      c.drawCircle(const Offset(0, -r / 2), r / 2, dark);
+      c.drawCircle(const Offset(0, r / 2), r / 2, light);
+      c.drawCircle(const Offset(0, -r / 2), r / 7, light);
+      c.drawCircle(const Offset(0, r / 2), r / 7, dark);
   }
   c.restore();
 

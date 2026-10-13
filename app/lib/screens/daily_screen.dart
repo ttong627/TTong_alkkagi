@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../audio/sound.dart';
+import '../game/board_paint.dart' show materialColors;
 import '../progress/daily.dart';
 import '../progress/profile.dart';
 import '../progress/quests.dart';
@@ -282,6 +283,31 @@ class _DailyScreenState extends State<DailyScreen>
               label: m.label,
               n: Bag.count(p, m.key),
               color: Color(m.color),
+            ),
+        ],
+      ),
+      const SizedBox(height: 16),
+      // 2026-10-14 형 「기연이나 이벤트에서 조각을 모아서 완성하는 돌」.
+      const OutlinedText(
+        '돌 조각 — 다 모으면 만물상에서 완성',
+        size: 18,
+        title: true,
+        color: Palette.gold,
+        align: TextAlign.start,
+      ),
+      const SizedBox(height: 6),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final e in shardNeeds.entries)
+            _BagChip(
+              key: Key('shard-${e.key.name}'),
+              label:
+                  '${e.key.label} 조각 ${p.bag[shardKey(e.key)] ?? 0}/${e.value}',
+              n: e.key.grade,
+              color: materialColors[e.key]!,
+              unit: '단',
             ),
         ],
       ),
@@ -596,10 +622,14 @@ class _BagChip extends StatelessWidget {
     required this.label,
     required this.n,
     required this.color,
+    this.unit,
   });
   final String label;
   final int n;
   final Color color;
+
+  /// 있으면 「×n」 대신 「· n단」처럼.
+  final String? unit;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -619,7 +649,7 @@ class _BagChip extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         Text(
-          '$label ×$n',
+          unit == null ? '$label ×$n' : '$label · $n$unit',
           style: const TextStyle(fontFamily: titleFont, fontSize: 15),
         ),
       ],

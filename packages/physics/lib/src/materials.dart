@@ -1,32 +1,90 @@
-/// 재질 7종 (설계서 v2 §3.5 · 2026-10-14 형 「돌의 종류도 더 다양하게」로 셋 더함).
+/// 재질 13종 · 등급 1~13단 (설계서 v2 §3.5 · 2026-10-14 형 「돌의 종류도 더 다양하게」·
+/// 「좋은 재질의 돌일수록 반탄력이 작아야 해 … 종류와 단계를 10여 가지 이상」).
+///
+/// [density]·[damping]·[restitution] 은 엔진 측정 재현(planck.js)에 쓰는 처음 값이다. 게임 판(`Table.settle`)은
+/// [grade] 로 반발([gameRestitution])과 맞았을 때 남는 빠르기([hitKeep])를 정한다 — 좋은 돌일수록 덜 튕기고 덜 밀린다.
 enum StoneMaterial {
-  cheongok('청옥', density: 1.0, damping: 1.2, restitution: 0.85),
-  wood('만년기주', density: 0.5, damping: 0.9, restitution: 0.80),
-  hyeoncheol('현철', density: 2.5, damping: 2.0, restitution: 0.75),
-  ice('빙백한옥', density: 1.0, damping: 0.15, restitution: 0.95),
+  cheongok('청옥', grade: 1, density: 1.0, damping: 1.2, restitution: 0.85),
+  wood('만년기주', grade: 2, density: 0.5, damping: 0.9, restitution: 0.80),
+  hyeoncheol('현철', grade: 3, density: 2.5, damping: 2.0, restitution: 0.75),
+  ice('빙백한옥', grade: 6, density: 1.0, damping: 0.15, restitution: 0.95),
 
-  /// 흑요석: 조금 무겁고 반발이 커서 맞힌 돌을 세게 튕겨 낸다. [가정]
-  obsidian('흑요석', density: 1.6, damping: 1.1, restitution: 0.92),
+  /// 흑요석: 조금 무거운 검은 유리. [가정]
+  obsidian('흑요석', grade: 4, density: 1.6, damping: 1.1, restitution: 0.92),
 
   /// 반석(화강암): 무겁고 빨리 멈춘다 — 버티는 돌. [가정]
-  granite('반석', density: 2.2, damping: 2.6, restitution: 0.6),
+  granite('반석', grade: 5, density: 2.2, damping: 2.6, restitution: 0.6),
 
-  /// 금강석: 가볍고 반발이 아주 커 잘 미끄러진다. [가정]
-  diamond('금강석', density: 0.8, damping: 0.6, restitution: 0.97);
+  /// 금강석: 가볍고 잘 미끄러진다. [가정]
+  diamond('금강석', grade: 7, density: 0.8, damping: 0.6, restitution: 0.97),
+
+  /// 자금석: 보랏빛 금 결 — 단단하고 무겁다. [가정]
+  jageum('자금석', grade: 8, density: 1.8, damping: 1.4, restitution: 0.7),
+
+  /// 운철: 하늘에서 떨어진 쇠 — 아주 무겁다. [가정]
+  uncheol('운철', grade: 9, density: 2.8, damping: 1.6, restitution: 0.65),
+
+  /// 한철: 차가운 쇠 — 무거운데 잘 미끄러진다. [가정]
+  hancheol('한철', grade: 10, density: 2.4, damping: 0.8, restitution: 0.6),
+
+  /// 천년온옥: 조각을 모아 완성(기연·퀘스트). 따뜻한 흰 옥. [가정]
+  warmJade(
+    '천년온옥',
+    grade: 11,
+    density: 1.4,
+    damping: 1.2,
+    restitution: 0.55,
+    shard: true,
+  ),
+
+  /// 용린석: 조각을 모아 완성. 맹주의 용비늘 돌(§16.1). [가정]
+  dragonScale(
+    '용린석',
+    grade: 12,
+    density: 2.0,
+    damping: 1.0,
+    restitution: 0.52,
+    shard: true,
+  ),
+
+  /// 태극석: 조각을 모아 완성. 음양이 맞물린 돌 — 가장 높은 단. [가정]
+  taegeuk(
+    '태극석',
+    grade: 13,
+    density: 1.6,
+    damping: 0.9,
+    restitution: 0.5,
+    shard: true,
+  );
 
   const StoneMaterial(
     this.label, {
+    required this.grade,
     required this.density,
     required this.damping,
     required this.restitution,
+    this.shard = false,
   });
 
   final String label;
+
+  /// 등급(1~13단). 높을수록 좋은 돌.
+  final int grade;
   final double density;
 
   /// 감속 값(linear damping). 실제로 쓰는 값은 모양 배수와 감속 하한을 거친다.
   final double damping;
   final double restitution;
+
+  /// 조각을 모아야만 완성하는 돌(만물상에서 팔지 않음).
+  final bool shard;
+
+  /// 게임 판의 반발: 1단 0.86 → 13단 0.50(좋은 돌일수록 덜 튕긴다).
+  double get gameRestitution => 0.86 - 0.03 * (grade - 1);
+
+  /// 게임 판에서 이 돌이 처음 맞는 순간 남는 빠르기 비율: 1단 1 → 13단 0.52(좋은 돌일수록 덜 밀린다).
+  /// 엔진은 두 돌 반발 가운데 큰 값을 쓰므로, 맞은 돌 쪽에서 따로 깎는다.
+  double get hitKeep => 1 - 0.04 * (grade - 1);
 }
 
 /// 모양 3종 (설계서 v2 §3.6).

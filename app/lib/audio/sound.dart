@@ -167,7 +167,13 @@ abstract final class Sound {
   /// 흑요석·금강석 맑은 얼음 · 반석 묵직한 현철.
   static String hitSound(StoneMaterial m) => switch (m) {
     StoneMaterial.obsidian || StoneMaterial.diamond => 'hit_ice',
-    StoneMaterial.granite => 'hit_hyeoncheol',
+    StoneMaterial.granite ||
+    StoneMaterial.jageum ||
+    StoneMaterial.uncheol ||
+    StoneMaterial.hancheol => 'hit_hyeoncheol',
+    StoneMaterial.warmJade ||
+    StoneMaterial.dragonScale ||
+    StoneMaterial.taegeuk => 'hit_cheongok',
     _ => 'hit_${m.name}',
   };
 

@@ -148,21 +148,36 @@ class TrainingGoal {
 }
 
 /// 만물상 (설계서 §6.2A·§16.4) 가격(엽전).
+///
+/// 2026-10-14 형 「다음 돌 구입하는 구입가를 지금 가격의 10배 이상 올려서 쉽게 바꾸지 못하게」: 모두 ×10.
+/// 조각 돌(천년온옥·용린석·태극석)은 팔지 않는다 — [shardNeeds] 만큼 조각을 모아 완성.
 const materialPrices = {
   StoneMaterial.cheongok: 0,
-  StoneMaterial.wood: 300,
-  StoneMaterial.hyeoncheol: 600,
-  StoneMaterial.ice: 900,
-  // 2026-10-14 새 재질 [가정].
-  StoneMaterial.obsidian: 750,
-  StoneMaterial.granite: 800,
-  StoneMaterial.diamond: 1200,
+  StoneMaterial.wood: 3000,
+  StoneMaterial.hyeoncheol: 6000,
+  StoneMaterial.obsidian: 7500,
+  StoneMaterial.granite: 8000,
+  StoneMaterial.ice: 9000,
+  StoneMaterial.diamond: 12000,
+  StoneMaterial.jageum: 18000,
+  StoneMaterial.uncheol: 26000,
+  StoneMaterial.hancheol: 36000,
 };
 const shapePrices = {
   StoneShape.flat: 0,
-  StoneShape.round: 200,
-  StoneShape.sphere: 500,
+  StoneShape.round: 2000,
+  StoneShape.sphere: 5000,
 };
+
+/// 조각 돌을 완성하는 데 드는 조각 수(2026-10-14 형 「기연이나 이벤트에서 조각을 모아서 완성하는 돌」).
+const shardNeeds = {
+  StoneMaterial.warmJade: 20,
+  StoneMaterial.dragonScale: 30,
+  StoneMaterial.taegeuk: 40,
+};
+
+/// 가방에서 조각 돌의 조각 이름.
+String shardKey(StoneMaterial m) => 'frag:${m.name}';
 
 /// 진기(행동력) (설계서 §7.2): 최대 100, 6분에 1, 강호유랑 1칸·투기장 1회 10, 지면 50% 돌려줌.
 abstract final class Stamina {
@@ -508,9 +523,31 @@ class Profile {
 
   // --- 만물상 ---
   bool buyMaterial(StoneMaterial m) {
-    final p = materialPrices[m]!;
-    if (materials.contains(m) || coins < p) return false;
+    final p = materialPrices[m];
+    if (p == null || materials.contains(m) || coins < p) return false;
     coins -= p;
+    materials.add(m);
+    codex.add('재질:${m.name}');
+    return true;
+  }
+
+  /// 조각 돌: 조각이 [shardNeeds] 만큼 모였나.
+  bool canForge(StoneMaterial m) {
+    final need = shardNeeds[m];
+    return need != null &&
+        !materials.contains(m) &&
+        (bag[shardKey(m)] ?? 0) >= need;
+  }
+
+  /// 조각을 모두 써서 조각 돌을 완성한다.
+  bool forgeShardStone(StoneMaterial m) {
+    if (!canForge(m)) return false;
+    final left = bag[shardKey(m)]! - shardNeeds[m]!;
+    if (left > 0) {
+      bag[shardKey(m)] = left;
+    } else {
+      bag.remove(shardKey(m));
+    }
     materials.add(m);
     codex.add('재질:${m.name}');
     return true;

@@ -221,6 +221,8 @@ abstract final class CourseRules {
           ? {
               m.key: 2,
               if (c.chapter >= 4) Mat.scale.key: 1,
+              // 돌 조각(2026-10-14 형 「조각을 모아서 완성하는 돌」).
+              shardKey(StoneMaterial.warmJade): 2,
               (i.isEven ? Item.critCharm : Item.qiPill).key: 1,
             }
           : {m.key: 1},

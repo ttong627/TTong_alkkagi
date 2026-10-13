@@ -155,10 +155,11 @@ void main() {
   });
 
   group('1-06·1-07 재질·모양 값 표(설계서 §3.5·§3.6)', () {
-    test('재질 7종(2026-10-14 흑요석·반석·금강석 더함)', () {
+    test('재질 13종 · 처음 4종 값은 그대로(측정 재현)', () {
+      expect(StoneMaterial.values.length, 13);
       expect(
         [
-          for (final m in StoneMaterial.values)
+          for (final m in StoneMaterial.values.take(4))
             (m.density, m.damping, m.restitution),
         ],
         [
@@ -166,10 +167,56 @@ void main() {
           (0.5, 0.9, 0.80),
           (2.5, 2.0, 0.75),
           (1.0, 0.15, 0.95),
-          (1.6, 1.1, 0.92),
-          (2.2, 2.6, 0.6),
-          (0.8, 0.6, 0.97),
         ],
+      );
+    });
+
+    // 2026-10-14 형 「좋은 재질의 돌일수록 반탄력이 작아야 해 … 종류와 단계를 10여 가지 이상」.
+    test('등급 1~13단이 하나씩 · 등급이 오를수록 반발과 맞았을 때 남는 빠르기가 줄어든다', () {
+      final byGrade = [...StoneMaterial.values]
+        ..sort((a, b) => a.grade - b.grade);
+      expect(
+        [for (final m in byGrade) m.grade],
+        [for (var g = 1; g <= 13; g++) g],
+      );
+      for (var k = 1; k < byGrade.length; k++) {
+        expect(
+          byGrade[k].gameRestitution,
+          lessThan(byGrade[k - 1].gameRestitution),
+        );
+        expect(byGrade[k].hitKeep, lessThan(byGrade[k - 1].hitKeep));
+      }
+      expect(StoneMaterial.cheongok.hitKeep, 1);
+      expect(StoneMaterial.taegeuk.hitKeep, closeTo(0.52, 1e-9));
+      expect(StoneMaterial.values.where((m) => m.shard).length, 3);
+    });
+
+    test('같은 힘으로 맞아도 높은 등급 돌일수록 덜 밀린다(맞은 직후 빠르기)', () {
+      double kicked(StoneMaterial m) {
+        final t = Table();
+        final me = t.addStone(0, 10);
+        final tg = t.addStone(0, 0, material: m, shape: StoneShape.flat);
+        t.shoot(me, -math.pi / 2, 30, 0);
+        var guard = 0;
+        while (t.impacts.isEmpty && guard++ < 600) {
+          t.step();
+        }
+        final v = tg.velocity.length;
+        t.dispose();
+        return v;
+      }
+
+      // 같은 무게(청옥 1.0 · 빙백한옥 1.0)끼리 비교하면 등급 차이만 남는다(6단 → 0.8).
+      expect(
+        kicked(StoneMaterial.ice),
+        closeTo(
+          kicked(StoneMaterial.cheongok) * StoneMaterial.ice.hitKeep,
+          0.5,
+        ),
+      );
+      expect(
+        kicked(StoneMaterial.ice),
+        lessThan(kicked(StoneMaterial.cheongok)),
       );
     });
     test('모양 3종', () {

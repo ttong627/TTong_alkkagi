@@ -37,8 +37,9 @@ String perkHelp(String perk) => switch (perk) {
 /// 기인방 진열품(이름|효과).
 List<String> legendaryStock(Profile p, math.Random r) {
   final pool = <String>[
+    // 조각 돌은 조각으로만 완성한다(2026-10-14).
     for (final m in StoneMaterial.values)
-      if (!p.materials.contains(m)) '재질:${m.name}',
+      if (!p.materials.contains(m) && !m.shard) '재질:${m.name}',
     for (final s in StoneShape.values)
       if (!p.shapes.contains(s)) '모양:${s.name}',
     // 상한에 닿은 비급·이미 가진 잔상은 진열하지 않는다(2026-10-11 경제 점검).
@@ -116,6 +117,25 @@ Encounter? rollEncounter(
       break;
   }
   return e;
+}
+
+/// 판이 끝날 때 돌 조각이 나올 확률(2026-10-14 형 「기연이나 이벤트에서 조각을 모아서 완성하는 돌」).
+const double shardChance = 0.12;
+
+/// 조각이 어느 돌의 것인지: 천년온옥 55% · 용린석 30% · 태극석 15%.
+StoneMaterial pickShard(math.Random r) {
+  final u = r.nextDouble();
+  return u < 0.55
+      ? StoneMaterial.warmJade
+      : (u < 0.85 ? StoneMaterial.dragonScale : StoneMaterial.taegeuk);
+}
+
+/// 한 판이 끝났다 — [shardChance] 로 돌 조각 하나(가방). 나온 돌, 없으면 null.
+StoneMaterial? rollShard(Profile p, math.Random r, {double boost = 1}) {
+  if (r.nextDouble() >= shardChance * boost) return null;
+  final m = pickShard(r);
+  p.bag[shardKey(m)] = (p.bag[shardKey(m)] ?? 0) + 1;
+  return m;
 }
 
 /// 기인방에서 하나 산다(효과도 함께 얻는다). 산 물건은 진열에서 빠진다.

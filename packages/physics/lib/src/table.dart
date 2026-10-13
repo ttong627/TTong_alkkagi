@@ -315,7 +315,8 @@ class Table {
         density: material.density * shape.volume / StoneShape.round.volume,
         material: SurfaceMaterial(
           friction: PhysicsConstants.stoneFriction,
-          restitution: material.restitution,
+          // 게임 판은 등급 반발(좋은 돌일수록 작게 · 2026-10-14).
+          restitution: settle ? material.gameRestitution : material.restitution,
         ),
         enableContactEvents: true,
         enableHitEvents: true,
@@ -393,6 +394,7 @@ class Table {
     _absorbAt = null;
     _enemiesHit.clear();
     _frostHits.clear();
+    _held.clear();
     _impactScale = impactScale;
     final s = (inner ? speed * innerSpeed : speed).clamp(
       0.0,
@@ -664,7 +666,20 @@ class Table {
       final a = h.shapeA.body.userData, b = h.shapeB.body.userData;
       if (a is! Stone || b is! Stone) continue;
       impacts.add(Impact(a.id, b.id, h.point.x, h.point.y, h.approachSpeed));
+      _hold(a);
+      _hold(b);
     }
+  }
+
+  /// 이번 수에 이미 등급만큼 깎은 돌.
+  final Set<int> _held = {};
+
+  /// 게임 판: 쏜 돌이 아닌 돌이 이번 수에 처음 맞으면 등급만큼만 밀린다
+  /// ([StoneMaterial.hitKeep] · 2026-10-14 형 「좋은 재질 … 상대가 때려도 얼마 안 움직이고」).
+  void _hold(Stone s) {
+    if (!settle || identical(s, _shooter) || !_held.add(s.id)) return;
+    final k = s.material.hitKeep;
+    if (k < 1) s.body.linearVelocity = s.velocity..scale(k);
   }
 
   Impact? _impactOf(Stone s) {
@@ -686,7 +701,10 @@ class Table {
       _refreshDamping([shooter]);
       if (settle && !shooter.airborne) {
         shooter.body.linearVelocity = shooter.velocity
-          ..scale(PhysicsConstants.shooterRecoilKeep);
+          // 좋은 돌일수록 덜 튕긴다(등급 · 2026-10-14).
+          ..scale(
+            PhysicsConstants.shooterRecoilKeep * shooter.material.hitKeep,
+          );
       }
       if (_impactScale != 1) {
         other.body.linearVelocity = other.velocity..scale(_impactScale);

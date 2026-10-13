@@ -60,14 +60,25 @@ void main() {
     expect(q.raise(Stat.finesse), isFalse, reason: '두 번째는 12 필요');
   });
 
-  test('만물상: 엽전이 있어야 사고, 산 것만 고를 수 있고, 세트를 모으면 보너스', () {
-    final p = Profile()..coins = 250;
-    expect(p.buyMaterial(StoneMaterial.wood), isFalse);
-    expect(p.buyShape(StoneShape.round), isTrue);
-    expect(p.coins, 50);
-    p.coins = 10000;
+  // 2026-10-14 형 「다음 돌 구입가를 지금 가격의 10배 이상」·「조각을 모아서 완성하는 돌」.
+  test('만물상: 값 10배 · 조각 돌은 못 사고 조각으로 완성 · 세트를 모으면 보너스', () {
+    final p = Profile()..coins = 2500;
+    expect(p.buyMaterial(StoneMaterial.wood), isFalse, reason: '3,000');
+    expect(p.buyShape(StoneShape.round), isTrue, reason: '2,000');
+    expect(p.coins, 500);
+    expect(materialPrices[StoneMaterial.wood], 3000);
+    expect(materialPrices[StoneMaterial.ice], 9000);
+    p.coins = 1000000;
     for (final m in StoneMaterial.values) {
       p.buyMaterial(m);
+    }
+    expect(p.materials.where((m) => m.shard), isEmpty, reason: '조각 돌은 팔지 않음');
+    expect(p.codexBonus, 0);
+    for (final e in shardNeeds.entries) {
+      expect(p.forgeShardStone(e.key), isFalse, reason: '조각이 모자람');
+      p.bag[shardKey(e.key)] = e.value + 2;
+      expect(p.forgeShardStone(e.key), isTrue);
+      expect(p.bag[shardKey(e.key)], 2, reason: '쓴 만큼만 줄어듦');
     }
     expect(p.codexBonus, 1);
     p.buyShape(StoneShape.sphere);
