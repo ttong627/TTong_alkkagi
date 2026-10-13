@@ -1950,6 +1950,69 @@ def sfx_go(r):
     return room(fade(y, fout=0.3), 0.15)
 
 
+def sfx_clash_ready(r):
+    """내공 겨루기 준비(2.2초): 낮게 깔리는 울림이 차오르고, 북이 심장처럼 두 번씩 뛰며 빨라진다."""
+    n = nsamp(2.2)
+    t = tvec(n)
+    y = np.zeros(n)
+    # 낮은 울림: 55Hz 와 58Hz 가 맥놀이하며 커진다.
+    swell = smooth01(t / 1.9)
+    drone = (np.sin(TAU * 55 * t) + 0.8 * np.sin(TAU * 58.3 * t + 1.0) + 0.3 * np.sin(TAU * 110 * t))
+    y += 0.35 * drone * swell
+    # 올라가는 바람(쉬익).
+    y += 0.5 * sweep_noise(n, r, 200, (1.95, 3000), 2500, q=1.4, env=swell ** 2)
+    # 심장 박동: 쿵-쿵, 간격이 줄어든다.
+    for tm in (0.05, 0.75, 1.3, 1.72, 2.02):
+        b = buk(r, 0.9)
+        place(y, 0.9 * b / np.max(np.abs(b)), nsamp(tm))
+        b2 = buk(r, 0.6)
+        place(y, 0.5 * b2 / np.max(np.abs(b2)), nsamp(tm + 0.16))
+    return room(fade(y, fout=0.05), 0.18, rt=0.9)
+
+
+def sfx_clash_beat(r):
+    """셋·둘·하나: 큰 북 한 번 + 막힌 꽹과리."""
+    n = nsamp(0.7)
+    y = np.zeros(n)
+    b = buk(r, 1.0)
+    place(y, b / np.max(np.abs(b)), 0)
+    k = kkwaeng(r, 0.7, damped=True)
+    place(y, 0.35 * k / np.max(np.abs(k)), 0)
+    return room(fade(y, fout=0.2), 0.15, rt=0.7)
+
+
+def sfx_clash_tap(r):
+    """연타 한 번: 짧고 단단한 기운 부딪힘 '탁'."""
+    n = nsamp(0.14)
+    t = tvec(n)
+    y = burst(n, r, 0.012, ('bp', 1800, 1.0), amp=1.0)
+    y += 0.6 * np.sin(TAU * 140 * t) * np.exp(-t / 0.03)
+    return fade(y, fout=0.04)
+
+
+def sfx_clash_win(r):
+    """겨루기 이김: 쾅 + 높은 징."""
+    n = nsamp(1.6)
+    y = np.zeros(n)
+    h = exciter(impact(nsamp(0.8), r, ring=0.25), 0.45)
+    place(y, np.tanh(1.3 * h / np.max(np.abs(h))), 0)
+    g = jing(r, 1.0, f0=240, length=1.5)
+    place(y, 0.6 * g / np.max(np.abs(g)), nsamp(0.03))
+    return room(fade(y, fout=0.35), 0.18, rt=0.8)
+
+
+def sfx_clash_lose(r):
+    """겨루기 밀림: 둔하게 '퉁' 하고 낮게 꺼진다."""
+    n = nsamp(1.0)
+    t = tvec(n)
+    y = np.zeros(n)
+    b = buk(r, 0.8)
+    place(y, b / np.max(np.abs(b)), 0)
+    f = 180 * np.exp(-t / 0.4) + 60
+    y += 0.4 * np.sin(TAU * np.cumsum(f) / SR) * np.exp(-t / 0.35)
+    return room(fade(y, fout=0.3), 0.15, rt=0.7)
+
+
 LOOP_SFX = {'slide'}  # 반복 재생되는 효과음
 
 # 이름 → (만들기, 꼭대기 dBFS, 펀치 dB)
@@ -1970,6 +2033,9 @@ SFX = {
     'unlock': (sfx_unlock, -2.0, 0.5), 'error': (sfx_error, -3.0, 0.0),
     'tutorial_ok': (sfx_tutorial_ok, -2.0, 0.5), 'whoosh': (sfx_whoosh, -2.5, 0.5),
     'countdown': (sfx_countdown, -3.0, 0.0), 'go': (sfx_go, -1.5, 1.5),
+    'clash_ready': (sfx_clash_ready, -1.5, 1.5), 'clash_beat': (sfx_clash_beat, -1.5, 1.5),
+    'clash_tap': (sfx_clash_tap, -3.0, 0.5), 'clash_win': (sfx_clash_win, -1.5, 2.0),
+    'clash_lose': (sfx_clash_lose, -2.0, 1.0),
 }
 
 

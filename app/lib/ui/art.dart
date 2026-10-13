@@ -11,6 +11,9 @@ abstract final class Art {
   static String character(String id, {bool attack = false}) =>
       'assets/images/chars/${id}_${attack ? 'attack' : 'idle'}.webp';
 
+  /// 얼굴만 자른 그림(동그란 얼굴 칸 · 무협 전신 그림부터 · tool/art/pick_cast.py). 없으면 전신 그림을 잘라 쓴다.
+  static String face(String id) => 'assets/images/chars/${id}_face.webp';
+
   static String icon(String name) => 'assets/images/icons/$name.webp';
 
   static String background(String name) => 'assets/images/scenes/bg_$name.webp';

@@ -47,13 +47,13 @@ void main() {
     expect(p.steers, 2);
   });
 
-  test('능력치: 단계 n→n+1 비용 6×(n+1), 파워 단계마다 +3cm/s, 20단계 180', () {
+  test('능력치: 단계 n→n+1 비용 6×(n+1), 파워 단계마다 +1.5cm/s, 20단계 150', () {
     final p = Profile()..trainingPoints = 100000;
     for (var i = 0; i < 25; i++) {
       p.raise(Stat.power);
     }
     expect(p.stats[Stat.power], maxStatLevel);
-    expect(p.maxSpeed, 180);
+    expect(p.maxSpeed, 150);
     expect(p.trainingPoints, 100000 - 1260);
     final q = Profile()..trainingPoints = 10;
     expect(q.raise(Stat.finesse), isTrue);
@@ -139,9 +139,12 @@ void main() {
       expect(c.martial, Technique.stomp);
       expect(c.opponentMaterial, StoneMaterial.hyeoncheol);
       expect(c.aiStyle, AiStyle.master);
-      expect(c.opponentStartQi, 3);
+      // 시작 내공은 판 표(3)를 보통 난이도 표가 2로 누그러뜨린다(설계서 §16.16).
+      expect(c.opponentStartQi, Campaign.tune(s).bossQi ?? s.bossQi);
+      expect(c.opponentStartQi, 2);
       expect(c.myStartQi, 1);
-      expect(c.powerScale, closeTo(150 / 120, 1e-9));
+      // 단계마다 +1.5cm/s(2026-10-11 · 예전 +3).
+      expect(c.powerScale, closeTo(135 / 120, 1e-9));
       expect(c.steers, 2);
     });
 

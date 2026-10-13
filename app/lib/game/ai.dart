@@ -49,8 +49,26 @@ class _Request {
     this.rule = 0,
     this.generals = const {},
     this.jewel,
+    this.errorScale = 1,
+    this.powerScale = 1,
+    this.blunder = 0,
+    this.angleError,
+    this.speedError,
   });
+
+  /// 주면 난이도 대신 이 오차(사람 손 흉내).
+  final double? angleError;
+  final double? speedError;
   final int weather;
+
+  /// 손 오차 배수([MatchConfig.aiErrorScale]).
+  final double errorScale;
+
+  /// 세기 배수([MatchConfig.aiPowerScale]).
+  final double powerScale;
+
+  /// 실수 확률([MatchConfig.aiBlunder]).
+  final double blunder;
 
   /// 판 규칙([MatchRule.index])·장수 돌 자리(stones 의 번호 → 편)·보주 자리.
   final int rule;
@@ -70,7 +88,34 @@ class _Request {
 }
 
 /// AI 가 둘 수를 고른다. 휴대폰에서는 화면이 멈추지 않게 따로 계산한다.
-Future<AiShot> chooseAiShot(Match match, {int? seed}) {
+Future<AiShot> chooseAiShot(Match match, {int? seed}) =>
+    compute(_choose, _requestFor(match, seed));
+
+/// 같은 계산을 지금 이 자리에서(물리가 이미 준비돼 있어야 한다 · 가상 대전·시험용).
+/// [search]·[angleError]·[speedError] 를 주면 그 실력으로(사람 손 흉내 — 버릇·내공 없이).
+AiShot aiShotNow(
+  Match match, {
+  int? seed,
+  Difficulty? search,
+  double? angleError,
+  double? speedError,
+}) => _plan(
+  _requestFor(
+    match,
+    seed,
+    search: search,
+    angleError: angleError,
+    speedError: speedError,
+  ),
+);
+
+_Request _requestFor(
+  Match match,
+  int? seed, {
+  Difficulty? search,
+  double? angleError,
+  double? speedError,
+}) {
   final all = match.table.stones;
   final generals = <int, int>{
     for (var i = 0; i < all.length; i++)
@@ -90,25 +135,27 @@ Future<AiShot> chooseAiShot(Match match, {int? seed}) {
         out: s.out,
       ),
   ];
-  return compute(
-    _choose,
-    _Request(
-      stones,
-      match.turn,
-      match.config.difficulty.index,
-      match.config.arena.index,
-      seed ?? DateTime.now().microsecondsSinceEpoch,
-      style: match.config.aiStyle.index,
-      qi: match.qi(match.turn),
-      martial: match.config.opponentMartial.index,
-      weather: match.config.weather.index,
-      features: [
-        for (final f in match.table.features) (f.kind.index, f.x, f.y, f.angle),
-      ],
-      rule: match.rule.index,
-      generals: generals,
-      jewel: jewel,
-    ),
+  return _Request(
+    stones,
+    match.turn,
+    (search ?? match.config.difficulty).index,
+    match.config.arena.index,
+    seed ?? DateTime.now().microsecondsSinceEpoch,
+    style: (search == null ? match.config.aiStyle : AiStyle.plain).index,
+    qi: match.qi(match.turn),
+    martial: match.config.opponentMartial.index,
+    weather: match.config.weather.index,
+    features: [
+      for (final f in match.table.features) (f.kind.index, f.x, f.y, f.angle),
+    ],
+    rule: match.rule.index,
+    generals: generals,
+    jewel: jewel,
+    errorScale: search == null ? match.config.aiErrorScale : 1,
+    powerScale: search == null ? match.config.aiPowerScale : 1,
+    blunder: search == null ? match.config.aiBlunder : 0,
+    angleError: angleError,
+    speedError: speedError,
   );
 }
 
@@ -116,6 +163,10 @@ Future<AiShot> chooseAiShot(Match match, {int? seed}) {
 /// 고수마다 버릇([AiStyle])이 달라 후보·고르는 법이 다르다(설계서 §16.1).
 Future<AiShot> _choose(_Request r) async {
   await initializePhysics();
+  return _plan(r);
+}
+
+AiShot _plan(_Request r) {
   final diff = Difficulty.values[r.difficulty];
   final arena = Arena.values[r.arena];
   final style = AiStyle.values[r.style];
@@ -232,14 +283,21 @@ Future<AiShot> _choose(_Request r) async {
       rand.nextDouble() < 0.4) {
     // 촌장: 가르치는 사람이라 가장 좋은 수를 자주 피한다.
     best = scored[1 + rand.nextInt(math.min(4, scored.length - 1))].$2;
+  } else if (r.blunder > 0 &&
+      scored.length > 2 &&
+      rand.nextDouble() < r.blunder) {
+    // 실수: 가장 좋은 수를 놓치고 위쪽 절반 아무거나.
+    best = scored[1 + rand.nextInt(math.max(1, scored.length ~/ 2))].$2;
   } else {
     best = scored.first.$2;
   }
   double jitter(double maxAbs) => (rand.nextDouble() * 2 - 1) * maxAbs;
   return AiShot(
     best.stoneId,
-    best.angle + jitter(diff.angleError),
-    best.speed * (1 + jitter(diff.speedError)),
+    best.angle + jitter(r.angleError ?? diff.angleError * r.errorScale),
+    best.speed *
+        r.powerScale *
+        (1 + jitter(r.speedError ?? diff.speedError * r.errorScale)),
     best.hit,
     mode: best.mode,
   );

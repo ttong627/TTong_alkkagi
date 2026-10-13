@@ -437,8 +437,17 @@ class _FlickViewState extends State<FlickView>
       _fire(flick);
       return;
     }
+    // 빗나간 까닭을 숫자로(손끝 점 수 · 뗄 때 빠르기 · 뗀 자리가 돌 가운데에서 반지름 몇 개).
+    final s = _reader?.samples ?? const <FlickSample>[];
+    final v = s.length < 2
+        ? null
+        : velocityAt(s.sublist(0, s.length - 1), s.last.pos, s.last.t);
+    final at = s.isEmpty ? null : (s.last.pos - _disc!.center) / _disc!.radius;
     final miss = _reader?.up();
-    e2eLog('miss native=$_useNative why=${miss?.name}');
+    e2eLog(
+      'miss native=$_useNative why=${miss?.name} points=${s.length} '
+      'v=${v?.distance.round()} at=${at?.dx.toStringAsFixed(2)},${at?.dy.toStringAsFixed(2)}',
+    );
     _reader = null;
     _nPoints = null;
     setState(() {

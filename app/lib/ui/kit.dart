@@ -876,23 +876,34 @@ class Portrait extends StatelessWidget {
                 padding: EdgeInsets.all(s * 0.14),
                 child: Image.asset(Art.icon('training')),
               )
-            : Stack(
-                clipBehavior: Clip.hardEdge,
-                children: [
-                  Positioned(
-                    left: s / 2 - w * 0.5,
-                    top: s / 2 - h * 0.337,
-                    width: w,
-                    height: h,
-                    child: Image.asset(
-                      Art.character(id!, attack: attack),
-                      cacheWidth: px,
-                      fit: BoxFit.fill,
-                      gaplessPlayback: true,
-                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                    ),
+            // 얼굴 그림이 있으면 그것(7등신 전신에서 자른 얼굴), 없으면 전신 그림의 머리 쪽을 잘라 쓴다.
+            : Transform.scale(
+                scale: attack ? 1.12 : 1,
+                child: Image.asset(
+                  Art.face(id!),
+                  cacheWidth: (s * MediaQuery.devicePixelRatioOf(context))
+                      .ceil(),
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                  errorBuilder: (_, _, _) => Stack(
+                    clipBehavior: Clip.hardEdge,
+                    children: [
+                      Positioned(
+                        left: s / 2 - w * 0.5,
+                        top: s / 2 - h * 0.337,
+                        width: w,
+                        height: h,
+                        child: Image.asset(
+                          Art.character(id!, attack: attack),
+                          cacheWidth: px,
+                          fit: BoxFit.fill,
+                          gaplessPlayback: true,
+                          errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
       ),
     );

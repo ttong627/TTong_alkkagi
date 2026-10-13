@@ -49,3 +49,7 @@ app.*.map.json
 
 # 점검·실험용 임시 시험(저장소에 넣지 않음)
 test/**/tmp_*.dart
+
+# 그림·음악 생성 원본(무거움 · art/wuxia-cast 브랜치에 따로 둔다) — 앱에는 webp·ogg 결과만
+/tool/art/gen/
+/tool/audio/gen/

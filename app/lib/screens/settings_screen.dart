@@ -162,6 +162,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: (v) => _set(() => s.vibration = v),
           ),
           SwitchListTile(
+            key: const Key('set-camera'),
+            title: const Text('카메라 연출'),
+            subtitle: const Text('돌을 따라 당기고 판을 눕힘 — 어지러우면 끄세요'),
+            value: s.camera,
+            onChanged: (v) => _set(() => s.camera = v),
+          ),
+          SwitchListTile(
             key: const Key('set-left'),
             title: const Text('왼손잡이'),
             subtitle: const Text('가까이 보기 화면의 단추를 오른쪽으로'),
