@@ -11,6 +11,8 @@ import 'package:alkkagi/game/match.dart';
 import 'package:alkkagi/progress/profile.dart';
 import 'package:alkkagi/progress/store.dart';
 import 'package:alkkagi/screens/campaign_screen.dart';
+import 'package:alkkagi/screens/course_screen.dart';
+import 'package:alkkagi/story/course.dart';
 import 'package:alkkagi/screens/codex_screen.dart';
 import 'package:alkkagi/screens/daily_screen.dart';
 import 'package:alkkagi/screens/dialogue_screen.dart';
@@ -179,6 +181,7 @@ void main() {
       );
     }
     await _shot(t, const CampaignScreen(), 'campaign');
+    await _shot(t, CourseScreen(course: courses[3]), 'course4');
     await _shot(
       t,
       DialogueScreen(

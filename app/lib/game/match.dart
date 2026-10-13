@@ -275,6 +275,7 @@ class MatchConfig {
     this.civilians = const [],
     this.shiftingFloor = false,
     this.qiClash = false,
+    this.opponentStones = stonesPerTeam,
     this.demonWorld = false,
     this.art = RebirthArt.none,
     this.rule = MatchRule.annihilate,
@@ -303,6 +304,9 @@ class MatchConfig {
 
   /// 내공 겨루기(설계서 §4): 고수전에서 양편 가장 무거운 돌이 정면으로 부딪히면 연타로 겨룬다.
   final bool qiClash;
+
+  /// 상대 돌 수(1~[stonesPerTeam]) — 강호행 졸개는 적게(2026-10-14 단계별 코스).
+  final int opponentStones;
 
   /// 천기(날씨, 설계서 §9.3).
   final Weather weather;
@@ -468,8 +472,9 @@ class Match extends ChangeNotifier {
         team: 0,
       );
     }
-    for (var i = 0; i < stonesPerTeam; i++) {
-      final x = (i - (stonesPerTeam - 1) / 2) * gap;
+    final foes = config.opponentStones.clamp(1, stonesPerTeam);
+    for (var i = 0; i < foes; i++) {
+      final x = (i - (foes - 1) / 2) * gap;
       table.addStone(
         x,
         -row,
@@ -482,7 +487,9 @@ class Match extends ChangeNotifier {
       final mine = table.stones.where((s) => s.team == 0).toList();
       final theirs = table.stones.where((s) => s.team == 1).toList();
       generals[0] = mine[MatchRule.generalIndex].id;
-      generals[1] = theirs[MatchRule.generalIndex].id;
+      // 상대 돌이 적은 판(강호행 졸개)이면 가운데 돌.
+      generals[1] =
+          theirs[math.min(MatchRule.generalIndex, theirs.length ~/ 2)].id;
     }
     if (rule == MatchRule.score) {
       // 가운데 붉은 보주: 무겁고 둥근 돌(쉽게 안 밀린다).

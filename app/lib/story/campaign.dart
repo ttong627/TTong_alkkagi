@@ -143,6 +143,7 @@ abstract final class Campaign {
     double aiPowerScale = 1,
     double aiBlunder = 0,
     StoneMaterial? myMaterial,
+    int opponentStones = stonesPerTeam,
   }) {
     final h = p.hero;
     final perkKnock = p.perks.contains('장외 시 기');
@@ -183,6 +184,7 @@ abstract final class Campaign {
       aiErrorScale: aiErrorScale,
       aiPowerScale: aiPowerScale,
       aiBlunder: aiBlunder,
+      opponentStones: opponentStones,
       demonWorld: p.rebirths > 0,
       art: switch (h) {
         Fighter.magyo => RebirthArt.steal,

@@ -18,6 +18,8 @@ import '../story/campaign.dart';
 import '../story/chapters.dart';
 import '../ui/glyph_stone.dart';
 import 'credits_screen.dart';
+import '../story/course.dart';
+import 'course_screen.dart';
 import 'dialogue_screen.dart';
 import 'encounter_flow.dart';
 import 'game_screen.dart';
@@ -42,113 +44,6 @@ class _CampaignScreenState extends State<CampaignScreen> {
   }
 
   final _store = ProfileStore.instance;
-
-  Future<void> _play(int i) async {
-    final p = _store.profile;
-    final s = campaign[i];
-    final nav = Navigator.of(context);
-    // 「건너뛰기」 한 번이면 서장 · 인사 · 장 시작 대사 모두 건너뛰고 바로 판으로.
-    var skipped = false;
-    if (!p.codex.contains('서장')) {
-      skipped =
-          await nav.push<bool>(
-            gameRoute<bool>(
-              const DialogueScreen(
-                title: '서장 · 기명석',
-                lines: prologue,
-                scene: 'lobby',
-              ),
-            ),
-          ) ??
-          false;
-      p.codex.add('서장');
-      await _store.save();
-      if (!mounted) return;
-    }
-    if (!skipped) {
-      Sound.play('jingle_chapter');
-      await nav.push(
-        gameRoute<bool>(
-          DialogueScreen(
-            title: s.title,
-            scene: s.arena.name,
-            lines: [
-              if (p.hero case final h?)
-                (s.speaker, heroGreeting(h.label, h.trait)),
-              ...s.intro,
-              ?Campaign.tune(s, easy: p.easyMode).note,
-            ],
-          ),
-        ),
-      );
-      if (!mounted) return;
-    }
-    Match? last;
-    final won = await nav.push<bool>(
-      gameRoute(
-        GameScreen(
-          config: Campaign.configFor(p, s, easy: p.easyMode),
-          title: s.title,
-          quips: s.quips,
-          boss: true,
-          stageId: s.id,
-          onTurnEnd: (m) => last = m,
-        ),
-      ),
-    );
-    if (won == null || !mounted) return;
-    final r = Campaign.finish(
-      p,
-      s,
-      won: won,
-      civiliansLost: last?.civiliansLost ?? 0,
-      bonusCoins: last?.bonusCoins ?? 0,
-    );
-    await _store.save();
-    if (!mounted) return;
-    await showRewardDialog(
-      context,
-      title: won ? '승리!' : '패배',
-      won: won,
-      items: [
-        if (r.coins > 0) ('coin', '+${r.coins}${r.first ? ' (첫 승 ×2)' : ''}'),
-        if (r.silver > 0) ('silver', '+${r.silver}'),
-        if (r.bonus > 0) ('coin', '일타쌍피 +${r.bonus}'),
-        if (r.fine > 0) ('coin', '백성 돌 배상 −${r.fine}'),
-      ],
-      newHero: r.hero,
-      note: won ? null : '${s.boss}에게 졌다. 목인항에서 내공을 쌓고 다시!',
-    );
-    if (!won || !mounted) return;
-    await nav.push(
-      gameRoute<bool>(
-        DialogueScreen(title: s.title, lines: s.outro, scene: s.arena.name),
-      ),
-    );
-    final g = glyphOf(s.id);
-    if (r.first && g != null && mounted) {
-      await showGlyphAwaken(
-        context,
-        index: g,
-        lit: GlyphStone.litFrom(p.done)..remove(g),
-      );
-    }
-    if (r.awaken && mounted) await _awaken();
-    if (r.first && s.id == 'c6' && mounted) {
-      await nav.push(
-        gameRoute<bool>(
-          const DialogueScreen(
-            title: '맺음 · 다시 흙먼지 마을',
-            lines: epilogue,
-            scene: 'dustyYard',
-          ),
-        ),
-      );
-      if (mounted) await nav.push(gameRoute<void>(const CreditsScreen()));
-    }
-    if (mounted) setState(() {});
-    if (mounted) await afterRound(context);
-  }
 
   /// 폐관수련동(설계서 §8.1): 현경(7단계)부터. 무공을 쓰는 강적과 겨룬다. 이기면 엽전 200 · 징표 2.
   Future<void> _seclusion() async {
@@ -206,27 +101,6 @@ class _CampaignScreenState extends State<CampaignScreen> {
     );
     setState(() {});
     if (won == true) await afterRound(context);
-  }
-
-  /// 1장을 처음 깨면 문파를 고른다(설계서 §2.1 · 한 번 고르면 환생 때까지 그대로).
-  Future<void> _awaken() async {
-    final t = await showDialog<Technique>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const AwakenDialog(),
-    );
-    if (t == null) return;
-    _store.profile.school = t;
-    _store.profile.codex.add('문파:${t.name}');
-    await _store.save();
-  }
-
-  /// 잠긴 까닭을 한눈에 읽히게 줄인다(「앞 판(…)을 먼저 깨세요」 → 「1장 먼저」).
-  static String _lockShort(String lock, int i) {
-    if (lock.startsWith('앞 판') && i > 0) {
-      return '${campaign[i - 1].title.split(' ').first} 먼저';
-    }
-    return '${lock.split(' 이 필요').first} 필요';
   }
 
   /// 난이도: 쉬움(고수 손이 서툴다 · 2장 통통까지 처음 하는 사람도 깬다) / 보통.
@@ -338,12 +212,12 @@ class _CampaignScreenState extends State<CampaignScreen> {
       ],
       body: ListView.builder(
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-        itemCount: campaign.length + 3,
+        itemCount: courses.length + 3,
         itemBuilder: (_, j) {
           if (j == 0) return _glyphRow(p);
           if (j == 1) return _difficultyRow(p);
           final i = j - 2;
-          if (i == campaign.length) {
+          if (i == courses.length) {
             final open = p.stage >= 7;
             return _StageCard(
               key: const Key('seclusion'),
@@ -357,20 +231,28 @@ class _CampaignScreenState extends State<CampaignScreen> {
               onTap: open ? _seclusion : null,
             );
           }
-          final s = campaign[i];
-          final lock = Campaign.lockReason(p, i);
+          // 2026-10-14 형 「단계별 코스」: 장마다 7~9단계 — 장 카드를 누르면 코스.
+          final c = courses[i];
+          final s = c.boss;
+          final lock = CourseRules.lockReason(p, c, 0);
           return _StageCard(
-            key: Key('stage-${s.id}'),
+            key: Key('chapter-${c.chapter}'),
             scene: s.arena.name,
             face: Art.bossId(s.boss),
             title: s.title,
-            sub: lock == null
-                ? '${s.boss} · ${s.arena.label}'
-                : _lockShort(lock, i),
+            sub:
+                lock ??
+                '${CourseRules.doneCount(p, c)}/${c.steps.length} 단계 · 보스 ${s.boss} · ${s.arena.sizeLabel}',
             stars: p.stars[s.id] ?? 0,
             locked: lock != null,
             done: p.done.contains(s.id),
-            onTap: lock == null ? () => _play(i) : null,
+            onTap: lock == null
+                ? () async {
+                    await Navigator.of(context)
+                        .push(gameRoute<void>(CourseScreen(course: c)));
+                    if (mounted) setState(() {});
+                  }
+                : null,
           );
         },
       ),
@@ -527,6 +409,134 @@ class _StageCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 서장(처음 강호행 판을 열 때 한 번). 「건너뛰기」를 누르면 true — 그 판 앞 대사도 건너뛴다.
+Future<bool> showPrologueOnce(BuildContext context) async {
+  final store = ProfileStore.instance;
+  final p = store.profile;
+  if (p.codex.contains('서장')) return false;
+  final skipped =
+      await Navigator.of(context).push<bool>(
+        gameRoute<bool>(
+          const DialogueScreen(
+            title: '서장 · 기명석',
+            lines: prologue,
+            scene: 'lobby',
+          ),
+        ),
+      ) ??
+      false;
+  p.codex.add('서장');
+  await store.save();
+  return skipped;
+}
+
+/// 강호행 이야기 판(장 보스·숙적) [i] 한 판: 인사·앞 대사 → 판 → 보상 → 뒤 대사 → 문양 → 문파 각성 → 맺음.
+Future<void> playStage(BuildContext context, int i) async {
+  final store = ProfileStore.instance;
+  final p = store.profile;
+  final s = campaign[i];
+  final nav = Navigator.of(context);
+  // 「건너뛰기」 한 번이면 서장 · 인사 · 장 시작 대사 모두 건너뛰고 바로 판으로.
+  final skipped = await showPrologueOnce(context);
+  if (!context.mounted) return;
+  if (!skipped) {
+    Sound.play('jingle_chapter');
+    await nav.push(
+      gameRoute<bool>(
+        DialogueScreen(
+          title: s.title,
+          scene: s.arena.name,
+          lines: [
+            if (p.hero case final h?)
+              (s.speaker, heroGreeting(h.label, h.trait)),
+            ...s.intro,
+            ?Campaign.tune(s, easy: p.easyMode).note,
+          ],
+        ),
+      ),
+    );
+    if (!context.mounted) return;
+  }
+  Match? last;
+  final won = await nav.push<bool>(
+    gameRoute(
+      GameScreen(
+        config: Campaign.configFor(p, s, easy: p.easyMode),
+        title: s.title,
+        quips: s.quips,
+        boss: true,
+        stageId: s.id,
+        onTurnEnd: (m) => last = m,
+      ),
+    ),
+  );
+  if (won == null || !context.mounted) return;
+  final r = Campaign.finish(
+    p,
+    s,
+    won: won,
+    civiliansLost: last?.civiliansLost ?? 0,
+    bonusCoins: last?.bonusCoins ?? 0,
+  );
+  await store.save();
+  if (!context.mounted) return;
+  await showRewardDialog(
+    context,
+    title: won ? '승리!' : '패배',
+    won: won,
+    items: [
+      if (r.coins > 0) ('coin', '+${r.coins}${r.first ? ' (첫 승 ×2)' : ''}'),
+      if (r.silver > 0) ('silver', '+${r.silver}'),
+      if (r.bonus > 0) ('coin', '일타쌍피 +${r.bonus}'),
+      if (r.fine > 0) ('coin', '백성 돌 배상 −${r.fine}'),
+    ],
+    newHero: r.hero,
+    note: won ? null : '${s.boss}에게 졌다. 목인항에서 내공을 쌓고 다시!',
+  );
+  if (!won || !context.mounted) return;
+  await nav.push(
+    gameRoute<bool>(
+      DialogueScreen(title: s.title, lines: s.outro, scene: s.arena.name),
+    ),
+  );
+  final g = glyphOf(s.id);
+  if (r.first && g != null && context.mounted) {
+    await showGlyphAwaken(
+      context,
+      index: g,
+      lit: GlyphStone.litFrom(p.done)..remove(g),
+    );
+  }
+  if (r.awaken && context.mounted) await awakenSchool(context);
+  if (r.first && s.id == 'c6' && context.mounted) {
+    await nav.push(
+      gameRoute<bool>(
+        const DialogueScreen(
+          title: '맺음 · 다시 흙먼지 마을',
+          lines: epilogue,
+          scene: 'dustyYard',
+        ),
+      ),
+    );
+    if (context.mounted) await nav.push(gameRoute<void>(const CreditsScreen()));
+  }
+  if (context.mounted) await afterRound(context);
+}
+
+/// 1장을 처음 깨면 문파를 고른다(설계서 §2.1 · 한 번 고르면 환생 때까지 그대로).
+Future<void> awakenSchool(BuildContext context) async {
+  final store = ProfileStore.instance;
+  final t = await showDialog<Technique>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => const AwakenDialog(),
+  );
+  if (t == null) return;
+  store.profile.school = t;
+  store.profile.codex.add('문파:${t.name}');
+  await store.save();
 }
 
 /// 보상 창: 그림과 숫자로(설계서 §16.9).

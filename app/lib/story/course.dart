@@ -1,0 +1,232 @@
+import 'package:alkkagi_physics/alkkagi_physics.dart';
+
+import '../game/match.dart';
+import '../progress/daily.dart' as daily;
+import '../progress/profile.dart';
+import '../progress/quests.dart';
+import 'campaign.dart';
+import 'chapters.dart';
+
+/// 강호행 단계별 코스(2026-10-14 형 「단계별 코스에 졸개나 중간 단계를 7~9단계로 구성하고
+/// 3, 4단계마다 중간보스 등장, 마지막 단계에서 보스 등장으로 구성해줘」).
+///
+/// 장마다 7~9단계: 졸개 판들 사이 4단계(9단계 장은 7단계에도)에 중간 보스, 마지막 단계에 그 장의 보스.
+/// 숙적 묵현은 다음 장의 중간 보스로 나온다(3·5·6장) — 예전 판 순서(장 → 숙적 → 다음 장)와 같다.
+enum StepKind {
+  minion('졸개'),
+  mid('중간 보스'),
+  boss('보스');
+
+  const StepKind(this.label);
+  final String label;
+}
+
+/// 코스 한 단계.
+class CourseStep {
+  const CourseStep.minion(this.stones)
+    : kind = StepKind.minion,
+      foe = null,
+      material = null,
+      stageId = null;
+  const CourseStep.mid(this.foe, this.stones, this.material)
+    : kind = StepKind.mid,
+      stageId = null;
+
+  /// 장 보스이거나 숙적(이야기 대사가 있는 판 · [campaign] 의 id).
+  const CourseStep.stage(this.stageId, {bool mid = false})
+    : kind = mid ? StepKind.mid : StepKind.boss,
+      foe = null,
+      stones = stonesPerTeam,
+      material = null;
+
+  final StepKind kind;
+
+  /// 중간 보스 이름(이야기 판이면 null — 판의 고수).
+  final String? foe;
+
+  /// 상대 돌 수.
+  final int stones;
+
+  /// 중간 보스 돌 재질.
+  final StoneMaterial? material;
+
+  /// 이야기 판 id(c1 · r1 …).
+  final String? stageId;
+}
+
+/// 장 하나의 코스.
+class Course {
+  const Course(this.chapter, this.minion, this.steps);
+  final int chapter;
+
+  /// 졸개 이름.
+  final String minion;
+  final List<CourseStep> steps;
+
+  /// 장 보스 판.
+  Stage get boss => campaign.firstWhere((s) => s.chapter == chapter);
+
+  /// [i] 번째 단계의 진행 id(이야기 판이면 그 판 id).
+  String idOf(int i) => steps[i].stageId ?? 'k${chapter}s${i + 1}';
+}
+
+const courses = [
+  Course(1, '마을 장난꾼', [
+    CourseStep.minion(3),
+    CourseStep.minion(4),
+    CourseStep.minion(4),
+    CourseStep.mid('나무꾼 강쇠', 5, StoneMaterial.wood),
+    CourseStep.minion(5),
+    CourseStep.minion(5),
+    CourseStep.stage('c1'),
+  ]),
+  Course(2, '객잔 불한당', [
+    CourseStep.minion(4),
+    CourseStep.minion(4),
+    CourseStep.minion(5),
+    CourseStep.mid('주방장 왕솥', 6, StoneMaterial.obsidian),
+    CourseStep.minion(5),
+    CourseStep.minion(6),
+    CourseStep.minion(6),
+    CourseStep.stage('c2'),
+  ]),
+  Course(3, '장터 건달', [
+    CourseStep.minion(4),
+    CourseStep.minion(5),
+    CourseStep.minion(5),
+    CourseStep.stage('r1', mid: true),
+    CourseStep.minion(5),
+    CourseStep.minion(6),
+    CourseStep.minion(6),
+    CourseStep.stage('c3'),
+  ]),
+  Course(4, '산채 졸개', [
+    CourseStep.minion(5),
+    CourseStep.minion(5),
+    CourseStep.minion(6),
+    CourseStep.mid('부두목 곰발', 6, StoneMaterial.granite),
+    CourseStep.minion(6),
+    CourseStep.minion(6),
+    CourseStep.mid('날쌘 칼잡이', 7, StoneMaterial.diamond),
+    CourseStep.minion(7),
+    CourseStep.stage('c4'),
+  ]),
+  Course(5, '학당 문도', [
+    CourseStep.minion(5),
+    CourseStep.minion(6),
+    CourseStep.minion(6),
+    CourseStep.stage('r2', mid: true),
+    CourseStep.minion(6),
+    CourseStep.minion(7),
+    CourseStep.minion(7),
+    CourseStep.stage('c5'),
+  ]),
+  Course(6, '맹 무사', [
+    CourseStep.minion(6),
+    CourseStep.minion(6),
+    CourseStep.minion(7),
+    CourseStep.mid('친위대장 철갑', 7, StoneMaterial.hyeoncheol),
+    CourseStep.minion(7),
+    CourseStep.minion(7),
+    CourseStep.stage('r3', mid: true),
+    CourseStep.minion(8),
+    CourseStep.stage('c6'),
+  ]),
+];
+
+/// 코스 진행 규칙(화면과 떨어진 순수한 계산).
+abstract final class CourseRules {
+  /// [c] 장의 [i] 단계가 막힌 까닭. 열려 있으면 null.
+  ///
+  /// 장 보스를 이미 깬 장(코스가 생기기 전 진행)은 모든 단계가 열려 있다.
+  static String? lockReason(Profile p, Course c, int i) {
+    if (p.done.contains(c.boss.id)) return null;
+    final s = c.steps[i];
+    // 장에 들어가는 문: 앞 장 보스 · 내공 단계(그 장 보스의 조건).
+    if (c.chapter > 1) {
+      final prev = courses[c.chapter - 2].boss;
+      if (!p.done.contains(prev.id)) {
+        return '${prev.title.split(' · ').first} 보스를 먼저';
+      }
+    }
+    if (p.stage < c.boss.needStage) {
+      final (name, need) = naegongStages[c.boss.needStage - 1];
+      return '내공 $name(${need.toInt()}) 필요';
+    }
+    if (i > 0 && !p.done.contains(c.idOf(i - 1))) return '$i단계 먼저';
+    // 이야기 판은 예전 판 순서(장 → 숙적 → 다음 장)의 문도 그대로 지킨다.
+    if (s.stageId != null) {
+      return Campaign.lockReason(
+        p,
+        campaign.indexWhere((x) => x.id == s.stageId),
+      );
+    }
+    return null;
+  }
+
+  /// 깬 단계 수.
+  static int doneCount(Profile p, Course c) =>
+      [for (var i = 0; i < c.steps.length; i++) c.idOf(i)]
+          .where(p.done.contains)
+          .length;
+
+  /// 졸개·중간 보스 판 설정(이야기 판은 [Campaign.configFor]).
+  static MatchConfig configFor(
+    Profile p,
+    Course c,
+    int i, {
+    bool easy = false,
+  }) {
+    final s = c.steps[i];
+    final boss = c.boss;
+    final mid = s.kind == StepKind.mid;
+    // 졸개는 고수보다 손이 서툴다(뒤 장일수록 조금씩 낫다). 쉬움이면 더.
+    final err =
+        (mid ? 1.6 : 2.4) * (easy ? 1.5 : 1) * (1 - 0.05 * (c.chapter - 1));
+    return Campaign.playerConfig(
+      p,
+      arena: boss.arena,
+      difficulty: c.chapter <= 2
+          ? Difficulty.easy
+          : (c.chapter <= 4 ? Difficulty.normal : Difficulty.skilled),
+      opponentMaterial: s.material ?? StoneMaterial.cheongok,
+      opponentShape: mid ? StoneShape.round : StoneShape.flat,
+      opponentName: s.foe ?? c.minion,
+      aimAssist: Campaign.aimAssistFor(boss),
+      weather: boss.weather,
+      features: boss.features,
+      shiftingFloor: boss.shiftingFloor,
+      qiClash: mid,
+      aiErrorScale: err,
+      opponentStones: s.stones,
+    );
+  }
+
+  /// 졸개·중간 보스를 이겼다 — 엽전(처음 ×2) · 처음이면 재료(중간 보스는 재료 2 + 아이템 1).
+  static daily.Reward finish(Profile p, Course c, int i, {required bool won}) {
+    final s = c.steps[i];
+    final id = c.idOf(i);
+    if (!won) return const daily.Reward();
+    final first = !p.done.contains(id);
+    final mid = s.kind == StepKind.mid;
+    final base = mid ? 40 + 10 * c.chapter : 15 + 5 * c.chapter;
+    final coins = first ? base * 2 : base ~/ 2;
+    const mats = [Mat.ore, Mat.herb, Mat.jade, Mat.silk];
+    final m = mats[(c.chapter + i) % mats.length];
+    final r = daily.Reward(
+      coins: coins,
+      bag: !first
+          ? const {}
+          : mid
+          ? {
+              m.key: 2,
+              if (c.chapter >= 4) Mat.scale.key: 1,
+              (i.isEven ? Item.critCharm : Item.qiPill).key: 1,
+            }
+          : {m.key: 1},
+    );
+    r.giveTo(p);
+    p.done.add(id);
+    return r;
+  }
+}
