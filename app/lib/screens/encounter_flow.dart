@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../audio/sound.dart';
 import '../game/match.dart';
 import '../progress/encounters.dart';
 import '../progress/profile.dart';
@@ -24,7 +25,22 @@ Future<void> afterRound(BuildContext context, {double boost = 1}) async {
     return;
   }
   final e = rollEncounter(p, _rand, now: now, boost: boost);
+  // 돌 조각(2026-10-14 형 「기연이나 이벤트에서 조각을 모아서 완성하는 돌」).
+  final shard = rollShard(p, _rand, boost: boost);
   await store.save();
+  if (shard != null && context.mounted) {
+    final have = p.bag[shardKey(shard)] ?? 0;
+    final need = shardNeeds[shard]!;
+    Sound.play('reward');
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(
+        content: Text(
+          '기연! ${shard.label} 조각 +1 ($have/$need)'
+          '${have >= need ? ' — 만물상에서 완성!' : ''}',
+        ),
+      ),
+    );
+  }
   if (e == null || !context.mounted) return;
   final nav = Navigator.of(context);
   switch (e) {

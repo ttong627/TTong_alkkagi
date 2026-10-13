@@ -25,6 +25,8 @@ List<Offset> predictPath(
     weather: match.config.weather == Weather.frost
         ? Weather.frost
         : Weather.clear,
+    settle: match.table.settle,
+    half: match.table.half,
   );
   for (final f in match.table.features) {
     t.addFeature(f);

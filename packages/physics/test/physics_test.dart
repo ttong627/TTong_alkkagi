@@ -82,7 +82,7 @@ void main() {
 
   group('1-03 감속 하한 0.3', () {
     test('빙백한옥(0.15)도 실제 감속은 0.3', () {
-      final t = Table();
+      final t = Table(settle: false);
       expect(t.dampingOf(StoneMaterial.ice, StoneShape.round), 0.3);
       expect(t.dampingOf(StoneMaterial.ice, StoneShape.sphere), 0.3);
       final s = t.addStone(0, 0, material: StoneMaterial.ice);
@@ -101,7 +101,7 @@ void main() {
 
   group('1-04 10초 강제 정지 · 멈춤 0.5cm/s', () {
     test('감속 0이면 600스텝에서 강제로 멈춘다', () {
-      final t = Table(minDamping: 0);
+      final t = Table(minDamping: 0, settle: false);
       final s = t.addStone(0, 0, material: StoneMaterial.ice);
       s.body.linearDamping = 0;
       t.shoot(s, 0, 1.2, 0);
@@ -155,10 +155,11 @@ void main() {
   });
 
   group('1-06·1-07 재질·모양 값 표(설계서 §3.5·§3.6)', () {
-    test('재질 4종', () {
+    test('재질 13종 · 처음 4종 값은 그대로(측정 재현)', () {
+      expect(StoneMaterial.values.length, 13);
       expect(
         [
-          for (final m in StoneMaterial.values)
+          for (final m in StoneMaterial.values.take(4))
             (m.density, m.damping, m.restitution),
         ],
         [
@@ -167,6 +168,55 @@ void main() {
           (2.5, 2.0, 0.75),
           (1.0, 0.15, 0.95),
         ],
+      );
+    });
+
+    // 2026-10-14 형 「좋은 재질의 돌일수록 반탄력이 작아야 해 … 종류와 단계를 10여 가지 이상」.
+    test('등급 1~13단이 하나씩 · 등급이 오를수록 반발과 맞았을 때 남는 빠르기가 줄어든다', () {
+      final byGrade = [...StoneMaterial.values]
+        ..sort((a, b) => a.grade - b.grade);
+      expect(
+        [for (final m in byGrade) m.grade],
+        [for (var g = 1; g <= 13; g++) g],
+      );
+      for (var k = 1; k < byGrade.length; k++) {
+        expect(
+          byGrade[k].gameRestitution,
+          lessThan(byGrade[k - 1].gameRestitution),
+        );
+        expect(byGrade[k].hitKeep, lessThan(byGrade[k - 1].hitKeep));
+      }
+      expect(StoneMaterial.cheongok.hitKeep, 1);
+      expect(StoneMaterial.taegeuk.hitKeep, closeTo(0.52, 1e-9));
+      expect(StoneMaterial.values.where((m) => m.shard).length, 3);
+    });
+
+    test('같은 힘으로 맞아도 높은 등급 돌일수록 덜 밀린다(맞은 직후 빠르기)', () {
+      double kicked(StoneMaterial m) {
+        final t = Table();
+        final me = t.addStone(0, 10);
+        final tg = t.addStone(0, 0, material: m, shape: StoneShape.flat);
+        t.shoot(me, -math.pi / 2, 30, 0);
+        var guard = 0;
+        while (t.impacts.isEmpty && guard++ < 600) {
+          t.step();
+        }
+        final v = tg.velocity.length;
+        t.dispose();
+        return v;
+      }
+
+      // 같은 무게(청옥 1.0 · 빙백한옥 1.0)끼리 비교하면 등급 차이만 남는다(6단 → 0.8).
+      expect(
+        kicked(StoneMaterial.ice),
+        closeTo(
+          kicked(StoneMaterial.cheongok) * StoneMaterial.ice.hitKeep,
+          0.5,
+        ),
+      );
+      expect(
+        kicked(StoneMaterial.ice),
+        lessThan(kicked(StoneMaterial.cheongok)),
       );
     });
     test('모양 3종', () {
@@ -599,6 +649,87 @@ void main() {
       }
       expect(stopped, isTrue);
       t.dispose();
+    });
+
+    // 2026-10-14 형 「둥글수록 … 내가 작동하는 부분은 엄청 잘 움직이지만 튕기는 부분과 상대가 맞췄을 때는
+    // 강한 중력이 발생해서 잘 구르지 않는다는 설정이 있어야 잘 안 죽어」.
+    test('무게중심: 맞은 구형 돌은 예전보다 · 납작한 돌보다 덜 구른다', () {
+      double pushed(StoneShape shape, {required bool settle}) {
+        final t = Table(settle: settle);
+        final me = t.addStone(0, 10);
+        final tg = t.addStone(0, 0, shape: shape);
+        t.shoot(me, -math.pi / 2, 30, 0);
+        t.runTurn();
+        final d = tg.out ? double.infinity : -tg.position.y;
+        t.dispose();
+        return d;
+      }
+
+      final flat = pushed(StoneShape.flat, settle: true);
+      final sphere = pushed(StoneShape.sphere, settle: true);
+      final oldSphere = pushed(StoneShape.sphere, settle: false);
+      expect(sphere, lessThan(flat), reason: '구형 $sphere · 납작 $flat');
+      expect(sphere, lessThan(oldSphere * 0.8), reason: '예전 구형 $oldSphere');
+    });
+
+    test('무게중심: 내가 쏜 구형 돌은 충돌 전까지 예전처럼 멀리 구른다', () {
+      double roll({required bool settle}) {
+        final t = Table(settle: settle);
+        final me = t.addStone(0, 10, shape: StoneShape.sphere);
+        t.shoot(me, -math.pi / 2, 20, 0);
+        t.runTurn();
+        final d = 10 - me.position.y;
+        t.dispose();
+        return d;
+      }
+
+      expect(roll(settle: true), closeTo(roll(settle: false), 1e-6));
+    });
+
+    test('무게중심: 쏜 돌도 부딪혀 튕긴 뒤에는 무게중심이 걸린다', () {
+      final t = Table();
+      final me = t.addStone(0, 10, shape: StoneShape.sphere);
+      t.addStone(0, 0);
+      final free = me.body.linearDamping;
+      t.shoot(me, -math.pi / 2, 60, 0);
+      expect(me.body.linearDamping, lessThan(free), reason: '쏘는 순간 풀림');
+      final loose = me.body.linearDamping;
+      var guard = 0;
+      while (t.impacts.isEmpty && guard++ < 600) {
+        t.step();
+      }
+      expect(
+        me.body.linearDamping,
+        closeTo(loose * StoneShape.sphere.settleMultiplier, 1e-6),
+      );
+      t.dispose();
+    });
+
+    // 2026-10-14 형 「반탄력이 너무 커서 내 공격에 내 돌이 죽고 있어」.
+    test('반탄력: 비껴 맞혀도 쏜 돌이 멀리 튕겨 나가지 않는다', () {
+      (double, double) run({required bool settle}) {
+        final t = Table(settle: settle);
+        final me = t.addStone(1.6, 10, shape: StoneShape.flat);
+        final tg = t.addStone(0, 0, shape: StoneShape.flat);
+        t.shoot(me, -math.pi / 2, 80, 0);
+        Vector2? at;
+        var guard = 0;
+        while (t.status == TurnStatus.moving && guard++ < 1200) {
+          t.step();
+          if (at == null && t.impacts.isNotEmpty) at = me.position.clone();
+        }
+        final shooterAfter = me.out
+            ? double.infinity
+            : (me.position - at!).length;
+        final target = tg.out ? double.infinity : tg.position.length;
+        t.dispose();
+        return (shooterAfter, target);
+      }
+
+      final (meNew, tgNew) = run(settle: true);
+      final (meOld, _) = run(settle: false);
+      expect(meNew, lessThan(meOld * 0.5), reason: '쏜 돌 튕김 $meNew (예전 $meOld)');
+      expect(tgNew, greaterThan(3), reason: '맞은 돌은 그래도 밀린다');
     });
 
     test('바닥 배수를 바꾸면 돌 감속이 바로 바뀐다(6장 얼음·불꽃)', () {

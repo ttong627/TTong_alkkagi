@@ -13,6 +13,15 @@ const materialColors = {
   StoneMaterial.wood: Color(0xFFB07A3B),
   StoneMaterial.hyeoncheol: Color(0xFF5A6270),
   StoneMaterial.ice: Color(0xFF8FD3EE),
+  StoneMaterial.obsidian: Color(0xFF6A4E9A),
+  StoneMaterial.granite: Color(0xFF8C8478),
+  StoneMaterial.diamond: Color(0xFFCDEFFF),
+  StoneMaterial.jageum: Color(0xFFB07CE0),
+  StoneMaterial.uncheol: Color(0xFF8A4A3A),
+  StoneMaterial.hancheol: Color(0xFF6E9AC8),
+  StoneMaterial.warmJade: Color(0xFFF0D2B0),
+  StoneMaterial.dragonScale: Color(0xFFE8B040),
+  StoneMaterial.taegeuk: Color(0xFFE8E8F0),
 };
 
 /// 편 색: 0 = 흰 돌, 1 = 검은 돌.
@@ -46,6 +55,81 @@ Color stoneShine(int team) =>
   ),
   (StoneMaterial.ice, 0) => (const Color(0xFFF7FDFF), const Color(0xFF9FD8EF)),
   (StoneMaterial.ice, _) => (const Color(0xFF4C88A6), const Color(0xFF122F42)),
+  // 2026-10-14 새 재질: 흑요석(보랏빛 검은 유리) · 반석(얼룩진 회색 돌) · 금강석(무지개 반짝임).
+  (StoneMaterial.obsidian, 0) => (
+    const Color(0xFFE8E0F2),
+    const Color(0xFF8A78A8),
+  ),
+  (StoneMaterial.obsidian, _) => (
+    const Color(0xFF3A2E4A),
+    const Color(0xFF0C0812),
+  ),
+  (StoneMaterial.granite, 0) => (
+    const Color(0xFFE6E1D8),
+    const Color(0xFF9A9286),
+  ),
+  (StoneMaterial.granite, _) => (
+    const Color(0xFF5E5850),
+    const Color(0xFF221F1A),
+  ),
+  (StoneMaterial.diamond, 0) => (
+    const Color(0xFFFFFFFF),
+    const Color(0xFFBFE6F5),
+  ),
+  (StoneMaterial.diamond, _) => (
+    const Color(0xFF7FA6C8),
+    const Color(0xFF1E3550),
+  ),
+  // 2026-10-14 등급 돌: 자금석(보랏빛 금) · 운철(검붉은 쇠) · 한철(푸른 쇠) ·
+  // 천년온옥(따뜻한 흰 옥) · 용린석(금빛 비늘) · 태극석(흑백).
+  (StoneMaterial.jageum, 0) => (
+    const Color(0xFFF2E2FF),
+    const Color(0xFFA77BD0),
+  ),
+  (StoneMaterial.jageum, _) => (
+    const Color(0xFF5A3A7A),
+    const Color(0xFF1C0F2A),
+  ),
+  (StoneMaterial.uncheol, 0) => (
+    const Color(0xFFEDE0DA),
+    const Color(0xFF9A7A6C),
+  ),
+  (StoneMaterial.uncheol, _) => (
+    const Color(0xFF5A3A32),
+    const Color(0xFF1E100C),
+  ),
+  (StoneMaterial.hancheol, 0) => (
+    const Color(0xFFE6F0FA),
+    const Color(0xFF7F9AB6),
+  ),
+  (StoneMaterial.hancheol, _) => (
+    const Color(0xFF3E5670),
+    const Color(0xFF0E1A28),
+  ),
+  (StoneMaterial.warmJade, 0) => (
+    const Color(0xFFFFF6EC),
+    const Color(0xFFE8C9A8),
+  ),
+  (StoneMaterial.warmJade, _) => (
+    const Color(0xFF9A7A5A),
+    const Color(0xFF3A2614),
+  ),
+  (StoneMaterial.dragonScale, 0) => (
+    const Color(0xFFFFF2C8),
+    const Color(0xFFD9A43A),
+  ),
+  (StoneMaterial.dragonScale, _) => (
+    const Color(0xFF8A5E1A),
+    const Color(0xFF2E1C06),
+  ),
+  (StoneMaterial.taegeuk, 0) => (
+    const Color(0xFFFFFFFF),
+    const Color(0xFFB8B8C0),
+  ),
+  (StoneMaterial.taegeuk, _) => (
+    const Color(0xFF3A3A44),
+    const Color(0xFF0A0A0E),
+  ),
 };
 
 /// 반지름 100 으로 그려 둔 돌 그림(재질·모양·편마다 한 장). 프레임마다 다시 그리지 않는다.
@@ -228,6 +312,143 @@ void _drawStone(Canvas c, StoneMaterial m, StoneShape shape, int team) {
           Paint()..color = Colors.white.withValues(alpha: 0.35),
         );
       }
+    case StoneMaterial.obsidian:
+      // 흑요석: 유리처럼 깨진 날카로운 면 · 보랏빛 반사.
+      for (var i = 0; i < 6; i++) {
+        final a = i * math.pi / 3 + rand.nextDouble() * 0.4;
+        c.drawLine(
+          Offset.zero,
+          Offset(math.cos(a), math.sin(a)) * 110,
+          Paint()
+            ..strokeWidth = 2
+            ..color = Colors.white.withValues(alpha: team == 0 ? 0.3 : 0.16),
+        );
+      }
+      c.drawLine(
+        const Offset(-80, -10),
+        const Offset(10, -80),
+        Paint()
+          ..strokeWidth = 16
+          ..color = const Color(0xFFB79CFF).withValues(alpha: 0.35)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7),
+      );
+    case StoneMaterial.granite:
+      // 반석: 얼룩덜룩한 알갱이.
+      for (var i = 0; i < 90; i++) {
+        c.drawCircle(
+          Offset(rand.nextDouble() * 200 - 100, rand.nextDouble() * 200 - 100),
+          2 + rand.nextDouble() * 5,
+          Paint()
+            ..color = (rand.nextBool() ? ink : Colors.white).withValues(
+              alpha: 0.18 + rand.nextDouble() * 0.15,
+            ),
+        );
+      }
+    case StoneMaterial.diamond:
+      // 금강석: 깎은 면(팔각) + 무지개 반짝임.
+      final cut = Path();
+      for (var k = 0; k < 8; k++) {
+        final a = k * math.pi / 4 + math.pi / 8;
+        final p = Offset(math.cos(a), math.sin(a)) * 62;
+        k == 0 ? cut.moveTo(p.dx, p.dy) : cut.lineTo(p.dx, p.dy);
+      }
+      cut.close();
+      c.drawPath(
+        cut,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5
+          ..color = Colors.white.withValues(alpha: 0.7),
+      );
+      const rainbow = [
+        Color(0xFFFF8A8A),
+        Color(0xFFFFE08A),
+        Color(0xFF8AFFB0),
+        Color(0xFF8AC8FF),
+        Color(0xFFD08AFF),
+      ];
+      for (var i = 0; i < 10; i++) {
+        c.drawCircle(
+          Offset(rand.nextDouble() * 160 - 80, rand.nextDouble() * 160 - 80),
+          2 + rand.nextDouble() * 3,
+          Paint()..color = rainbow[i % rainbow.length].withValues(alpha: 0.8),
+        );
+      }
+    case StoneMaterial.jageum ||
+        StoneMaterial.uncheol ||
+        StoneMaterial.hancheol:
+      // 쇠 무리: 깎은 둥근 결 + 금(자금석)·불티(운철)·서리(한철).
+      for (var k = 10; k <= 96; k += 7) {
+        c.drawCircle(
+          Offset.zero,
+          k.toDouble(),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.2
+            ..color = ink.withValues(alpha: 0.2),
+        );
+      }
+      final spark = switch (m) {
+        StoneMaterial.jageum => const Color(0xFFFFD25A),
+        StoneMaterial.uncheol => const Color(0xFFFF7A3A),
+        _ => const Color(0xFFDFF4FF),
+      };
+      for (var i = 0; i < 16; i++) {
+        c.drawCircle(
+          Offset(rand.nextDouble() * 170 - 85, rand.nextDouble() * 170 - 85),
+          1.5 + rand.nextDouble() * 3,
+          Paint()..color = spark.withValues(alpha: 0.75),
+        );
+      }
+    case StoneMaterial.warmJade:
+      // 천년온옥: 가운데서 번지는 따스한 빛.
+      c.drawCircle(
+        const Offset(-20, -20),
+        70,
+        Paint()
+          ..color = const Color(0xFFFFE0C0).withValues(alpha: 0.45)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 26),
+      );
+    case StoneMaterial.dragonScale:
+      // 용린석: 겹친 비늘.
+      for (var row = -2; row <= 2; row++) {
+        for (var col = -3; col <= 3; col++) {
+          final o = Offset(col * 34.0 + (row.isOdd ? 17 : 0), row * 30.0);
+          c.drawArc(
+            Rect.fromCircle(center: o, radius: 20),
+            0,
+            math.pi,
+            false,
+            Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 3
+              ..color = ink.withValues(alpha: 0.45),
+          );
+        }
+      }
+    case StoneMaterial.taegeuk:
+      // 태극석: 음양.
+      const r = 70.0;
+      final dark = Paint()..color = const Color(0xFF15151A);
+      final light = Paint()..color = const Color(0xFFF6F6F8);
+      c.drawArc(
+        Rect.fromCircle(center: Offset.zero, radius: r),
+        -math.pi / 2,
+        math.pi,
+        true,
+        dark,
+      );
+      c.drawArc(
+        Rect.fromCircle(center: Offset.zero, radius: r),
+        math.pi / 2,
+        math.pi,
+        true,
+        light,
+      );
+      c.drawCircle(const Offset(0, -r / 2), r / 2, dark);
+      c.drawCircle(const Offset(0, r / 2), r / 2, light);
+      c.drawCircle(const Offset(0, -r / 2), r / 7, light);
+      c.drawCircle(const Offset(0, r / 2), r / 7, dark);
   }
   c.restore();
 

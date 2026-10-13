@@ -19,7 +19,7 @@ class CreditsScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const OutlinedText(
-                '탄지무림 알까기',
+                '알까기 · 탄지무림',
                 size: 28,
                 title: true,
                 color: Palette.gold,
@@ -62,7 +62,7 @@ class CreditsScreen extends StatelessWidget {
                 child: TextButton(
                   onPressed: () => showLicensePage(
                     context: context,
-                    applicationName: '탄지무림 알까기',
+                    applicationName: '알까기 · 탄지무림',
                     applicationVersion: versionLabel,
                   ),
                   child: const Text('오픈소스 사용권 전체 보기'),

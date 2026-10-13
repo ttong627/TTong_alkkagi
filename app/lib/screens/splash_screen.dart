@@ -77,16 +77,23 @@ class _SplashScreenState extends State<SplashScreen>
                   const Spacer(flex: 2),
                   Transform.scale(
                     scale: 0.5 + 0.5 * title,
+                    // 2026-10-14 형 「이름을 알까기로 바꾸고 부제가 탄지무림」.
                     child: const OutlinedText(
-                      '탄지무림',
-                      size: 72,
+                      '알까기',
+                      size: 80,
                       title: true,
                       color: Palette.gold,
                     ),
                   ),
                   Opacity(
                     opacity: (v * 2).clamp(0, 1),
-                    child: const OutlinedText('손끝으로 펼치는 무협 알까기', size: 20),
+                    child: const Column(
+                      children: [
+                        OutlinedText('탄지무림', size: 34, title: true),
+                        SizedBox(height: 4),
+                        OutlinedText('손끝으로 펼치는 무협 알까기', size: 18),
+                      ],
+                    ),
                   ),
                   const Spacer(),
                   Row(

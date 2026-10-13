@@ -11,6 +11,8 @@ import 'package:alkkagi/game/match.dart';
 import 'package:alkkagi/progress/profile.dart';
 import 'package:alkkagi/progress/store.dart';
 import 'package:alkkagi/screens/campaign_screen.dart';
+import 'package:alkkagi/screens/course_screen.dart';
+import 'package:alkkagi/story/course.dart';
 import 'package:alkkagi/screens/codex_screen.dart';
 import 'package:alkkagi/screens/daily_screen.dart';
 import 'package:alkkagi/screens/dialogue_screen.dart';
@@ -25,6 +27,7 @@ import 'package:alkkagi/screens/game_screen.dart';
 import 'package:alkkagi/screens/hero_pick_screen.dart';
 import 'package:alkkagi/screens/home_screen.dart';
 import 'package:alkkagi/screens/splash_screen.dart';
+import 'package:alkkagi/screens/training_screen.dart';
 import 'package:alkkagi/screens/tutorial_screen.dart';
 import 'package:alkkagi/ui/art.dart';
 import 'package:alkkagi/ui/theme.dart';
@@ -179,6 +182,8 @@ void main() {
       );
     }
     await _shot(t, const CampaignScreen(), 'campaign');
+    await _shot(t, CourseScreen(course: courses[3]), 'course4');
+    await _shot(t, const TrainingScreen(), 'training', settleMs: 1600);
     await _shot(
       t,
       DialogueScreen(
@@ -197,6 +202,8 @@ void main() {
     await _shot(t, const HomeScreen(), 'lobby');
     await _shot(t, const DailyScreen(tab: 0), 'daily_attend');
     await _shot(t, const DailyScreen(tab: 1), 'daily_missions');
+    await _shot(t, const DailyScreen(tab: 2), 'daily_quests');
+    await _shot(t, const DailyScreen(tab: 4), 'daily_bag');
     await _shot(t, const HeroPickScreen(), 'hero_pick');
     await _shot(t, const TutorialScreen(), 'tutorial');
     await _shot(

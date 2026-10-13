@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'profile.dart';
+import 'quests.dart';
 
 /// 요즘 게임의 「매일 들어올 이유」(설계서 §16.9): 출석 보상 · 일일 임무 · 업적 · 판마다 별.
 ///
@@ -8,17 +9,29 @@ import 'profile.dart';
 
 /// 보상 한 묶음.
 class Reward {
-  const Reward({this.coins = 0, this.silver = 0, this.tokens = 0, this.tp = 0});
+  const Reward({
+    this.coins = 0,
+    this.silver = 0,
+    this.tokens = 0,
+    this.tp = 0,
+    this.bag = const {},
+  });
   final int coins;
   final int silver;
   final int tokens;
   final int tp;
+
+  /// 재료·일회용 아이템(가방 이름 → 개수 · quests.dart · 2026-10-14).
+  final Map<String, int> bag;
 
   void giveTo(Profile p) {
     p.coins += coins;
     p.silver += silver;
     p.tokens += tokens;
     p.trainingPoints += tp;
+    for (final e in bag.entries) {
+      Bag.add(p, e.key, e.value);
+    }
   }
 
   /// [(아이콘 이름, 수)] — 화면에 그림으로 보여 준다.
@@ -87,16 +100,17 @@ class Mission {
 }
 
 /// 임무 묶음 9가지. 날짜를 씨앗으로 서로 다른 일 셋을 뽑는다(예전엔 묶음이 둘뿐이었다 — 2026-10-11).
+/// 2026-10-14: 재료를 한두 개씩 더했다(형 「다양한 재료와 아이템 획득」).
 const missionPool = [
-  Mission(Deed.win, 1, Reward(tp: 15, coins: 50)),
-  Mission(Deed.win, 3, Reward(tp: 30)),
-  Mission(Deed.play, 3, Reward(tp: 15, coins: 50)),
-  Mission(Deed.knock, 6, Reward(tp: 15, coins: 50)),
-  Mission(Deed.knock, 15, Reward(tp: 30)),
-  Mission(Deed.critical, 2, Reward(tp: 15)),
-  Mission(Deed.critical, 5, Reward(tokens: 1)),
-  Mission(Deed.train, 30, Reward(tp: 15)),
-  Mission(Deed.inner, 2, Reward(tp: 15, coins: 50)),
+  Mission(Deed.win, 1, Reward(tp: 15, coins: 50, bag: {'mat:ore': 1})),
+  Mission(Deed.win, 3, Reward(tp: 30, bag: {'mat:herb': 2})),
+  Mission(Deed.play, 3, Reward(tp: 15, coins: 50, bag: {'mat:herb': 1})),
+  Mission(Deed.knock, 6, Reward(tp: 15, coins: 50, bag: {'mat:jade': 1})),
+  Mission(Deed.knock, 15, Reward(tp: 30, bag: {'mat:jade': 2})),
+  Mission(Deed.critical, 2, Reward(tp: 15, bag: {'mat:ore': 1})),
+  Mission(Deed.critical, 5, Reward(tokens: 1, bag: {'mat:silk': 1})),
+  Mission(Deed.train, 30, Reward(tp: 15, bag: {'mat:herb': 1})),
+  Mission(Deed.inner, 2, Reward(tp: 15, coins: 50, bag: {'mat:silk': 1})),
 ];
 
 /// 셋 다 끝내면 덤.
@@ -140,6 +154,7 @@ abstract final class Missions {
     _roll(p, day);
     p.missionCounts[d] = (p.missionCounts[d] ?? 0) + n;
     p.lifetime[d] = (p.lifetime[d] ?? 0) + n;
+    Quests.record(p, d, day, n);
   }
 
   static int progress(Profile p, Mission m, String day) =>
@@ -294,9 +309,17 @@ final achievements = <Achievement>[
   ),
   Achievement(
     'collect',
-    '재질 네 가지 모두',
+    '재질 네 가지 모으기',
     4,
     const Reward(silver: 2),
+    (p) => p.materials.length,
+  ),
+  // 2026-10-14 재질이 일곱 가지가 되었다(형 「돌의 종류도 더 다양하게」).
+  Achievement(
+    'collect7',
+    '재질 일곱 가지 모두',
+    7,
+    const Reward(silver: 5),
     (p) => p.materials.length,
   ),
   Achievement(

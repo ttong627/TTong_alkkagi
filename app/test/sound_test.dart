@@ -10,7 +10,7 @@ void main() {
     final want = {
       ...Sound.effects,
       'slide',
-      for (final m in StoneMaterial.values) 'hit_${m.name}',
+      for (final m in StoneMaterial.values) Sound.hitSound(m),
       for (final t in Technique.values)
         if (t != Technique.none) 'tech_${t.name}',
       for (final a in Arena.values) 'bgm_${a.name}',

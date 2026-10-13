@@ -160,8 +160,22 @@ abstract final class Sound {
   /// 충돌: 재질별 소리, 다가온 빠르기로 크기(20cm/s 아래는 작게).
   static void hit(StoneMaterial m, double speed) {
     if (speed < 3) return;
-    play('hit_${m.name}', math.min(1, 0.15 + speed / 90));
+    play(hitSound(m), math.min(1, 0.15 + speed / 90));
   }
+
+  /// 재질의 충돌 소리 이름. 새 재질(2026-10-14)은 닮은 소리를 함께 쓴다:
+  /// 흑요석·금강석 맑은 얼음 · 반석 묵직한 현철.
+  static String hitSound(StoneMaterial m) => switch (m) {
+    StoneMaterial.obsidian || StoneMaterial.diamond => 'hit_ice',
+    StoneMaterial.granite ||
+    StoneMaterial.jageum ||
+    StoneMaterial.uncheol ||
+    StoneMaterial.hancheol => 'hit_hyeoncheol',
+    StoneMaterial.warmJade ||
+    StoneMaterial.dragonScale ||
+    StoneMaterial.taegeuk => 'hit_cheongok',
+    _ => 'hit_${m.name}',
+  };
 
   static void technique(Technique t) {
     if (t == Technique.none) return;

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../audio/sound.dart';
+import '../game/board_paint.dart' show materialColors;
 import '../progress/daily.dart';
 import '../progress/profile.dart';
+import '../progress/quests.dart';
 import '../progress/store.dart';
 import '../ui/art.dart';
 import '../ui/kit.dart';
@@ -20,7 +22,7 @@ class DailyScreen extends StatefulWidget {
 class _DailyScreenState extends State<DailyScreen>
     with SingleTickerProviderStateMixin {
   late final _tabs = TabController(
-    length: 3,
+    length: 5,
     vsync: this,
     initialIndex: widget.tab,
   );
@@ -64,8 +66,9 @@ class _DailyScreenState extends State<DailyScreen>
                 unselectedLabelColor: Palette.dim,
                 labelStyle: const TextStyle(
                   fontFamily: titleFont,
-                  fontSize: 18,
+                  fontSize: 16,
                 ),
+                labelPadding: const EdgeInsets.symmetric(horizontal: 4),
                 tabs: [
                   Tab(
                     icon: _badge('attendance', Attendance.canClaim(p, day)),
@@ -76,8 +79,18 @@ class _DailyScreenState extends State<DailyScreen>
                     text: '임무',
                   ),
                   Tab(
+                    key: const Key('tab-quests'),
+                    icon: _badge('chest', Quests.hasClaimable(p, day)),
+                    text: '퀘스트',
+                  ),
+                  Tab(
                     icon: _badge('medal', Achievements.hasClaimable(p)),
                     text: '업적',
+                  ),
+                  Tab(
+                    key: const Key('tab-bag'),
+                    icon: _badge('shop', false),
+                    text: '가방',
                   ),
                 ],
               ),
@@ -87,7 +100,9 @@ class _DailyScreenState extends State<DailyScreen>
                   children: [
                     _attendance(p, day),
                     _missions(p, day),
+                    _quests(p, day),
                     _achievements(p),
+                    _bag(p),
                   ],
                 ),
               ),
@@ -216,6 +231,147 @@ class _DailyScreenState extends State<DailyScreen>
       ],
     );
   }
+
+  /// 주간·월간·연간 퀘스트(2026-10-14 형 「주간 월간 년간 퀘스트」).
+  Widget _quests(Profile p, String day) => ListView(
+    padding: const EdgeInsets.all(14),
+    children: [
+      for (final q in QuestPeriod.values) ...[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
+          child: OutlinedText(
+            '${q.label} 퀘스트',
+            size: 20,
+            title: true,
+            color: Palette.gold,
+            align: TextAlign.start,
+          ),
+        ),
+        for (var i = 0; i < questPool[q]!.length; i++)
+          _TaskCard(
+            icon: _deedIcon(questPool[q]![i].deed),
+            title: '${questPool[q]![i].deed.label} ${questPool[q]![i].goal}',
+            now: Quests.progress(p, q, questPool[q]![i], day),
+            goal: questPool[q]![i].goal,
+            reward: questPool[q]![i].reward,
+            claimed: Quests.claimed(p, q, i, day),
+            onClaim: () => _got(Quests.claim(p, q, i, day)),
+          ),
+      ],
+    ],
+  );
+
+  /// 가방: 재료 · 일회용 아이템 · 만들기(2026-10-14 형 「다양한 재료와 아이템 · 일회용 아이템」).
+  Widget _bag(Profile p) => ListView(
+    padding: const EdgeInsets.all(14),
+    children: [
+      const OutlinedText(
+        '재료',
+        size: 20,
+        title: true,
+        color: Palette.gold,
+        align: TextAlign.start,
+      ),
+      const SizedBox(height: 6),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final m in Mat.values)
+            _BagChip(
+              key: Key('mat-${m.name}'),
+              label: m.label,
+              n: Bag.count(p, m.key),
+              color: Color(m.color),
+            ),
+        ],
+      ),
+      const SizedBox(height: 16),
+      // 2026-10-14 형 「기연이나 이벤트에서 조각을 모아서 완성하는 돌」.
+      const OutlinedText(
+        '돌 조각 — 다 모으면 만물상에서 완성',
+        size: 18,
+        title: true,
+        color: Palette.gold,
+        align: TextAlign.start,
+      ),
+      const SizedBox(height: 6),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final e in shardNeeds.entries)
+            _BagChip(
+              key: Key('shard-${e.key.name}'),
+              label:
+                  '${e.key.label} 조각 ${p.bag[shardKey(e.key)] ?? 0}/${e.value}',
+              n: e.key.grade,
+              color: materialColors[e.key]!,
+              unit: '단',
+            ),
+        ],
+      ),
+      const SizedBox(height: 16),
+      const OutlinedText(
+        '일회용 아이템 — 판에서 내 차례에 가방 단추로 쓴다',
+        size: 18,
+        title: true,
+        color: Palette.gold,
+        align: TextAlign.start,
+      ),
+      const SizedBox(height: 6),
+      for (final it in Item.values)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: GlassPanel(
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${it.label}  ×${Bag.count(p, it.key)}',
+                        style: const TextStyle(
+                          fontFamily: titleFont,
+                          fontSize: 17,
+                        ),
+                      ),
+                      Text(it.help, style: const TextStyle(fontSize: 14)),
+                      Text(
+                        '만들기: ${[for (final e in it.recipe.entries) '${e.key.label} ${e.value}'].join(' · ')}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Palette.dim,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GameButton(
+                  key: Key('craft-${it.name}'),
+                  label: '만들기',
+                  height: 44,
+                  fontSize: 17,
+                  width: 96,
+                  color: Palette.red,
+                  onTap: Bag.canCraft(p, it)
+                      ? () async {
+                          Bag.craft(p, it);
+                          Sound.play('unlock');
+                          setState(() {});
+                          await _store.save();
+                        }
+                      : null,
+                ),
+              ],
+            ),
+          ),
+        ),
+    ],
+  );
 
   Widget _achievements(Profile p) => ListView(
     padding: const EdgeInsets.all(14),
@@ -375,9 +531,19 @@ class _TaskCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       for (final (ic, n) in reward.items)
                         _RewardChip(icon: ic, n: n),
+                      for (final e in reward.bag.entries)
+                        Text(
+                          '${Bag.label(e.key)} ${e.value}  ',
+                          style: const TextStyle(
+                            fontFamily: titleFont,
+                            fontSize: 13,
+                            color: Color(0xFFBFF0D8),
+                          ),
+                        ),
                     ],
                   ),
                 ],
@@ -449,6 +615,48 @@ class _ClaimSlot extends StatelessWidget {
   }
 }
 
+/// 가방 칸 하나: 색 동그라미 + 이름 + 개수.
+class _BagChip extends StatelessWidget {
+  const _BagChip({
+    super.key,
+    required this.label,
+    required this.n,
+    required this.color,
+    this.unit,
+  });
+  final String label;
+  final int n;
+  final Color color;
+
+  /// 있으면 「×n」 대신 「· n단」처럼.
+  final String? unit;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    decoration: BoxDecoration(
+      color: Palette.panel,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: color.withValues(alpha: 0.7)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 14,
+          height: 14,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          unit == null ? '$label ×$n' : '$label · $n$unit',
+          style: const TextStyle(fontFamily: titleFont, fontSize: 15),
+        ),
+      ],
+    ),
+  );
+}
+
 class _RewardChip extends StatelessWidget {
   const _RewardChip({required this.icon, required this.n});
   final String icon;
@@ -485,19 +693,31 @@ class _RewardBurst extends StatelessWidget {
           opacity: 1 - fly,
           child: Transform.scale(
             scale: 0.3 + 0.9 * pop,
-            child: Row(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                for (final (ic, n) in reward.items) ...[
-                  Image.asset(Art.icon(ic), width: 84),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final (ic, n) in reward.items) ...[
+                      Image.asset(Art.icon(ic), width: 84),
+                      OutlinedText(
+                        '+$n',
+                        size: 40,
+                        title: true,
+                        color: Palette.gold,
+                      ),
+                      const SizedBox(width: 12),
+                    ],
+                  ],
+                ),
+                for (final e in reward.bag.entries)
                   OutlinedText(
-                    '+$n',
-                    size: 40,
+                    '${Bag.label(e.key)} +${e.value}',
+                    size: 30,
                     title: true,
-                    color: Palette.gold,
+                    color: const Color(0xFFBFF0D8),
                   ),
-                  const SizedBox(width: 12),
-                ],
               ],
             ),
           ),

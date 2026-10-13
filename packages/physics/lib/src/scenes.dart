@@ -6,11 +6,12 @@ import 'table.dart';
 
 /// planck.js 시험대(`prototype/physics/measure.js`)와 똑같은 장면들.
 /// 측정 재현 시험(체크리스트 1-08)과 측정 스크립트가 같이 쓴다.
+/// 시험대와 같게 무게중심(2026-10-14 · [StoneShape.settleMultiplier])은 끄고 잰다.
 abstract final class Scenes {
   /// A. 타격점: 같은 재질 구형 돌, 정면 충돌, 처음 속도 20cm/s.
   /// 반환: (내 돌 최종 x, 표적 최종 x).
   static (double, double) hitPoint(double gap, double hit) {
-    final t = Table(minDamping: 0.15);
+    final t = Table(minDamping: 0.15, settle: false);
     final me = t.addStone(-gap, 0, shape: StoneShape.sphere);
     final tg = t.addStone(0, 0, shape: StoneShape.sphere);
     t.shoot(me, 0, 20, hit);
@@ -23,7 +24,7 @@ abstract final class Scenes {
   /// B. 재질별: 같은 충격량(60)으로 둥근 돌 혼자 굴림.
   /// 반환: (거리 cm 또는 장외면 null, 시간 초).
   static (double?, double) materialRoll(StoneMaterial m) {
-    final t = Table(minDamping: 0.15);
+    final t = Table(minDamping: 0.15, settle: false);
     final s = t.addStone(-PhysicsConstants.halfBoard + 2, 0, material: m);
     final x0 = s.position.x;
     t.shoot(s, 0, 60 / s.body.mass, 0);
@@ -36,7 +37,7 @@ abstract final class Scenes {
 
   /// B2. 재질별: 같은 속도(30cm/s)로 청옥 표적을 정면으로 침. 반환: 표적 x(장외면 null).
   static double? materialPush(StoneMaterial m) {
-    final t = Table(minDamping: 0.15);
+    final t = Table(minDamping: 0.15, settle: false);
     final me = t.addStone(-8, 0, material: m);
     final tg = t.addStone(0, 0);
     t.shoot(me, 0, 30, 0);
@@ -48,7 +49,7 @@ abstract final class Scenes {
 
   /// B3. 모양별: 청옥, 같은 속도(40cm/s)로 혼자 굴림. 반환: 거리(cm).
   static double shapeRoll(StoneShape shape) {
-    final t = Table(minDamping: 0.15);
+    final t = Table(minDamping: 0.15, settle: false);
     final s = t.addStone(-PhysicsConstants.halfBoard + 2, 0, shape: shape);
     final x0 = s.position.x;
     t.shoot(s, 0, 40, 0);
@@ -61,7 +62,7 @@ abstract final class Scenes {
   /// D·E 용 무작위 16알 판(8:8). [seed] 가 같으면 같은 판·같은 한 수.
   static (Table, Stone) randomGame(int seed, {double minDamping = 0.15}) {
     final rand = Lcg(seed);
-    final t = Table(minDamping: minDamping);
+    final t = Table(minDamping: minDamping, settle: false);
     const b = PhysicsConstants.board;
     const r = PhysicsConstants.stoneRadius;
     while (t.stones.length < 16) {

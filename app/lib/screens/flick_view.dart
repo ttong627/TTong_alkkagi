@@ -897,11 +897,11 @@ class _MiniBoardPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const span = phys.PhysicsConstants.board + 3.2;
+    final span = match.table.half * 2 + 3.2;
     final scale = math.min(size.width, size.height) / span;
     final o = Offset(size.width / 2, size.height / 2);
     Offset at(double x, double y) => o + Offset(x, y) * scale;
-    paintArena(canvas, match.config.arena, at, scale);
+    paintArena(canvas, match.config.arena, at, scale, h: match.table.half);
     for (final f in match.table.features) {
       paintFeature(canvas, f, at, scale);
     }
@@ -997,7 +997,7 @@ class _FloorPainter extends CustomPainter {
     final sx = stone.position.x, sy = stone.position.y;
     Offset at(double x, double y) =>
         disc.center + Offset(x - sx, y - sy) * scale;
-    paintArena(canvas, arena, at, scale);
+    paintArena(canvas, arena, at, scale, h: match.table.half);
     for (final f in match.table.features) {
       paintFeature(canvas, f, at, scale);
     }

@@ -2,7 +2,7 @@
     <!-- 손맛 진동: 세기·길이를 정해 떤다(일반 권한 · 사용자 정보 없음). -->
     <uses-permission android:name="android.permission.VIBRATE"/>
     <application
-        android:label="탄지무림 알까기"
+        android:label="알까기"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="true">

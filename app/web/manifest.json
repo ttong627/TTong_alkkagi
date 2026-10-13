@@ -1,11 +1,11 @@
 {
-    "name": "탄지무림 알까기",
-    "short_name": "탄지무림 알까기",
+    "name": "알까기 · 탄지무림",
+    "short_name": "알까기",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "탄지무림 — 손끝으로 펼치는 무협 알까기",
+    "description": "알까기 · 탄지무림 — 손끝으로 펼치는 무협 알까기",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

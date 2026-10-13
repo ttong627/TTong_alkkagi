@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../audio/sound.dart';
 import '../progress/settings.dart';
+import 'board_paint.dart';
 import 'fx_colors.dart';
 import 'match.dart';
 import '../ui/theme.dart';
@@ -385,16 +386,28 @@ class BattleFx {
         if (!crowd) Sound.play('out_crowd', 0.7);
         crowd = true;
         final at = Offset(s.position.x, s.position.y);
-        _text(at, '장외!', const Color(0xFFFF6B5B), size: 24);
-        _burst(at, const Color(0xFFC9A57A), 20, 15, size: 0.35);
-        _shake = math.max(_shake, 5);
-        // 판 밖으로 떨어지며 작아지는 돌(장외가 눈에 보이게).
         final dir = s.velocity.length > 1
             ? Offset(s.velocity.x, s.velocity.y)
             : Offset(at.dx, at.dy);
         final unit = dir.distance == 0
             ? const Offset(0, 1)
             : dir / dir.distance;
+        // 2026-10-14 형 「크리티컬 … 상대 돌이 떨어지는 게 아니라 박살나면서 분해되는 그래픽과 액션」:
+        // 회심·어기어석으로 친 수에 상대 돌이 장외되면 떨어지는 대신 조각으로 부서진다.
+        final shooter = t.shooter;
+        final smash =
+            shooter != null &&
+            s.team <= 1 &&
+            s.team != shooter.team &&
+            (m.lastCritical || m.lastMode == StrikeMode.ultimate);
+        if (smash) {
+          _shatter(at, unit, s);
+          continue;
+        }
+        _text(at, '장외!', const Color(0xFFFF6B5B), size: 24);
+        _burst(at, const Color(0xFFC9A57A), 20, 15, size: 0.35);
+        _shake = math.max(_shake, 5);
+        // 판 밖으로 떨어지며 작아지는 돌(장외가 눈에 보이게).
         falls.add(
           FallingStone(
             at,
@@ -419,9 +432,51 @@ class BattleFx {
     }
   }
 
+  /// 박살나는 돌의 조각(그리기는 [paintOver]).
+  final shards = <Shard>[];
+
+  /// 돌이 박살나 조각 8개로 흩어진다(「박살!」 · 큰 흔들림 · 번쩍 · 쿵-쿵).
+  void _shatter(Offset at, Offset unit, phys.Stone s) {
+    final face = stoneBase(s.team);
+    final edge = materialColors[s.material] ?? Colors.white;
+    for (var k = 0; k < 8; k++) {
+      final a = k * math.pi / 4 + _rand.nextDouble() * 0.5;
+      final out = Offset(math.cos(a), math.sin(a));
+      shards.add(
+        Shard(
+          at + out * 0.4,
+          out * (10 + _rand.nextDouble() * 18) + unit * 14,
+          _rand.nextDouble() * math.pi,
+          (_rand.nextDouble() - 0.5) * 18,
+          0.45 + _rand.nextDouble() * 0.35,
+          face,
+          edge,
+        ),
+      );
+    }
+    _text(at.translate(0, -2.2), '박살!', const Color(0xFFFFB04A), size: 38);
+    _rings.add(_Ring(at, 0.3, 5, 0.4, Colors.white));
+    _burst(at, edge, 30, 25, size: 0.3);
+    _streak(at, 0, math.pi, 18, 40, const Color(0xFFFFE9A8), len: 1.8);
+    _shake = math.max(_shake, 16);
+    _flash = math.max(_flash, 0.45);
+    _flashColor = Colors.white;
+    _stopLeft = math.max(_stopLeft, 0.1);
+    Sound.play('critical');
+    Sound.play('hit_hyeoncheol');
+    Buzz.burst();
+  }
+
   /// 실제 시간으로 연출을 진행한다.
   void update(double dt) {
     clock += dt;
+    for (final s in shards) {
+      s.pos += s.vel * dt;
+      s.vel *= 1 - 1.8 * dt;
+      s.rot += s.spin * dt;
+      s.life -= dt;
+    }
+    shards.removeWhere((s) => s.life <= 0);
     if (_stopLeft > 0) _stopLeft -= dt;
     for (final st in _streaks) {
       st.pos += st.vel * dt;
@@ -516,6 +571,28 @@ class BattleFx {
     Offset Function(double x, double y) at,
     double scale,
   ) {
+    for (final s in shards) {
+      // 세모 조각: 돌 겉빛 + 재질 테두리, 사라지며 옅어진다.
+      final a = (s.life / Shard.lifeTime).clamp(0.0, 1.0);
+      final c = at(s.pos.dx, s.pos.dy);
+      final r = s.size * scale;
+      final path = Path();
+      for (var k = 0; k < 3; k++) {
+        final ang = s.rot + k * 2.1;
+        final rr = r * const [1.0, 0.7, 0.85][k];
+        final p = c + Offset(math.cos(ang), math.sin(ang)) * rr;
+        k == 0 ? path.moveTo(p.dx, p.dy) : path.lineTo(p.dx, p.dy);
+      }
+      path.close();
+      canvas.drawPath(path, Paint()..color = s.face.withValues(alpha: a));
+      canvas.drawPath(
+        path,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = math.max(1.2, scale * 0.12)
+          ..color = s.edge.withValues(alpha: a),
+      );
+    }
     for (final r in _rings) {
       final k = r.t / r.dur;
       final rad =
@@ -624,6 +701,28 @@ class FallingStone {
   final phys.StoneMaterial material;
   final phys.StoneShape shape;
   double t = 0;
+}
+
+/// 박살난 돌 조각 하나.
+class Shard {
+  Shard(
+    this.pos,
+    this.vel,
+    this.rot,
+    this.spin,
+    this.size,
+    this.face,
+    this.edge,
+  );
+  static const double lifeTime = 0.9;
+  Offset pos;
+  Offset vel;
+  double rot;
+  final double spin;
+  final double size;
+  final Color face;
+  final Color edge;
+  double life = lifeTime;
 }
 
 class _Streak {

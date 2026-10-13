@@ -15,6 +15,7 @@ import '../game/fx_colors.dart';
 import '../game/match.dart';
 import '../progress/daily.dart';
 import '../progress/profile.dart';
+import '../progress/quests.dart';
 import '../progress/settings.dart';
 import '../progress/store.dart';
 import '../story/puzzles.dart' show trickStars;
@@ -34,6 +35,7 @@ class GameScreen extends StatefulWidget {
     this.title,
     this.onTurnEnd,
     this.info,
+    this.panel,
     this.quips = const [],
     this.boss = false,
     this.coach = false,
@@ -57,6 +59,9 @@ class GameScreen extends StatefulWidget {
 
   /// 판 아래 안내 글(목인항 수련 수 등). 없으면 대전장 이름.
   final String Function()? info;
+
+  /// 판 아래 안내 글 위에 놓는 칸(목인항 진행 막대·저장 등).
+  final Widget Function()? panel;
 
   /// 강호행 판이면 제목(예: 「1장 · 하산의 길」). 이때는 판이 끝나면 이겼는지(bool)를 돌려주고 닫는다.
   final String? title;
@@ -120,6 +125,11 @@ class _GameScreenState extends State<GameScreen> {
   /// 내공 겨루기 연타 화면이 떠 있나.
   bool _clashing = false;
 
+  /// 이번 겨루기의 놀이와 고수 점수 — 겨루기가 시작될 때 한 번만 정한다
+  /// (예전엔 그릴 때마다 고수 연타 수를 새로 뽑아 막대가 들쭉날쭉했다).
+  ClashGame _clashGame = ClashGame.mash;
+  int _clashAi = 0;
+
   /// 판 시작 「나 VS 상대」 연출.
   bool _intro = true;
 
@@ -153,6 +163,85 @@ class _GameScreenState extends State<GameScreen> {
   void _say(int first) {
     if (widget.quips.length < first + 2) return;
     _show(widget.quips[first + _rand.nextInt(2)], _foeId);
+  }
+
+  /// 회심 부적을 썼다 — 다음 내 한 수는 반드시 회심.
+  bool _critCharm = false;
+
+  /// 일회용 아이템을 쓸 수 있는 판(혼자 하기 계열 · 묘수풀이·목인항·입문 빼고 · 2026-10-14).
+  bool get _itemsAllowed =>
+      widget.config.mode == MatchMode.vsAi &&
+      widget.config.layout == null &&
+      !widget.config.training &&
+      !widget.coach;
+
+  /// 지금 쓸 수 있나(내 차례 · 돌이 멈춤 · 판이 안 끝남).
+  bool get _myCalmTurn =>
+      _match.turn == 0 &&
+      !_match.isMoving &&
+      !_aiTurn &&
+      !_aiThinking &&
+      _result == null;
+
+  /// 가방 창: 아이템 셋과 남은 수 · 「쓰기」.
+  Future<void> _openItems() async {
+    Sound.play('ui_open');
+    final used = await showModalBottomSheet<Item>(
+      context: context,
+      backgroundColor: Palette.panel,
+      builder: (c) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const OutlinedText('일회용 아이템', size: 24, title: true),
+              const SizedBox(height: 8),
+              for (final it in Item.values)
+                _itemRow(c, it, Bag.count(_store.profile, it.key)),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (used == null || !mounted || !_myCalmTurn) return;
+    if (!Bag.take(_store.profile, used.key)) return;
+    unawaited(_store.save());
+    switch (used) {
+      case Item.critCharm:
+        _critCharm = true;
+        _show('회심 부적 — 다음 한 수는 반드시 회심!', _myId);
+      case Item.guardCharm:
+        _match.guard(0);
+        _show('철벽 부적 — 상대가 칠 동안 내 돌이 버틴다', _myId);
+      case Item.qiPill:
+        _match.addQi(0, 2);
+        _show('내공 단약 — 내공 2칸!', _myId);
+    }
+    Sound.play('unlock');
+    Buzz.heavy();
+    setState(() {});
+  }
+
+  Widget _itemRow(BuildContext c, Item it, int n) {
+    final usable =
+        n > 0 &&
+        _myCalmTurn &&
+        switch (it) {
+          Item.critCharm => !_critCharm,
+          Item.guardCharm => _match.guardTeam == null,
+          Item.qiPill => _match.qi(0) < maxQi,
+        };
+    return ListTile(
+      key: Key('item-${it.name}'),
+      title: Text('${it.label}  ×$n'),
+      subtitle: Text(it.help),
+      trailing: FilledButton(
+        onPressed: usable ? () => Navigator.pop(c, it) : null,
+        child: const Text('쓰기'),
+      ),
+    );
   }
 
   void _show(String line, String? by, [int ms = 2600]) {
@@ -304,6 +393,8 @@ class _GameScreenState extends State<GameScreen> {
     if (_match.clash != null && !_clashing) {
       // 준비 장면이 대치·북소리를 낸다(바로 연타로 들어가지 않는다 · 2026-10-11 형 지시).
       _clashing = true;
+      _clashGame = ClashGame.values[_rand.nextInt(ClashGame.values.length)];
+      _clashAi = QiClash.aiScore(_clashGame, widget.config.difficulty, _rand);
       Sound.play('clash', 0.7);
       _selected = null;
     }
@@ -380,12 +471,16 @@ class _GameScreenState extends State<GameScreen> {
       // 정각: 회심 가운데 폭이 넓다.
       critical:
           shot.critical ||
+          _critCharm ||
           (widget.config.critWidth > CriticalRule.maxOffset &&
               shot.offset <= widget.config.critWidth &&
               shot.power >= CriticalRule.minPower &&
               shot.power <= CriticalRule.maxPower),
       curl: shot.curl,
+      flick: shot.flick,
     );
+    // 회심 부적은 한 번 친 수에 쓰인다(내공 타격이면 회심이 없으니 그대로 남긴다).
+    if (_match.lastMode == StrikeMode.plain) _critCharm = false;
     if (_match.lastCritical) {
       _record(Deed.critical);
       _say(0);
@@ -397,7 +492,7 @@ class _GameScreenState extends State<GameScreen> {
   Alignment get _zoomFrom {
     final s = _selected;
     if (s == null) return Alignment.center;
-    const h = phys.PhysicsConstants.halfBoard;
+    final h = _match.table.half;
     return Alignment(s.position.x / h * 0.85, s.position.y / h * 0.6);
   }
 
@@ -621,6 +716,15 @@ class _GameScreenState extends State<GameScreen> {
                             icon: Icons.pause_rounded,
                             onTap: () => _setPaused(true),
                           ),
+                        if (_itemsAllowed) ...[
+                          const SizedBox(width: 6),
+                          _RoundIcon(
+                            key: const Key('items'),
+                            icon: Icons.backpack_rounded,
+                            label: '아이템',
+                            onTap: _openItems,
+                          ),
+                        ],
                         Expanded(
                           child: _Fighter(
                             id: _foeId,
@@ -733,6 +837,7 @@ class _GameScreenState extends State<GameScreen> {
                         if (_status.isNotEmpty)
                           OutlinedText(_status, size: 20, title: true),
                         const SizedBox(height: 2),
+                        ?widget.panel?.call(),
                         Text(
                           widget.info?.call() ??
                               _match.ruleStatus ??
@@ -792,9 +897,10 @@ class _GameScreenState extends State<GameScreen> {
                   opponent: widget.config.opponentName ?? '상대',
                   me: _myId,
                   foe: _foeId,
-                  aiTaps: QiClash.aiTaps(widget.config.difficulty, _rand),
+                  game: _clashGame,
+                  aiTaps: _clashAi,
                   onDone: (mine, theirs) {
-                    _match.resolveClash(mine, theirs);
+                    _match.resolveClash(mine, theirs, _clashGame);
                     setState(() => _clashing = false);
                   },
                 ),
@@ -862,14 +968,20 @@ class _Result {
 
 /// 둥근 아이콘 단추(일시정지 등).
 class _RoundIcon extends StatelessWidget {
-  const _RoundIcon({super.key, required this.icon, required this.onTap});
+  const _RoundIcon({
+    super.key,
+    required this.icon,
+    required this.onTap,
+    this.label = '잠시 멈춤',
+  });
   final IconData icon;
   final VoidCallback onTap;
+  final String label;
 
   @override
   Widget build(BuildContext context) => Semantics(
     button: true,
-    label: '잠시 멈춤',
+    label: label,
     child: GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {

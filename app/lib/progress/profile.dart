@@ -104,18 +104,80 @@ abstract final class Training {
       math.max(0, hits - enlightened) * after;
 }
 
+/// 목인항 진행 칸 값(2026-10-14 형 「다음 목표치와 진행 상황을 알 수 있게」).
+class TrainingGoal {
+  const TrainingGoal({
+    required this.stageName,
+    required this.nextName,
+    required this.have,
+    required this.need,
+    required this.stageProgress,
+    required this.todayHits,
+  });
+
+  final String stageName;
+
+  /// 다음 경지 이름(마지막이면 null).
+  final String? nextName;
+
+  /// 쌓인 내공 · 다음 경지에 필요한 내공(마지막이면 같은 값).
+  final double have, need;
+
+  /// 지금 경지 안에서 다음 경지까지 간 비율(0~1).
+  final double stageProgress;
+
+  /// [day] 에 친 수.
+  final int todayHits;
+
+  static TrainingGoal of(Profile p, String day) {
+    final i = p.stage - 1;
+    final base = naegongStages[i].$2;
+    final last = i + 1 >= naegongStages.length;
+    final next = last ? base : naegongStages[i + 1].$2;
+    return TrainingGoal(
+      stageName: naegongStages[i].$1,
+      nextName: last ? null : naegongStages[i + 1].$1,
+      have: p.naegong,
+      need: last ? p.naegong : next,
+      stageProgress: last
+          ? 1
+          : ((p.naegong - base) / (next - base)).clamp(0.0, 1.0),
+      todayHits: p.trainingDay == day ? p.trainingHits : 0,
+    );
+  }
+}
+
 /// 만물상 (설계서 §6.2A·§16.4) 가격(엽전).
+///
+/// 2026-10-14 형 「다음 돌 구입하는 구입가를 지금 가격의 10배 이상 올려서 쉽게 바꾸지 못하게」: 모두 ×10.
+/// 조각 돌(천년온옥·용린석·태극석)은 팔지 않는다 — [shardNeeds] 만큼 조각을 모아 완성.
 const materialPrices = {
   StoneMaterial.cheongok: 0,
-  StoneMaterial.wood: 300,
-  StoneMaterial.hyeoncheol: 600,
-  StoneMaterial.ice: 900,
+  StoneMaterial.wood: 3000,
+  StoneMaterial.hyeoncheol: 6000,
+  StoneMaterial.obsidian: 7500,
+  StoneMaterial.granite: 8000,
+  StoneMaterial.ice: 9000,
+  StoneMaterial.diamond: 12000,
+  StoneMaterial.jageum: 18000,
+  StoneMaterial.uncheol: 26000,
+  StoneMaterial.hancheol: 36000,
 };
 const shapePrices = {
   StoneShape.flat: 0,
-  StoneShape.round: 200,
-  StoneShape.sphere: 500,
+  StoneShape.round: 2000,
+  StoneShape.sphere: 5000,
 };
+
+/// 조각 돌을 완성하는 데 드는 조각 수(2026-10-14 형 「기연이나 이벤트에서 조각을 모아서 완성하는 돌」).
+const shardNeeds = {
+  StoneMaterial.warmJade: 20,
+  StoneMaterial.dragonScale: 30,
+  StoneMaterial.taegeuk: 40,
+};
+
+/// 가방에서 조각 돌의 조각 이름.
+String shardKey(StoneMaterial m) => 'frag:${m.name}';
 
 /// 진기(행동력) (설계서 §7.2): 최대 100, 6분에 1, 강호유랑 1칸·투기장 1회 10, 지면 50% 돌려줌.
 abstract final class Stamina {
@@ -268,6 +330,14 @@ class Profile {
   /// 받은 업적.
   final achieved = <String>{};
 
+  /// 가방: 재료·일회용 아이템 이름 → 개수(quests.dart · 2026-10-14).
+  final bag = <String, int>{};
+
+  /// 주간·월간·연간 퀘스트: 기간 열쇠 · 센 수('week:win' 등) · 받은 것('week:0' 등).
+  final questKeys = <String, String>{};
+  final questCounts = <String, int>{};
+  final questClaimed = <String>{};
+
   /// 판마다 얻은 별(가장 좋았던 것).
   final stars = <String, int>{};
 
@@ -402,7 +472,9 @@ class Profile {
   double get spinScale =>
       (1 + 0.015 * level(Stat.finesse)) +
       (hero == Fighter.yeonbi ? 0.1 : 0) +
-      (hero == Fighter.gurumi ? 0.15 : 0);
+      (hero == Fighter.gurumi ? 0.15 : 0) +
+      // 목인항 끌어치기 수련(2026-10-14).
+      (perks.contains('회전 숙련') ? 0.1 : 0);
   double get steerSeconds =>
       1.5 +
       0.075 * level(Stat.control) +
@@ -410,12 +482,20 @@ class Profile {
 
   /// 판 시작 내공 칸: 화경(6단계)부터 1칸, 청명 +1.
   int get startQi =>
-      (stage >= 6 ? 1 : 0) + (hero == Fighter.cheongmyeong ? 1 : 0);
+      (stage >= 6 ? 1 : 0) +
+      (hero == Fighter.cheongmyeong ? 1 : 0) +
+      // 목인항 내공 타격 수련(2026-10-14).
+      (perks.contains('내공 숙련') ? 1 : 0);
+
+  /// 목인항 단계별 수련(drills.dart · 2026-10-14): 깬 단계 수 · 지금 하는 단계 · 그 단계 진행.
+  int drillCleared = 0;
+  int drillIndex = 0;
+  int drillProgress = 0;
 
   /// 어기어석 꺾기 횟수(설계서 §3.7·§16.2).
   int get steers => stage >= 7 ? 3 : (stage >= 5 ? 2 : 1);
 
-  /// 도감 세트 보너스: 재질 4종을 모두 모으면 능력치 3종 +1, 모양 3종 모두 +1 (설계서 §8.7).
+  /// 도감 세트 보너스: 재질 7종(2026-10-14 셋 더함)을 모두 모으면 능력치 3종 +1, 모양 3종 모두 +1 (설계서 §8.7).
   int get codexBonus =>
       (materials.length == StoneMaterial.values.length ? 1 : 0) +
       (shapes.length == StoneShape.values.length ? 1 : 0);
@@ -453,9 +533,31 @@ class Profile {
 
   // --- 만물상 ---
   bool buyMaterial(StoneMaterial m) {
-    final p = materialPrices[m]!;
-    if (materials.contains(m) || coins < p) return false;
+    final p = materialPrices[m];
+    if (p == null || materials.contains(m) || coins < p) return false;
     coins -= p;
+    materials.add(m);
+    codex.add('재질:${m.name}');
+    return true;
+  }
+
+  /// 조각 돌: 조각이 [shardNeeds] 만큼 모였나.
+  bool canForge(StoneMaterial m) {
+    final need = shardNeeds[m];
+    return need != null &&
+        !materials.contains(m) &&
+        (bag[shardKey(m)] ?? 0) >= need;
+  }
+
+  /// 조각을 모두 써서 조각 돌을 완성한다.
+  bool forgeShardStone(StoneMaterial m) {
+    if (!canForge(m)) return false;
+    final left = bag[shardKey(m)]! - shardNeeds[m]!;
+    if (left > 0) {
+      bag[shardKey(m)] = left;
+    } else {
+      bag.remove(shardKey(m));
+    }
     materials.add(m);
     codex.add('재질:${m.name}');
     return true;
@@ -523,6 +625,13 @@ class Profile {
     'missionClaimed': missionClaimed.toList(),
     'lifetime': {for (final e in lifetime.entries) e.key.name: e.value},
     'achieved': achieved.toList(),
+    'bag': bag,
+    'drillCleared': drillCleared,
+    'drillIndex': drillIndex,
+    'drillProgress': drillProgress,
+    'questKeys': questKeys,
+    'questCounts': questCounts,
+    'questClaimed': questClaimed.toList(),
     'stars': stars,
     'seenHints': seenHints.toList(),
     'seclusionDay': seclusionDay,
@@ -623,6 +732,21 @@ class Profile {
     }
     p.missionClaimed.addAll((j['missionClaimed'] as List? ?? []).cast<int>());
     p.achieved.addAll((j['achieved'] as List? ?? []).cast<String>());
+    for (final e in (j['bag'] as Map? ?? {}).entries) {
+      if (e.value is int && (e.value as int) > 0) {
+        p.bag['${e.key}'] = e.value as int;
+      }
+    }
+    p.drillCleared = (j['drillCleared'] as int? ?? 0).clamp(0, 99);
+    p.drillIndex = (j['drillIndex'] as int? ?? 0).clamp(0, 99);
+    p.drillProgress = (j['drillProgress'] as int? ?? 0).clamp(0, 999);
+    for (final e in (j['questKeys'] as Map? ?? {}).entries) {
+      if (e.value is String) p.questKeys['${e.key}'] = e.value as String;
+    }
+    for (final e in (j['questCounts'] as Map? ?? {}).entries) {
+      if (e.value is int) p.questCounts['${e.key}'] = e.value as int;
+    }
+    p.questClaimed.addAll((j['questClaimed'] as List? ?? []).cast<String>());
     final st2 = j['stars'] as Map? ?? {};
     for (final e in st2.entries) {
       if (e.value is int) {
@@ -666,6 +790,8 @@ class Profile {
       if (missionCounts[d] case final v?) missionCounts[d] = i(v);
       if (lifetime[d] case final v?) lifetime[d] = i(v);
     }
+    bag.updateAll((_, v) => i(v));
+    questCounts.updateAll((_, v) => i(v));
   }
 
   String encode() => jsonEncode(toJson());

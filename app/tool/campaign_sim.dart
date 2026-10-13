@@ -48,6 +48,7 @@ bool playOne(MatchConfig cfg, int seed, double angleErr, double speedErr) {
     var steps = 0;
     while (m.isMoving && steps++ < 20000) {
       if (m.clash != null) {
+        // 사람 연타 초당 8회 흉내(마구 두드리기로 잰다).
         m.resolveClash(
           20 + rand.nextInt(9),
           QiClash.aiTaps(cfg.difficulty, rand),

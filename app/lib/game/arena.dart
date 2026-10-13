@@ -15,6 +15,7 @@ enum Arena {
     feel: '거칠어서 빨리 멈춤',
     floorFactor: 1.4,
     boundary: Boundary.square,
+    half: 21,
   ),
   oilyTable(
     '통통 객잔 원탁',
@@ -22,6 +23,7 @@ enum Arena {
     feel: '기름이 튀어 잘 미끄러짐 · 둥근 판',
     floorFactor: 0.7,
     boundary: Boundary.circle,
+    half: 23,
   ),
   turtleMarket(
     '거북 장터 돌바닥',
@@ -29,6 +31,7 @@ enum Arena {
     feel: '보통',
     floorFactor: 1.0,
     boundary: Boundary.square,
+    half: 25,
   ),
   kubiForest(
     '쿠비 산채 숲길',
@@ -36,6 +39,7 @@ enum Arena {
     feel: '낙엽에 조금 걸림',
     floorFactor: 1.15,
     boundary: Boundary.square,
+    half: 22,
   ),
   logicMarble(
     '로직 학당 대리석',
@@ -43,6 +47,7 @@ enum Arena {
     feel: '매끄러움',
     floorFactor: 0.85,
     boundary: Boundary.square,
+    half: 18,
   ),
   murimIce(
     '무림맹 본단 빙판',
@@ -50,6 +55,7 @@ enum Arena {
     feel: '얼어 있어 아주 잘 미끄러짐 · 둥근 판',
     floorFactor: 0.6,
     boundary: Boundary.circle,
+    half: 25,
   );
 
   const Arena(
@@ -58,6 +64,7 @@ enum Arena {
     required this.feel,
     required this.floorFactor,
     required this.boundary,
+    required this.half,
   });
 
   final String label;
@@ -65,6 +72,17 @@ enum Arena {
   final String feel;
   final double floorFactor;
   final Boundary boundary;
+
+  /// 판 가운데에서 가장자리까지(cm) — 2026-10-14 형 「경기장 크기를 다양하게」. 예전엔 모두 21.
+  /// 작은 판(학당 18)은 장외가 가깝고, 큰 판(장터·빙판 25)은 멀다.
+  final double half;
+
+  /// 판 크기 이름.
+  String get sizeLabel => half <= 19
+      ? '작은 판'
+      : half >= 24
+      ? '큰 판'
+      : '보통 판';
 
   /// 판 둘레 밖(장외 쪽) 색.
   Color get outside => switch (this) {
@@ -92,9 +110,9 @@ void paintArena(
   Canvas canvas,
   Arena arena,
   Offset Function(double x, double y) toScreen,
-  double scale,
-) {
-  const h = PhysicsConstants.halfBoard;
+  double scale, {
+  double h = PhysicsConstants.halfBoard,
+}) {
   final center = toScreen(0, 0);
   final rect = Rect.fromPoints(toScreen(-h, -h), toScreen(h, h));
   final round = arena.boundary == Boundary.circle;

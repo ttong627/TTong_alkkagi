@@ -25,10 +25,31 @@ class QiClashOverlay extends StatefulWidget {
     this.me,
     this.foe,
     this.fast = false,
+    this.game = ClashGame.mash,
   });
   final String opponent;
+
+  /// 고수의 점수([game] 마다 — 마구 두드리기면 연타 수).
   final int aiTaps;
   final void Function(int mine, int theirs) onDone;
+
+  /// 겨루기 놀이(2026-10-14 형 「빠르게 클릭 외에 몇 가지 겨루기」).
+  final ClashGame game;
+
+  /// 때 맞추기: 기회 수 · 금빛 칸 반폭 · 바늘 한 번 오가는 시간(초).
+  static const int timingTries = 3;
+  static const double timingZone = 0.09, timingPeriod = 1.3;
+
+  /// 기맥 잇기: 점 수 · 한 점이 켜져 있는 시간(초).
+  static const int chainNodes = 5;
+  static const double chainWindow = 0.75;
+
+  /// 놀이마다 점수 막대 끝.
+  static int capOf(ClashGame g) => switch (g) {
+    ClashGame.mash => (QiClash.maxRate * QiClash.seconds).round(),
+    ClashGame.timing => timingTries,
+    ClashGame.chain => chainNodes,
+  };
 
   /// 두 사람 그림 이름(없으면 그림 없이).
   final String? me;
@@ -56,8 +77,34 @@ class _QiClashOverlayState extends State<QiClashOverlay>
   )..forward();
   late final _tap = AnimationController(
     vsync: this,
-    duration: Duration(milliseconds: (QiClash.seconds * 1000).round()),
+    duration: Duration(milliseconds: (widget.game.seconds * 1000).round()),
   );
+
+  /// 때 맞추기: 쓴 기회 · 금빛 칸 가운데(0~1).
+  int _tries = 0;
+  late final double _zone = 0.25 + _rand.nextDouble() * 0.5;
+
+  /// 기맥 잇기: 점 자리(화면 비율)와 이은 점.
+  late final List<Offset> _nodes = [
+    for (var i = 0; i < QiClashOverlay.chainNodes; i++)
+      Offset(0.2 + _rand.nextDouble() * 0.6, 0.36 + _rand.nextDouble() * 0.26),
+  ];
+  final _linked = <int>{};
+
+  /// 놀이를 한 시간(초).
+  double get _play => _tap.value * widget.game.seconds;
+
+  /// 때 맞추기 바늘 자리(0~1).
+  double get _needle =>
+      0.5 - 0.5 * math.cos(2 * math.pi * _play / QiClashOverlay.timingPeriod);
+
+  /// 기맥 잇기: 지금 켜진 점(없으면 −1).
+  int get _lit {
+    final i = (_play / QiClashOverlay.chainWindow).floor();
+    return i < QiClashOverlay.chainNodes ? i : -1;
+  }
+
+  String? _flash;
   final _timers = <Timer>[];
   final _ripples = <(Offset, double)>[];
   final _attackMe = ValueNotifier<int>(0);
@@ -128,16 +175,26 @@ class _QiClashOverlayState extends State<QiClashOverlay>
   }
 
   void _finish() {
-    final d = _swing = QiClash.swing(_taps, widget.aiTaps);
-    final cap = (QiClash.maxRate * QiClash.seconds).round();
+    if (_phase == _Phase.result) return;
+    _tap.stop();
+    final d = _swing = QiClash.swing(_taps, widget.aiTaps, widget.game);
+    final over =
+        widget.game == ClashGame.mash &&
+        _taps > QiClashOverlay.capOf(ClashGame.mash);
     setState(() {
       _phase = _Phase.result;
       _beatPending = true;
-      _result = _taps > cap
+      _result = over
           ? '무효 — 초당 ${QiClash.maxRate}회를 넘겼다'
-          : (d > 0
-                ? '이겼다! 반발 +${(d * 100).round()}%'
-                : (d < 0 ? '밀렸다… 반발 ${(d * 100).round()}%' : '팽팽하다'));
+          : (d > 0.2
+                ? '이겼다! 상대 돌이 날아간다\n내공 +1'
+                : d > 0
+                ? '조금 이겼다 — 상대 돌이 밀린다'
+                : d < -0.2
+                ? '밀렸다… 내 돌이 날아간다'
+                : d < 0
+                ? '조금 밀렸다'
+                : '팽팽하다');
     });
     if (d > 0) {
       Sound.play('clash_win');
@@ -153,17 +210,49 @@ class _QiClashOverlayState extends State<QiClashOverlay>
 
   void _onTap(TapDownDetails d) {
     if (_phase == _Phase.tap && _tap.isAnimating) {
-      setState(() {
-        _taps++;
-        _kick = 1;
-        _ripples.add((d.localPosition, _t));
-      });
-      Sound.play('clash_tap', 0.55);
-      Buzz.impact(0.25);
-      if (_taps % 6 == 0) _attackMe.value++;
+      switch (widget.game) {
+        case ClashGame.mash:
+          _score(d.localPosition);
+          if (_taps % 6 == 0) _attackMe.value++;
+        case ClashGame.timing:
+          if (_tries >= QiClashOverlay.timingTries) return;
+          _tries++;
+          final hit = (_needle - _zone).abs() <= QiClashOverlay.timingZone;
+          if (hit) {
+            _score(d.localPosition);
+            _attackMe.value++;
+          } else {
+            Sound.play('error', 0.5);
+          }
+          setState(() => _flash = hit ? '적중!' : '빗나감');
+          if (_tries >= QiClashOverlay.timingTries) _finish();
+        case ClashGame.chain:
+          final i = _lit;
+          final size = context.size;
+          if (i < 0 || _linked.contains(i) || size == null) return;
+          final at = Offset(
+            _nodes[i].dx * size.width,
+            _nodes[i].dy * size.height,
+          );
+          if ((d.localPosition - at).distance > 56) return;
+          _linked.add(i);
+          _score(d.localPosition);
+          _attackMe.value++;
+      }
     } else if (_phase != _Phase.result) {
-      setState(() => _early = '아직! 「시작」에 두드려라');
+      setState(() => _early = '아직! 「시작」에 하라');
     }
+  }
+
+  /// 내 점수 +1(탁 · 떨림 · 물결).
+  void _score(Offset at) {
+    setState(() {
+      _taps++;
+      _kick = 1;
+      _ripples.add((at, _t));
+    });
+    Sound.play('clash_tap', 0.55);
+    Buzz.impact(0.25);
   }
 
   @override
@@ -197,20 +286,22 @@ class _QiClashOverlayState extends State<QiClashOverlay>
           final enter = Curves.easeOutBack.transform(
             (t / (widget.fast ? 0.1 : 0.55)).clamp(0.0, 1.0),
           );
-          // AI 연타는 막대가 고르게 차오른다.
-          final ai = _phase.index >= _Phase.tap.index
+          // 고수 점수는 막대가 고르게 차오른다(결과 때는 끝값).
+          final ai = _phase == _Phase.result
+              ? widget.aiTaps
+              : _phase == _Phase.tap
               ? (widget.aiTaps * _tap.value).round()
               : 0;
-          // 줄다리기: 많이 두드린 쪽이 가운데를 밀어낸다.
+          final cap = QiClashOverlay.capOf(widget.game).toDouble();
+          // 줄다리기: 점수가 많은 쪽이 가운데를 밀어낸다.
           final tug = _phase == _Phase.result
-              ? _swing / QiClash.maxSwing
+              ? _swing
               : (_taps + ai == 0
                     ? 0.0
-                    : (_taps - ai) / math.max(8, _taps + ai));
+                    : (_taps - ai) / math.max(cap / 5, _taps + ai));
           _kick = math.max(0, _kick - 0.08);
           _ripples.removeWhere((r) => t - r.$2 > 0.45);
           final sinceBeat = _lastBeatAt < 0 ? 9.0 : t - _lastBeatAt;
-          final cap = (QiClash.maxRate * QiClash.seconds).toDouble();
           return Stack(
             children: [
               Positioned.fill(
@@ -227,6 +318,23 @@ class _QiClashOverlayState extends State<QiClashOverlay>
                   ),
                 ),
               ),
+              // 때 맞추기 막대 · 기맥 잇기 점.
+              if (_phase == _Phase.tap && widget.game != ClashGame.mash)
+                Positioned.fill(
+                  child: CustomPaint(
+                    key: Key('clash-${widget.game.name}'),
+                    painter: _GamePainter(
+                      game: widget.game,
+                      needle: _needle,
+                      zone: _zone,
+                      tries: _tries,
+                      nodes: _nodes,
+                      lit: _lit,
+                      linked: _linked,
+                      t: t,
+                    ),
+                  ),
+                ),
               if (widget.foe != null)
                 Positioned(
                   top: 70,
@@ -296,7 +404,22 @@ class _QiClashOverlayState extends State<QiClashOverlay>
                               color: Color(0xFFFFE08A),
                             ),
                           )
-                        : const SizedBox.shrink(),
+                        : (_flash != null && widget.game == ClashGame.timing
+                              ? Padding(
+                                  padding: const EdgeInsets.only(top: 150),
+                                  child: _Pop(
+                                    key: ValueKey('flash$_tries'),
+                                    child: OutlinedText(
+                                      _flash!,
+                                      size: 40,
+                                      title: true,
+                                      color: _flash == '적중!'
+                                          ? const Color(0xFFFFE08A)
+                                          : const Color(0xFFB0B8C8),
+                                    ),
+                                  ),
+                                )
+                              : const SizedBox.shrink()),
                   _Phase.result => _Pop(
                     key: const ValueKey('result'),
                     child: OutlinedText(
@@ -321,10 +444,16 @@ class _QiClashOverlayState extends State<QiClashOverlay>
                     OutlinedText(
                       _early ??
                           switch (_phase) {
-                            _Phase.faceOff ||
-                            _Phase.count => '「시작」에 맞춰 화면을 마구 두드려라!',
-                            _Phase.tap =>
-                              '두드려라! ${(QiClash.seconds * (1 - _tap.value)).toStringAsFixed(1)}초',
+                            _Phase.faceOff || _Phase.count =>
+                              '${widget.game.label} — ${widget.game.hint}',
+                            _Phase.tap => switch (widget.game) {
+                              ClashGame.mash =>
+                                '두드려라! ${(widget.game.seconds * (1 - _tap.value)).toStringAsFixed(1)}초',
+                              ClashGame.timing =>
+                                '남은 기회 ${QiClashOverlay.timingTries - _tries}번',
+                              ClashGame.chain =>
+                                '이은 기맥 $_taps / ${QiClashOverlay.chainNodes}',
+                            },
                             _Phase.result => '',
                           },
                       size: 20,
@@ -342,12 +471,9 @@ class _QiClashOverlayState extends State<QiClashOverlay>
                       color: const Color(0xFFFF6B6B),
                     ),
                     const SizedBox(height: 6),
-                    Text(
-                      '많이 두드린 쪽 돌이 더 세게 튕겨 낸다(반발 ±${(QiClash.maxSwing * 100).round()}%)',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.white70,
-                      ),
+                    const Text(
+                      '이긴 쪽 돌은 버티고, 진 쪽 돌은 두 배로 날아간다 · 확실히 이기면 내공 +1',
+                      style: TextStyle(fontSize: 13, color: Colors.white70),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -547,4 +673,101 @@ class _ClashPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _ClashPainter old) => true;
+}
+
+/// 때 맞추기 막대(오가는 바늘 · 금빛 칸 · 남은 기회) / 기맥 잇기 점(켜진 점이 숨 쉬듯 커짐 · 이은 점은 선으로).
+class _GamePainter extends CustomPainter {
+  _GamePainter({
+    required this.game,
+    required this.needle,
+    required this.zone,
+    required this.tries,
+    required this.nodes,
+    required this.lit,
+    required this.linked,
+    required this.t,
+  });
+  final ClashGame game;
+  final double needle, zone, t;
+  final int tries, lit;
+  final List<Offset> nodes;
+  final Set<int> linked;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (game == ClashGame.timing) {
+      final w = size.width * 0.8, h = 34.0;
+      final r = Rect.fromCenter(
+        center: Offset(size.width / 2, size.height * 0.5),
+        width: w,
+        height: h,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(r, const Radius.circular(17)),
+        Paint()..color = const Color(0xCC1A0E14),
+      );
+      final z = Rect.fromLTWH(
+        r.left + (zone - QiClashOverlay.timingZone) * w,
+        r.top,
+        QiClashOverlay.timingZone * 2 * w,
+        h,
+      );
+      canvas.drawRect(z, Paint()..color = const Color(0xFFFFD25A));
+      final x = r.left + needle * w;
+      canvas.drawLine(
+        Offset(x, r.top - 14),
+        Offset(x, r.bottom + 14),
+        Paint()
+          ..color = Colors.white
+          ..strokeWidth = 5
+          ..strokeCap = StrokeCap.round,
+      );
+      for (var i = 0; i < QiClashOverlay.timingTries; i++) {
+        canvas.drawCircle(
+          Offset(size.width / 2 + (i - 1) * 26, r.bottom + 30),
+          8,
+          Paint()
+            ..color = i < QiClashOverlay.timingTries - tries
+                ? const Color(0xFFFFE08A)
+                : Colors.white24,
+        );
+      }
+      return;
+    }
+    final at = [
+      for (final n in nodes) Offset(n.dx * size.width, n.dy * size.height),
+    ];
+    final line = Paint()
+      ..color = innerColor
+      ..strokeWidth = 4;
+    final done = linked.toList()..sort();
+    for (var k = 1; k < done.length; k++) {
+      canvas.drawLine(at[done[k - 1]], at[done[k]], line);
+    }
+    for (var i = 0; i < at.length; i++) {
+      final on = i == lit && !linked.contains(i);
+      final r = on ? 30 + 6 * math.sin(t * 14).abs() : 18.0;
+      canvas.drawCircle(
+        at[i],
+        r,
+        Paint()
+          ..color = linked.contains(i)
+              ? innerColor
+              : (on ? const Color(0xFFFFE08A) : Colors.white24),
+      );
+      if (on) {
+        canvas.drawCircle(
+          at[i],
+          r + 10,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3
+            ..color = const Color(0x88FFE08A),
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_GamePainter o) => true;
 }

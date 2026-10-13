@@ -1,6 +1,7 @@
 import 'package:alkkagi_physics/alkkagi_physics.dart';
 import 'package:flutter/material.dart';
 
+import '../audio/sound.dart';
 import '../game/board_paint.dart';
 import '../progress/profile.dart';
 import '../progress/store.dart';
@@ -75,6 +76,31 @@ class _ShopScreenState extends State<ShopScreen> {
     if (mounted) setState(() {});
   }
 
+  /// 조각 돌: 「조각 n/필요」 · 다 모이면 「완성」.
+  Widget _forgeButton(StoneMaterial m) {
+    final p = _store.profile;
+    final have = p.bag[shardKey(m)] ?? 0;
+    final need = shardNeeds[m]!;
+    final can = p.canForge(m);
+    return SizedBox(
+      width: 100,
+      child: GameButton(
+        key: Key('forge-${m.name}'),
+        height: 44,
+        color: can ? Palette.red : Palette.skyDeep,
+        fontSize: 16,
+        label: can ? '완성' : '조각 $have/$need',
+        onTap: can
+            ? () async {
+                if (!p.forgeShardStone(m)) return;
+                Sound.play('unlock');
+                await _bought(m.label, () => p.material = m);
+              }
+            : null,
+      ),
+    );
+  }
+
   /// 오른쪽 칸: 끼운 중 / 끼우기 / 값(엽전이 모자라면 흐린 값).
   Widget _trailing({
     required bool owned,
@@ -135,7 +161,7 @@ class _ShopScreenState extends State<ShopScreen> {
     final p = _store.profile;
     final cheapest = [
       for (final m in StoneMaterial.values)
-        if (!p.materials.contains(m)) materialPrices[m]!,
+        if (!p.materials.contains(m)) ?materialPrices[m],
       for (final s in StoneShape.values)
         if (!p.shapes.contains(s)) shapePrices[s]!,
     ];
@@ -159,19 +185,25 @@ class _ShopScreenState extends State<ShopScreen> {
               padding: EdgeInsets.only(bottom: 4),
               child: _Hint('엽전이 모자라요 · 강호행에서 모아요'),
             ),
-          const SectionHead('재질', icon: 'shop'),
-          for (final m in StoneMaterial.values)
+          // 2026-10-14: 등급(1~13단) 순서 · 높은 단일수록 덜 튕기고 덜 밀린다 · 조각 돌은 조각으로 완성.
+          const SectionHead('재질 — 높은 단일수록 덜 튕기고 덜 밀림', icon: 'shop'),
+          for (final m in [
+            ...StoneMaterial.values,
+          ]..sort((a, b) => a.grade - b.grade))
             RowCard(
+              key: Key('mat-${m.name}'),
               leading: _StoneIcon(m, StoneShape.round),
-              title: m.label,
+              title: '${m.grade}단 · ${m.label}',
               sub: _materialHelp(m),
-              trailing: _trailing(
-                owned: p.materials.contains(m),
-                equipped: p.material == m,
-                price: materialPrices[m]!,
-                onBuy: () => _buyMaterial(m),
-                onEquip: () => _equip(() => p.material = m),
-              ),
+              trailing: m.shard && !p.materials.contains(m)
+                  ? _forgeButton(m)
+                  : _trailing(
+                      owned: p.materials.contains(m),
+                      equipped: p.material == m,
+                      price: materialPrices[m] ?? 0,
+                      onBuy: () => _buyMaterial(m),
+                      onEquip: () => _equip(() => p.material = m),
+                    ),
             ),
           const SizedBox(height: 8),
           const SectionHead('모양', icon: 'stats'),
@@ -221,6 +253,15 @@ String _materialHelp(StoneMaterial m) => switch (m) {
   StoneMaterial.wood => '가볍고 빠름 · 미는 힘 약함',
   StoneMaterial.hyeoncheol => '무거움 · 상대를 멀리 밀어냄',
   StoneMaterial.ice => '잘 미끄러짐 · 연쇄 충돌',
+  StoneMaterial.obsidian => '조금 무거운 검은 유리',
+  StoneMaterial.granite => '아주 무겁고 빨리 멈춤 · 버티는 돌',
+  StoneMaterial.diamond => '가볍고 잘 미끄러짐',
+  StoneMaterial.jageum => '단단하고 무거움',
+  StoneMaterial.uncheol => '아주 무거움 · 잘 안 밀림',
+  StoneMaterial.hancheol => '무거운데 잘 미끄러짐',
+  StoneMaterial.warmJade => '조각을 모아 완성 · 맞아도 잘 버팀',
+  StoneMaterial.dragonScale => '조각을 모아 완성 · 맹주의 돌',
+  StoneMaterial.taegeuk => '조각을 모아 완성 · 가장 높은 단',
 };
 
 String _shapeHelp(StoneShape s) => switch (s) {
