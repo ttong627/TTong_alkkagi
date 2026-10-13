@@ -27,6 +27,7 @@ import 'package:alkkagi/screens/game_screen.dart';
 import 'package:alkkagi/screens/hero_pick_screen.dart';
 import 'package:alkkagi/screens/home_screen.dart';
 import 'package:alkkagi/screens/splash_screen.dart';
+import 'package:alkkagi/screens/training_screen.dart';
 import 'package:alkkagi/screens/tutorial_screen.dart';
 import 'package:alkkagi/ui/art.dart';
 import 'package:alkkagi/ui/theme.dart';
@@ -182,6 +183,7 @@ void main() {
     }
     await _shot(t, const CampaignScreen(), 'campaign');
     await _shot(t, CourseScreen(course: courses[3]), 'course4');
+    await _shot(t, const TrainingScreen(), 'training', settleMs: 1600);
     await _shot(
       t,
       DialogueScreen(

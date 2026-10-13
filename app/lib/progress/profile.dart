@@ -472,7 +472,9 @@ class Profile {
   double get spinScale =>
       (1 + 0.015 * level(Stat.finesse)) +
       (hero == Fighter.yeonbi ? 0.1 : 0) +
-      (hero == Fighter.gurumi ? 0.15 : 0);
+      (hero == Fighter.gurumi ? 0.15 : 0) +
+      // 목인항 끌어치기 수련(2026-10-14).
+      (perks.contains('회전 숙련') ? 0.1 : 0);
   double get steerSeconds =>
       1.5 +
       0.075 * level(Stat.control) +
@@ -480,7 +482,15 @@ class Profile {
 
   /// 판 시작 내공 칸: 화경(6단계)부터 1칸, 청명 +1.
   int get startQi =>
-      (stage >= 6 ? 1 : 0) + (hero == Fighter.cheongmyeong ? 1 : 0);
+      (stage >= 6 ? 1 : 0) +
+      (hero == Fighter.cheongmyeong ? 1 : 0) +
+      // 목인항 내공 타격 수련(2026-10-14).
+      (perks.contains('내공 숙련') ? 1 : 0);
+
+  /// 목인항 단계별 수련(drills.dart · 2026-10-14): 깬 단계 수 · 지금 하는 단계 · 그 단계 진행.
+  int drillCleared = 0;
+  int drillIndex = 0;
+  int drillProgress = 0;
 
   /// 어기어석 꺾기 횟수(설계서 §3.7·§16.2).
   int get steers => stage >= 7 ? 3 : (stage >= 5 ? 2 : 1);
@@ -616,6 +626,9 @@ class Profile {
     'lifetime': {for (final e in lifetime.entries) e.key.name: e.value},
     'achieved': achieved.toList(),
     'bag': bag,
+    'drillCleared': drillCleared,
+    'drillIndex': drillIndex,
+    'drillProgress': drillProgress,
     'questKeys': questKeys,
     'questCounts': questCounts,
     'questClaimed': questClaimed.toList(),
@@ -724,6 +737,9 @@ class Profile {
         p.bag['${e.key}'] = e.value as int;
       }
     }
+    p.drillCleared = (j['drillCleared'] as int? ?? 0).clamp(0, 99);
+    p.drillIndex = (j['drillIndex'] as int? ?? 0).clamp(0, 99);
+    p.drillProgress = (j['drillProgress'] as int? ?? 0).clamp(0, 999);
     for (final e in (j['questKeys'] as Map? ?? {}).entries) {
       if (e.value is String) p.questKeys['${e.key}'] = e.value as String;
     }

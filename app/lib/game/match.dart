@@ -276,6 +276,7 @@ class MatchConfig {
     this.shiftingFloor = false,
     this.qiClash = false,
     this.opponentStones = stonesPerTeam,
+    this.trainingDummies = 1,
     this.demonWorld = false,
     this.art = RebirthArt.none,
     this.rule = MatchRule.annihilate,
@@ -307,6 +308,9 @@ class MatchConfig {
 
   /// 상대 돌 수(1~[stonesPerTeam]) — 강호행 졸개는 적게(2026-10-14 단계별 코스).
   final int opponentStones;
+
+  /// 목인항 더미 수(일타쌍피 수련은 둘 · 2026-10-14).
+  final int trainingDummies;
 
   /// 천기(날씨, 설계서 §9.3).
   final Weather weather;
@@ -458,7 +462,9 @@ class Match extends ChangeNotifier {
         material: config.myMaterial,
         shape: config.myShape,
       );
-      table.addStone(0, 0, team: 1, shape: StoneShape.sphere);
+      for (var k = 0; k < config.trainingDummies.clamp(1, 3); k++) {
+        table.addStone(k * 2.6, 0, team: 1, shape: StoneShape.sphere);
+      }
       return;
     }
     final (row, gap) = lineUp(config.arena.boundary, table.half);
@@ -643,9 +649,12 @@ class Match extends ChangeNotifier {
     StrikeMode mode = StrikeMode.plain,
     bool critical = false,
     double curl = 0,
+    bool flick = false,
   }) {
     if (!canShoot(s)) return;
     touchedThisTurn.clear();
+    lastHit = hit;
+    lastFlick = flick;
     final team = s.team;
     // 철벽은 그 편이 다시 칠 때 풀린다(상대 한 수 동안만).
     if (_guardTeam == team) _unguard();
@@ -702,7 +711,11 @@ class Match extends ChangeNotifier {
   /// 이번 수에 쏜 돌과 부딪힌 돌(목인항·연출용).
   final touchedThisTurn = <int>{};
 
-  /// 목인항: 내 돌을 제자리로, 더미를 [x],[y] 로 옮긴다.
+  /// 지난 수의 타격점(−1 아래 ~ +1 위)과 검지 튕기기였는지(목인항 수련 · 2026-10-14).
+  double lastHit = 0;
+  bool lastFlick = false;
+
+  /// 목인항: 내 돌을 제자리로, 더미를 [x],[y] 로 옮긴다(더미가 여럿이면 나란히 붙여서).
   void resetTraining(double x, double y) {
     void place(Stone s, double px, double py) {
       s.out = false;
@@ -713,7 +726,9 @@ class Match extends ChangeNotifier {
     }
 
     place(table.stones[0], 0, startRow);
-    place(table.stones[1], x, y);
+    for (var k = 1; k < table.stones.length; k++) {
+      place(table.stones[k], x + (k - 1) * 2.6, y);
+    }
     _winner = null;
     _turn = 0;
     notifyListeners();

@@ -477,6 +477,7 @@ class _GameScreenState extends State<GameScreen> {
               shot.power >= CriticalRule.minPower &&
               shot.power <= CriticalRule.maxPower),
       curl: shot.curl,
+      flick: shot.flick,
     );
     // 회심 부적은 한 번 친 수에 쓰인다(내공 타격이면 회심이 없으니 그대로 남긴다).
     if (_match.lastMode == StrikeMode.plain) _critCharm = false;
