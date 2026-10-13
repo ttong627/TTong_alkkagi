@@ -22,6 +22,24 @@ void main() {
     expect(amp, 255);
   });
 
+  test('진동 세기 「강」은 더 세게 · 「약」은 약하게(최대 255)', () async {
+    addTearDown(() => Settings.instance.vibeLevel = 1);
+    int ampAt(double level) {
+      Settings.instance.vibeLevel = level;
+      Buzz.log.clear();
+      Buzz.tick();
+      return Buzz.log.last.$2;
+    }
+
+    expect(ampAt(1), 120);
+    expect(ampAt(1.4), 168);
+    expect(ampAt(0.6), 72);
+    Settings.instance.vibeLevel = 1.4;
+    Buzz.log.clear();
+    Buzz.heavy();
+    expect(Buzz.log.last.$2, 255, reason: '255 를 넘지 않는다');
+  });
+
   test('진동을 끄면 아무것도 내지 않는다', () async {
     Settings.instance.vibration = false;
     addTearDown(() => Settings.instance.vibration = true);

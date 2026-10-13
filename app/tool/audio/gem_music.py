@@ -102,8 +102,9 @@ def make_one(br, prompt: str, dest: Path, shots: Path) -> Path | None:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", default="")
+    ap.add_argument("--spec", default="gemini_music.json", help="주문서(같은 폴더) — 짧은 곡은 gemini_jingles.json")
     a = ap.parse_args()
-    spec = json.loads((HERE / "gemini_music.json").read_text(encoding="utf-8"))
+    spec = json.loads((HERE / a.spec).read_text(encoding="utf-8"))
     only = {x for x in a.only.split(",") if x}
     tracks = [t for t in spec["tracks"] if not only or t["id"] in only]
     shots = OUT / "_화면"

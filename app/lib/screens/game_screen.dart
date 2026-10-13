@@ -491,7 +491,15 @@ class _GameScreenState extends State<GameScreen> {
     };
     if (why != null) title = '$title\n$why';
     Sound.play(won ? 'jingle_win' : 'jingle_lose');
-    setState(() => _result = _Result(title, won, stars, _match.bonusCoins));
+    setState(
+      () => _result = _Result(
+        title,
+        won,
+        stars,
+        _match.bonusCoins,
+        _match.bestKnock,
+      ),
+    );
   }
 
   void _leave() {
@@ -828,6 +836,7 @@ class _GameScreenState extends State<GameScreen> {
                   won: r.won,
                   stars: r.stars,
                   coins: r.coins,
+                  best: r.best,
                   character: r.won ? _myId : _foeId,
                   onAgain: widget.title == null && !widget.coach
                       ? _restart
@@ -843,11 +852,12 @@ class _GameScreenState extends State<GameScreen> {
 }
 
 class _Result {
-  _Result(this.title, this.won, this.stars, this.coins);
+  _Result(this.title, this.won, this.stars, this.coins, this.best);
   final String title;
   final bool won;
   final int stars;
   final int coins;
+  final int best;
 }
 
 /// 둥근 아이콘 단추(일시정지 등).
@@ -1323,11 +1333,15 @@ class ResultOverlay extends StatefulWidget {
     required this.character,
     required this.onDone,
     this.onAgain,
+    this.best = 0,
   });
   final String title;
   final bool won;
   final int stars;
   final int coins;
+
+  /// 오늘의 한 수(한 수에 가장 많이 떨어뜨린 수) — 둘 이상이면 자랑 한 줄.
+  final int best;
   final String? character;
   final VoidCallback onDone;
   final VoidCallback? onAgain;
@@ -1455,6 +1469,18 @@ class _ResultOverlayState extends State<ResultOverlay>
                           color: Palette.gold,
                         ),
                       ],
+                    ),
+                  ],
+                  if (widget.best >= 2) ...[
+                    const SizedBox(height: 8),
+                    Opacity(
+                      opacity: ((v - 0.5) / 0.2).clamp(0, 1),
+                      child: OutlinedText(
+                        '오늘의 한 수 — 한 번에 ${widget.best}개!',
+                        key: const Key('best-shot'),
+                        size: 22,
+                        color: const Color(0xFFFFE9A8),
+                      ),
                     ),
                   ],
                   const SizedBox(height: 24),

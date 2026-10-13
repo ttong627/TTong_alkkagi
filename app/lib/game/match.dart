@@ -675,6 +675,9 @@ class Match extends ChangeNotifier {
   int bonusCoins = 0;
   static const int multiKnockCoin = 10;
 
+  /// 오늘의 한 수: 내가 한 수에 가장 많이 떨어뜨린 상대 돌 수(결과 화면 · 2026-10-13 재미 점검).
+  int bestKnock = 0;
+
   /// 떨어진 백성 돌 수(3장 감점).
   int get civiliansLost =>
       table.stones.where((s) => s.team == 2 && s.out).length;
@@ -691,6 +694,7 @@ class Match extends ChangeNotifier {
     lastShooter = _turn;
     lastKnocked = _aliveBefore - alive(1 - _turn);
     lastSelfLost = _ownBefore - alive(_turn);
+    if (_turn == 0) bestKnock = math.max(bestKnock, lastKnocked);
     if (_turn == 0 && lastKnocked >= 2 && config.mode == MatchMode.vsAi) {
       bonusCoins += multiKnockCoin * lastKnocked;
     }
