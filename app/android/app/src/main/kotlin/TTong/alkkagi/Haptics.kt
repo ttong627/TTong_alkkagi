@@ -1,10 +1,13 @@
 package TTong.alkkagi
 
 import android.content.Context
+import android.media.AudioAttributes
 import android.os.Build
+import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import androidx.annotation.RequiresApi
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
@@ -14,8 +17,23 @@ import io.flutter.plugin.common.MethodChannel
  *  - pulse {ms, amp(1~255)}       한 번
  *  - pattern {ms:[…], amp:[…]}    여러 번(쉬는 칸은 amp 0)
  * 세기 조절이 안 되는 폰(진폭 미지원)은 길이만 맞춘다.
+ *
+ * 2026-10-13 형 「진동이 확실하게 전달되는」: 용도 없이 보낸 진동은 안드로이드 13+ 에서 무음 모드·「터치 진동 세기」
+ * 설정에 묶여 약해지거나 막힌다 → 게임 효과음과 같은 미디어 진동으로 표시해 보낸다(8~12 는 게임 소리 용도).
  */
 object Haptics {
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun play(v: Vibrator, effect: VibrationEffect) {
+        when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
+                v.vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_MEDIA))
+            else -> {
+                @Suppress("DEPRECATION")
+                v.vibrate(effect, AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).build())
+            }
+        }
+    }
+
     fun register(context: Context, engine: FlutterEngine) {
         val vib: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
@@ -35,7 +53,7 @@ object Haptics {
                         val ms = (call.argument<Int>("ms") ?: 20).coerceIn(1, 1000).toLong()
                         val amp = (call.argument<Int>("amp") ?: 128).coerceIn(1, 255)
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            v.vibrate(VibrationEffect.createOneShot(ms, if (v.hasAmplitudeControl()) amp else VibrationEffect.DEFAULT_AMPLITUDE))
+                            play(v, VibrationEffect.createOneShot(ms, if (v.hasAmplitudeControl()) amp else VibrationEffect.DEFAULT_AMPLITUDE))
                         } else {
                             @Suppress("DEPRECATION")
                             v.vibrate(ms)
@@ -52,7 +70,7 @@ object Haptics {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                             val a = if (v.hasAmplitudeControl()) amp.toIntArray()
                             else amp.map { if (it > 0) VibrationEffect.DEFAULT_AMPLITUDE else 0 }.toIntArray()
-                            v.vibrate(VibrationEffect.createWaveform(ms.toLongArray(), a, -1))
+                            play(v, VibrationEffect.createWaveform(ms.toLongArray(), a, -1))
                         } else {
                             // 옛 폰: 쉬는 칸·떠는 칸을 번갈아(첫 칸은 쉼).
                             val t = ArrayList<Long>()
