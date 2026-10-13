@@ -1,0 +1,11 @@
+{
+  "_설명": "재미나이 앱(구독 · 음악 만들기 · Lyria 3)으로 뽑을 짧은 곡 주문서 — 형 지시 「효과음 등 소리도 전체적으로 재미나이에서」(2026-10-13). 짧은 효과음(돌·손끝)은 재미나이 앱이 만들지 못해(앱 답: 음악 전용) 음악인 짧은 곡만. 받은 곡의 앞부분을 cut_jingle.py 로 잘라 assets/sounds/<id>.ogg 에 넣는다.",
+  "common": "Instrumental only, no vocals, no lyrics. Traditional Korean wuxia martial-arts game music with gayageum, daegeum, haegeum, taepyeongso, janggu, buk drum, jing gong and kkwaenggwari. The piece must START IMMEDIATELY with its main musical statement in the very first second (no intro, no silence, no build-up), clean punchy mobile game mix.",
+  "tracks": [
+    {"id": "jingle_win", "secs": 4.2, "prompt": "Triumphant victory fanfare: a bright taepyeongso call over a strong buk drum hit and a ringing jing, rising and heroic, ending on a confident major chord."},
+    {"id": "jingle_lose", "secs": 3.3, "prompt": "Short defeat sting: a slow, sighing haegeum phrase falling downward over a soft low buk drum, melancholy but gentle, minor key."},
+    {"id": "jingle_levelup", "secs": 2.6, "prompt": "Short level-up sting: quick ascending gayageum run sparkling upward, finished by a bright kkwaenggwari and jing accent, uplifting."},
+    {"id": "jingle_reward", "secs": 2.1, "prompt": "Very short reward chime: a sparkling plucked gayageum arpeggio with a light bell-like shimmer, happy and rewarding."},
+    {"id": "jingle_chapter", "secs": 3.4, "prompt": "Short chapter-start sting: a dramatic janggu and buk drum roll into a bold daegeum call and one big jing hit, epic and anticipatory."}
+  ]
+}

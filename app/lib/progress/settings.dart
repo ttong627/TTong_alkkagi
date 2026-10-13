@@ -23,6 +23,10 @@ class Settings extends ChangeNotifier {
   /// 진동.
   bool vibration = true;
 
+  /// 진동 세기 배수(약 0.6 · 보통 1 · 강 1.4) — 폰마다 진동 모터가 달라서(2026-10-13 형 「진동이 확실하게」).
+  double vibeLevel = 1;
+  static const vibeLevels = [(0.6, '약'), (1.0, '보통'), (1.4, '강')];
+
   /// 카메라 연출(돌을 따라 당기고 눕히기). 어지러운 분은 끈다.
   bool camera = true;
 
@@ -56,6 +60,7 @@ class Settings extends ChangeNotifier {
     'sfx': sfx,
     'music': music,
     'vibration': vibration,
+    'vibeLevel': vibeLevel,
     'camera': camera,
     'feel': feel,
     'hitArea': hitArea,
@@ -68,6 +73,7 @@ class Settings extends ChangeNotifier {
     sfx = d('sfx', 0.8).clamp(0.0, 1.0);
     music = d('music', 0.5).clamp(0.0, 1.0);
     vibration = j['vibration'] as bool? ?? true;
+    vibeLevel = d('vibeLevel', 1).clamp(0.6, 1.4);
     camera = j['camera'] as bool? ?? true;
     feel = d('feel', 0).clamp(feelMin, feelMax);
     hitArea = j['hitArea'] as bool? ?? true;
@@ -169,8 +175,9 @@ abstract final class Buzz {
   }
 
   /// 여러 번 떨기: (길이ms, 세기 0~255 — 0 이면 쉼) 목록.
-  static void pattern(List<(int, int)> steps) {
-    if (!Settings.instance.vibration || steps.isEmpty) return;
+  static void pattern(List<(int, int)> raw) {
+    if (!Settings.instance.vibration || raw.isEmpty) return;
+    final steps = [for (final (ms, amp) in raw) (ms, _scale(amp))];
     _lastMs = DateTime.now().millisecondsSinceEpoch;
     log.addAll(steps.where((s) => s.$2 > 0));
     if (_native) {
@@ -198,7 +205,12 @@ abstract final class Buzz {
   static void heartbeat() =>
       pattern(const [(0, 0), (35, 200), (110, 0), (25, 120)]);
 
-  static bool _pulse(int ms, int amp) {
+  /// 설정의 진동 세기를 곱한다(쉬는 칸 0 은 그대로 · 1~255).
+  static int _scale(int amp) =>
+      amp <= 0 ? 0 : (amp * Settings.instance.vibeLevel).round().clamp(1, 255);
+
+  static bool _pulse(int ms, int raw) {
+    final amp = _scale(raw);
     log.add((ms, amp));
     if (log.length > 64) log.removeRange(0, log.length - 64);
     if (!_native) return false;

@@ -161,6 +161,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
             value: s.vibration,
             onChanged: (v) => _set(() => s.vibration = v),
           ),
+          if (s.vibration)
+            ListTile(
+              title: const Text('진동 세기'),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('폰마다 진동이 달라요 — 약하면 「강」'),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      for (final (level, label) in Settings.vibeLevels)
+                        ChoiceChip(
+                          key: Key('vibe-$label'),
+                          label: Text(label),
+                          selected: s.vibeLevel == level,
+                          onSelected: (_) {
+                            _set(() => s.vibeLevel = level);
+                            Buzz.heavy(); // 고르자마자 그 세기로 한 번 떨어 본다.
+                          },
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           SwitchListTile(
             key: const Key('set-camera'),
             title: const Text('카메라 연출'),

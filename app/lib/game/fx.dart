@@ -9,6 +9,32 @@ import 'fx_colors.dart';
 import 'match.dart';
 import '../ui/theme.dart';
 
+/// 부딪힌 빠르기(cm/s)에 따른 연출 단계.
+///
+/// 2026-10-13 형 「액션이 확실하게 전달되는」: 예전엔 60cm/s 부터만 「퍽!」·멈칫·번쩍이었는데, 보통 손
+/// (손가락 500~700px/s)이 내는 빠르기가 42~58cm/s(설계서 §16.16 실측)라 대부분의 판에서 큰 연출이 안 나왔다.
+enum ImpactTier {
+  /// 살짝 닿음 — 작은 먼지만.
+  light,
+
+  /// 불꽃 줄기 · 작은 흔들림.
+  mid,
+
+  /// 「퍽!」 · 짧은 멈칫 · 번쩍 — 보통 손으로 정통으로 맞힌 한 방.
+  strong,
+
+  /// 「쾅!」 · 긴 멈칫 · 큰 흔들림 · 쏜 돌이면 느린 화면.
+  huge;
+
+  static ImpactTier of(double speed) => speed >= 75
+      ? huge
+      : speed >= 40
+      ? strong
+      : speed >= 12
+      ? mid
+      : light;
+}
+
 /// 판 위 연출: 날아가는 돌 잔상, 충돌 불꽃·화면 흔들림·잠깐 느려지기, 장외, 회심·내공·무공·스킬 효과.
 ///
 /// 판정에는 손대지 않는다(물리 결과를 보고 그리기만 한다). 좌표는 판 좌표(cm).
@@ -208,8 +234,10 @@ class BattleFx {
         }
       }
       final at = Offset(i.x, i.y);
-      final strong = i.speed >= 60;
-      final mid = i.speed >= 20;
+      final tier = ImpactTier.of(i.speed);
+      final huge = tier == ImpactTier.huge;
+      final strong = huge || tier == ImpactTier.strong;
+      final mid = strong || tier == ImpactTier.mid;
       final withShooter = i.a == shooterId || i.b == shooterId;
       // 손맛: 부딪힌 빠르기만큼 떨린다(같은 순간 여러 번이면 한 번).
       Buzz.impact(i.speed / 100);
@@ -228,13 +256,13 @@ class BattleFx {
       if (strong) {
         _glints.add(_Ring(at, 0, 2.2 + i.speed / 60, 0.22, Colors.white));
         // 센 충돌은 아주 잠깐 멈춘다(히트스톱).
-        _stopLeft = math.max(_stopLeft, i.speed >= 90 ? 0.09 : 0.06);
-        if (withShooter || i.speed >= 90) {
+        _stopLeft = math.max(_stopLeft, huge ? 0.09 : 0.06);
+        if (withShooter || huge) {
           _text(
             at.translate(0, -1.8),
-            i.speed >= 90 ? '쾅!' : '퍽!',
+            huge ? '쾅!' : '퍽!',
             const Color(0xFFFFF2C0),
-            size: i.speed >= 90 ? 34 : 26,
+            size: huge ? 34 : 28,
           );
         }
       }
@@ -246,12 +274,12 @@ class BattleFx {
         size: strong ? 0.35 : 0.22,
       );
       if (strong) {
-        _shake = math.max(_shake, 10);
-        _flash = math.max(_flash, 0.25);
+        _shake = math.max(_shake, huge ? 12 : 8);
+        _flash = math.max(_flash, huge ? 0.3 : 0.2);
         _flashColor = Colors.white;
-        _rings.add(_Ring(at, 0.3, 3.5, 0.3, Colors.white));
-        // 환영 교전(설계서 §4): 쏜 돌의 센 정면 충돌은 잠깐 느린 화면.
-        if (withShooter) _slow(0.3, 0.35);
+        _rings.add(_Ring(at, 0.3, huge ? 4.2 : 3.2, 0.3, Colors.white));
+        // 환영 교전(설계서 §4): 쏜 돌의 아주 센 정면 충돌은 잠깐 느린 화면.
+        if (withShooter && huge) _slow(0.3, 0.35);
       } else if (mid) {
         _shake = math.max(_shake, 4);
       }
