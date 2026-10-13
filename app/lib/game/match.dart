@@ -95,31 +95,57 @@ enum StrikeMode {
   final int cost;
 }
 
+/// 내공 겨루기 놀이 셋(2026-10-14 형 「빠르게 클릭 외에 몇 가지 겨루기를 추가해서 너무 지겹고 지루하지 않게」).
+enum ClashGame {
+  /// 마구 두드리기(3초 · 두드린 수).
+  mash('마구 두드리기', '「시작」에 맞춰 화면을 마구 두드려라!', 3),
+
+  /// 때 맞추기: 오가는 바늘이 금빛 칸에 올 때 누른다(기회 3번 · 맞힌 수).
+  timing('때 맞추기', '바늘이 금빛 칸에 올 때 눌러라! 기회는 세 번', 4),
+
+  /// 기맥 잇기: 빛나는 점 5개가 차례로 켜진다 — 켜진 동안 누른다(이은 수).
+  chain('기맥 잇기', '빛나는 점이 켜지는 대로 눌러라!', 4);
+
+  const ClashGame(this.label, this.hint, this.seconds);
+  final String label;
+  final String hint;
+
+  /// 겨루는 시간(초).
+  final double seconds;
+}
+
 /// 내공 겨루기 수치(설계서 §4). [가정] 실기기에서 맞춘다.
 abstract final class QiClash {
-  /// 연타 시간(초).
-  static const double seconds = 3;
+  /// 마구 두드리기 시간(초).
+  static double get seconds => ClashGame.mash.seconds;
 
   /// 초당 이보다 많으면 무효(설계서 §4: 15회).
   static const int maxRate = 15;
 
-  /// 반발 ±20%.
-  static const double maxSwing = 0.2;
+  /// 이 빠르기(cm/s) 넘게 부딪혀야 겨룬다. 2026-10-14 형 「겨루기가 너무 자주 발생해」: 40 → 65.
+  static const double minSpeed = 65;
 
-  /// 이 빠르기(cm/s) 넘게 부딪혀야 겨룬다(센 정면 충돌만 — 정한 값).
-  static const double minSpeed = 40;
+  /// 정면 판정: 2026-10-14 20° → 14° 안.
+  static const double headOnCos = 0.97;
 
-  /// 정면 판정: 20° 안.
-  static const double headOnCos = 0.94;
+  /// 한 번 겨루면 이만큼 수가 지나야 다시 겨룬다(2026-10-14).
+  static const int cooldownTurns = 4;
 
-  /// 연타 수 차이 → 반발 배수 차이. 초당 [maxRate] 를 넘긴 쪽은 0 회로 친다.
-  static double swing(int mine, int theirs) {
-    final cap = (maxRate * seconds).round();
-    final m = mine > cap ? 0 : mine;
-    final t = theirs > cap ? 0 : theirs;
+  /// 이긴 쪽 돌·진 쪽 돌 빠르기 배수(크게 이길수록 그만큼). 2026-10-14 형 「지나 이겨도 큰 차이가 없어」:
+  /// 예전 ±20% → 크게 이기면 내 돌은 거의 멈추고(×0.1) 상대 돌은 두 배(×2)로 날아간다.
+  static const double winnerKeep = 0.1, loserBoost = 2.0;
+
+  /// 점수 차 → 이긴 정도(−1~+1, 내가 이기면 +). 마구 두드리기는 초당 [maxRate] 를 넘긴 쪽을 0 으로 친다.
+  static double swing(int mine, int theirs, [ClashGame game = ClashGame.mash]) {
+    var m = mine, t = theirs;
+    if (game == ClashGame.mash) {
+      final cap = (maxRate * seconds).round();
+      if (m > cap) m = 0;
+      if (t > cap) t = 0;
+    }
     final top = m > t ? m : t;
     if (top == 0) return 0;
-    return maxSwing * ((m - t) / top).clamp(-1.0, 1.0);
+    return ((m - t) / top).clamp(-1.0, 1.0);
   }
 
   /// 고수의 연타 수(3초): 쉬움 18 · 보통 27 · 어려움 36, ±3.
@@ -132,6 +158,20 @@ abstract final class QiClash {
       } +
       r.nextInt(7) -
       3;
+
+  /// 고수의 점수(놀이마다). 때 맞추기 3번 중 · 기맥 잇기 5점 중 — 쉬울수록 적다(30% 는 하나 덜).
+  static int aiScore(ClashGame g, Difficulty d, math.Random r) {
+    if (g == ClashGame.mash) return aiTaps(d, r);
+    final base = switch ((g, d)) {
+      (ClashGame.timing, Difficulty.easy) => 1,
+      (ClashGame.timing, Difficulty.hard) => 3,
+      (ClashGame.timing, _) => 2,
+      (_, Difficulty.easy) => 2,
+      (_, Difficulty.normal) => 3,
+      _ => 4,
+    };
+    return math.max(0, base - (r.nextDouble() < 0.3 ? 1 : 0));
+  }
 }
 
 /// 환생 전용 캐릭터의 비기(설계서 §10.1). 수치는 [가정].
@@ -931,7 +971,11 @@ class Match extends ChangeNotifier {
     return null;
   }
 
+  /// 마지막으로 겨룬 수(덜 자주 · [QiClash.cooldownTurns]).
+  int _lastClashTurn = -999;
+
   void _checkClash(Map<int, Vector2> before) {
+    if (_turnCount - _lastClashTurn < QiClash.cooldownTurns) return;
     final m0 = heaviestMass(0), m1 = heaviestMass(1);
     for (final i in table.impacts) {
       if (i.speed < QiClash.minSpeed) continue;
@@ -949,23 +993,36 @@ class Match extends ChangeNotifier {
       final cos = mover.dot(line).abs() / (mover.length * line.length);
       if (cos < QiClash.headOnCos) continue;
       _clashThisTurn = true;
+      _lastClashTurn = _turnCount;
       clash = (mine.id, theirs.id);
       notifyListeners();
       return;
     }
   }
 
-  /// 내공 겨루기 결과를 넣고 물리를 다시 돌린다. [myTaps]·[aiTaps] 는 [QiClash.seconds] 동안 연타 수.
-  /// 돌려주는 값은 반발 배수 차이(−0.2~+0.2, 내 쪽이 이기면 +). 초당 15회를 넘긴 연타는 무효(0).
-  double resolveClash(int myTaps, int aiTaps) {
+  /// 내공 겨루기 결과를 넣고 물리를 다시 돌린다. [mine]·[theirs] 는 [game] 점수.
+  /// 돌려주는 값은 이긴 정도(−1~+1, 내 쪽이 이기면 +).
+  /// 이긴 쪽 돌은 거의 멈추고(×[QiClash.winnerKeep] 쪽으로), 진 쪽 돌은 [QiClash.loserBoost] 쪽으로 날아간다.
+  /// 확실히 이기면(0.2 넘게) 그 편 내공 +1칸.
+  double resolveClash(int mine, int theirs, [ClashGame game = ClashGame.mash]) {
     final c = clash;
     if (c == null) return 0;
     clash = null;
-    final d = QiClash.swing(myTaps, aiTaps);
-    final mine = _byId(c.$1), theirs = _byId(c.$2);
-    if (mine == null || theirs == null) return 0;
-    mine.body.linearVelocity = mine.velocity * (1 - d);
-    theirs.body.linearVelocity = theirs.velocity * (1 + d);
+    final d = QiClash.swing(mine, theirs, game);
+    final my = _byId(c.$1), foe = _byId(c.$2);
+    if (my == null || foe == null) return 0;
+    double keep(double k) => 1 - (1 - QiClash.winnerKeep) * k;
+    double boost(double k) => 1 + (QiClash.loserBoost - 1) * k;
+    final k = d.abs();
+    final (win, lose) = d > 0 ? (my, foe) : (foe, my);
+    if (k > 0) {
+      win.body.linearVelocity = win.velocity * keep(k);
+      lose.body.linearVelocity = lose.velocity * boost(k);
+    }
+    if (k > 0.2) {
+      final team = d > 0 ? 0 : 1;
+      _qi[team] = math.min(maxQi, _qi[team] + 1);
+    }
     notifyListeners();
     return d;
   }

@@ -124,6 +124,11 @@ class _GameScreenState extends State<GameScreen> {
   /// 내공 겨루기 연타 화면이 떠 있나.
   bool _clashing = false;
 
+  /// 이번 겨루기의 놀이와 고수 점수 — 겨루기가 시작될 때 한 번만 정한다
+  /// (예전엔 그릴 때마다 고수 연타 수를 새로 뽑아 막대가 들쭉날쭉했다).
+  ClashGame _clashGame = ClashGame.mash;
+  int _clashAi = 0;
+
   /// 판 시작 「나 VS 상대」 연출.
   bool _intro = true;
 
@@ -308,6 +313,8 @@ class _GameScreenState extends State<GameScreen> {
     if (_match.clash != null && !_clashing) {
       // 준비 장면이 대치·북소리를 낸다(바로 연타로 들어가지 않는다 · 2026-10-11 형 지시).
       _clashing = true;
+      _clashGame = ClashGame.values[_rand.nextInt(ClashGame.values.length)];
+      _clashAi = QiClash.aiScore(_clashGame, widget.config.difficulty, _rand);
       Sound.play('clash', 0.7);
       _selected = null;
     }
@@ -797,9 +804,10 @@ class _GameScreenState extends State<GameScreen> {
                   opponent: widget.config.opponentName ?? '상대',
                   me: _myId,
                   foe: _foeId,
-                  aiTaps: QiClash.aiTaps(widget.config.difficulty, _rand),
+                  game: _clashGame,
+                  aiTaps: _clashAi,
                   onDone: (mine, theirs) {
-                    _match.resolveClash(mine, theirs);
+                    _match.resolveClash(mine, theirs, _clashGame);
                     setState(() => _clashing = false);
                   },
                 ),

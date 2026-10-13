@@ -23,14 +23,46 @@ void main() {
   setUpAll(initializePhysics);
 
   group('내공 겨루기 (설계서 §4)', () {
-    test('연타 수 차이 → 반발 ±20%, 초당 15회 넘으면 무효', () {
+    test('점수 차 → 이긴 정도 −1~+1, 두드리기는 초당 15회 넘으면 무효', () {
       expect(QiClash.swing(30, 30), 0);
-      expect(QiClash.swing(30, 15), closeTo(0.1, 1e-9));
-      expect(QiClash.swing(0, 27), closeTo(-0.2, 1e-9));
-      expect(QiClash.swing(45, 0), closeTo(0.2, 1e-9));
+      expect(QiClash.swing(30, 15), closeTo(0.5, 1e-9));
+      expect(QiClash.swing(0, 27), closeTo(-1, 1e-9));
+      expect(QiClash.swing(45, 0), closeTo(1, 1e-9));
       // 46회(초당 15.3회)는 무효 → 0 회로 친다.
-      expect(QiClash.swing(46, 20), closeTo(-0.2, 1e-9));
+      expect(QiClash.swing(46, 20), closeTo(-1, 1e-9));
       expect(QiClash.swing(0, 0), 0);
+      // 때 맞추기·기맥 잇기는 점수가 작아 무효 규칙이 없다.
+      expect(QiClash.swing(3, 1, ClashGame.timing), closeTo(2 / 3, 1e-9));
+      expect(QiClash.swing(5, 4, ClashGame.chain), closeTo(0.2, 1e-9));
+    });
+
+    // 2026-10-14 형 「빠르게 클릭 외에 몇 가지 겨루기를 추가」.
+    test('겨루기 놀이 셋 · 고수 점수(때 맞추기 0~3 · 기맥 잇기 1~4)', () {
+      expect(ClashGame.values.length, 3);
+      final r = math.Random(2);
+      for (var i = 0; i < 200; i++) {
+        for (final d in Difficulty.values) {
+          expect(
+            QiClash.aiScore(ClashGame.timing, d, r),
+            inInclusiveRange(0, 3),
+          );
+          expect(
+            QiClash.aiScore(ClashGame.chain, d, r),
+            inInclusiveRange(1, 4),
+          );
+        }
+      }
+    });
+
+    // 2026-10-14 형 「겨루기가 지금은 너무 자주 발생해」.
+    test('예전엔 겨루던 60cm/s 정면 충돌은 이제 겨루지 않는다(65 넘게만)', () {
+      final m = duel();
+      m.shoot(m.table.stones[0], -math.pi / 2, 60, 0);
+      var guard = 0;
+      while (m.isMoving && guard++ < 2000) {
+        m.step();
+        expect(m.clash, isNull);
+      }
     });
 
     test('고수의 연타 수: 쉬움 15~21 · 보통 24~30 · 어려움 33~39', () {
@@ -58,9 +90,17 @@ void main() {
       expect(m.step(), isFalse);
       expect(m.table.stones[1].position, at);
       final before = m.table.stones[1].velocity.length;
+      final mineBefore = m.table.stones[0].velocity.length;
+      final qiBefore = m.qi(0);
       final d = m.resolveClash(45, 0);
-      expect(d, closeTo(0.2, 1e-9));
-      expect(m.table.stones[1].velocity.length, closeTo(before * 1.2, 1e-3));
+      // 2026-10-14 형 「지나 이겨도 큰 차이가 없어」: 크게 이기면 상대 돌 ×2 · 내 돌 ×0.1 · 내공 +1.
+      expect(d, closeTo(1, 1e-9));
+      expect(m.table.stones[1].velocity.length, closeTo(before * 2, 1e-3));
+      expect(
+        m.table.stones[0].velocity.length,
+        closeTo(mineBefore * 0.1, 1e-3),
+      );
+      expect(m.qi(0), qiBefore + 1);
       expect(m.clash, isNull);
       guard = 0;
       while (m.isMoving && guard++ < 2000) {
