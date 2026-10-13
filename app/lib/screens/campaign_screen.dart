@@ -16,6 +16,8 @@ import '../game/schools.dart';
 import '../progress/store.dart';
 import '../story/campaign.dart';
 import '../story/chapters.dart';
+import '../ui/glyph_stone.dart';
+import 'credits_screen.dart';
 import 'dialogue_screen.dart';
 import 'encounter_flow.dart';
 import 'game_screen.dart';
@@ -123,7 +125,27 @@ class _CampaignScreenState extends State<CampaignScreen> {
         DialogueScreen(title: s.title, lines: s.outro, scene: s.arena.name),
       ),
     );
+    final g = glyphOf(s.id);
+    if (r.first && g != null && mounted) {
+      await showGlyphAwaken(
+        context,
+        index: g,
+        lit: GlyphStone.litFrom(p.done)..remove(g),
+      );
+    }
     if (r.awaken && mounted) await _awaken();
+    if (r.first && s.id == 'c6' && mounted) {
+      await nav.push(
+        gameRoute<bool>(
+          const DialogueScreen(
+            title: '맺음 · 다시 흙먼지 마을',
+            lines: epilogue,
+            scene: 'dustyYard',
+          ),
+        ),
+      );
+      if (mounted) await nav.push(gameRoute<void>(const CreditsScreen()));
+    }
     if (mounted) setState(() {});
     if (mounted) await afterRound(context);
   }
@@ -248,6 +270,45 @@ class _CampaignScreenState extends State<CampaignScreen> {
     ),
   );
 
+  /// 기명석: 깨어난 문양 수와 다음 문양까지 남은 판.
+  Widget _glyphRow(Profile p) {
+    final lit = GlyphStone.litFrom(p.done);
+    final next = glyphs.where((g) => !p.done.contains(g.$1)).firstOrNull;
+    final nextTitle = next == null
+        ? null
+        : campaign.firstWhere((s) => s.id == next.$1).title.split(' · ').first;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GlassPanel(
+        key: const Key('glyph-row'),
+        padding: const EdgeInsets.fromLTRB(8, 6, 12, 6),
+        radius: 16,
+        child: Row(
+          children: [
+            GlyphStone(lit: lit, size: 84),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '기명석 · 문양 ${lit.length}/${glyphs.length}',
+                    style: const TextStyle(fontFamily: titleFont, fontSize: 18),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    nextTitle == null ? '탄지신통 완성!' : '다음 문양 — $nextTitle',
+                    style: const TextStyle(fontSize: 14, color: Palette.dim),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _setEasy(bool v) {
     setState(() => _store.profile.easyMode = v);
     unawaited(_store.save());
@@ -277,10 +338,11 @@ class _CampaignScreenState extends State<CampaignScreen> {
       ],
       body: ListView.builder(
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-        itemCount: campaign.length + 2,
+        itemCount: campaign.length + 3,
         itemBuilder: (_, j) {
-          if (j == 0) return _difficultyRow(p);
-          final i = j - 1;
+          if (j == 0) return _glyphRow(p);
+          if (j == 1) return _difficultyRow(p);
+          final i = j - 2;
           if (i == campaign.length) {
             final open = p.stage >= 7;
             return _StageCard(

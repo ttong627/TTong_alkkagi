@@ -140,15 +140,16 @@ abstract final class Buzz {
 
   static void tick() {
     if (!Settings.instance.vibration) return;
-    if (!_pulse(12, 70)) HapticFeedback.selectionClick();
+    if (!_pulse(20, 120)) HapticFeedback.selectionClick();
   }
 
   static void heavy() {
     if (!Settings.instance.vibration) return;
-    if (!_pulse(45, 255)) HapticFeedback.heavyImpact();
+    if (!_pulse(60, 255)) HapticFeedback.heavyImpact();
   }
 
-  /// 부딪힘·타격: [strength] 0~1 만큼(길이 10~60ms · 세기 50~255).
+  /// 부딪힘·타격: [strength] 0~1 만큼(길이 20~70ms · 세기 110~255).
+  /// 2026-10-13 형 「진동이 확실하게」: 예전 바닥(10ms · 50)은 손에 거의 안 느껴졌다.
   static void impact(double strength) {
     if (!Settings.instance.vibration) return;
     final k = strength.clamp(0.0, 1.0);
@@ -156,7 +157,7 @@ abstract final class Buzz {
     final now = DateTime.now().millisecondsSinceEpoch;
     if (now - _lastMs < _gapMs) return;
     _lastMs = now;
-    final ms = (10 + 50 * k).round(), amp = (50 + 205 * k).round();
+    final ms = (20 + 50 * k).round(), amp = (110 + 145 * k).round();
     if (_pulse(ms, amp)) return;
     if (k > 0.66) {
       HapticFeedback.heavyImpact();
