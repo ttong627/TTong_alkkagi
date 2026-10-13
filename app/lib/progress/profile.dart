@@ -153,6 +153,10 @@ const materialPrices = {
   StoneMaterial.wood: 300,
   StoneMaterial.hyeoncheol: 600,
   StoneMaterial.ice: 900,
+  // 2026-10-14 새 재질 [가정].
+  StoneMaterial.obsidian: 750,
+  StoneMaterial.granite: 800,
+  StoneMaterial.diamond: 1200,
 };
 const shapePrices = {
   StoneShape.flat: 0,
@@ -458,7 +462,7 @@ class Profile {
   /// 어기어석 꺾기 횟수(설계서 §3.7·§16.2).
   int get steers => stage >= 7 ? 3 : (stage >= 5 ? 2 : 1);
 
-  /// 도감 세트 보너스: 재질 4종을 모두 모으면 능력치 3종 +1, 모양 3종 모두 +1 (설계서 §8.7).
+  /// 도감 세트 보너스: 재질 7종(2026-10-14 셋 더함)을 모두 모으면 능력치 3종 +1, 모양 3종 모두 +1 (설계서 §8.7).
   int get codexBonus =>
       (materials.length == StoneMaterial.values.length ? 1 : 0) +
       (shapes.length == StoneShape.values.length ? 1 : 0);

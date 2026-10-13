@@ -1,9 +1,18 @@
-/// 재질 4종 (설계서 v2 §3.5).
+/// 재질 7종 (설계서 v2 §3.5 · 2026-10-14 형 「돌의 종류도 더 다양하게」로 셋 더함).
 enum StoneMaterial {
   cheongok('청옥', density: 1.0, damping: 1.2, restitution: 0.85),
   wood('만년기주', density: 0.5, damping: 0.9, restitution: 0.80),
   hyeoncheol('현철', density: 2.5, damping: 2.0, restitution: 0.75),
-  ice('빙백한옥', density: 1.0, damping: 0.15, restitution: 0.95);
+  ice('빙백한옥', density: 1.0, damping: 0.15, restitution: 0.95),
+
+  /// 흑요석: 조금 무겁고 반발이 커서 맞힌 돌을 세게 튕겨 낸다. [가정]
+  obsidian('흑요석', density: 1.6, damping: 1.1, restitution: 0.92),
+
+  /// 반석(화강암): 무겁고 빨리 멈춘다 — 버티는 돌. [가정]
+  granite('반석', density: 2.2, damping: 2.6, restitution: 0.6),
+
+  /// 금강석: 가볍고 반발이 아주 커 잘 미끄러진다. [가정]
+  diamond('금강석', density: 0.8, damping: 0.6, restitution: 0.97);
 
   const StoneMaterial(
     this.label, {

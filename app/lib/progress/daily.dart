@@ -294,9 +294,17 @@ final achievements = <Achievement>[
   ),
   Achievement(
     'collect',
-    '재질 네 가지 모두',
+    '재질 네 가지 모으기',
     4,
     const Reward(silver: 2),
+    (p) => p.materials.length,
+  ),
+  // 2026-10-14 재질이 일곱 가지가 되었다(형 「돌의 종류도 더 다양하게」).
+  Achievement(
+    'collect7',
+    '재질 일곱 가지 모두',
+    7,
+    const Reward(silver: 5),
     (p) => p.materials.length,
   ),
   Achievement(

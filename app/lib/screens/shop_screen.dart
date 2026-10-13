@@ -221,6 +221,9 @@ String _materialHelp(StoneMaterial m) => switch (m) {
   StoneMaterial.wood => '가볍고 빠름 · 미는 힘 약함',
   StoneMaterial.hyeoncheol => '무거움 · 상대를 멀리 밀어냄',
   StoneMaterial.ice => '잘 미끄러짐 · 연쇄 충돌',
+  StoneMaterial.obsidian => '조금 무거움 · 맞힌 돌을 세게 튕겨 냄',
+  StoneMaterial.granite => '아주 무겁고 빨리 멈춤 · 버티는 돌',
+  StoneMaterial.diamond => '가볍고 반발 최고 · 잘 미끄러짐',
 };
 
 String _shapeHelp(StoneShape s) => switch (s) {
