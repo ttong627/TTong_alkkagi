@@ -1,3 +1,4 @@
+import 'package:alkkagi/audio/sound.dart';
 import 'package:alkkagi/game/match.dart';
 import 'package:alkkagi/screens/qi_clash.dart';
 import 'package:alkkagi/ui/theme.dart';
@@ -44,5 +45,24 @@ void main() {
     expect(done, isNotNull);
     expect(done!.$1, 25, reason: '시작 뒤에 두드린 것만');
     expect(done!.$2, 20);
+  });
+
+  testWidgets('내공 겨루기 동안 bgm_clash · 닫히면 원래 곡으로', (t) async {
+    Sound.track('bgm_boss');
+    addTearDown(() => Sound.track(null));
+    await t.pumpWidget(
+      MaterialApp(
+        theme: buildTheme(),
+        home: QiClashOverlay(
+          opponent: '묵현',
+          aiTaps: 20,
+          onDone: (_, _) {},
+          fast: true,
+        ),
+      ),
+    );
+    expect(Sound.current, 'bgm_clash');
+    await t.pumpWidget(const SizedBox());
+    expect(Sound.current, 'bgm_boss');
   });
 }

@@ -216,6 +216,9 @@ abstract final class Sound {
     }());
   }
 
+  /// 지금 틀고 있는(준비 전이면 틀 차례인) 곡 이름 — 잠깐 다른 곡을 틀었다 되돌릴 때 쓴다.
+  static String? get current => _ready ? _track : _pending;
+
   /// 소리가 준비되기 전에 부른 음악(준비되면 튼다).
   static String? _pending;
   static int _turn = 0;

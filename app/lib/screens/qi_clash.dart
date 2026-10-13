@@ -76,6 +76,9 @@ class _QiClashOverlayState extends State<QiClashOverlay>
   String? _result;
   double _swing = 0;
 
+  /// 겨루기 동안 bgm_clash 를 틀고, 닫힐 때 원래 곡으로 되돌린다.
+  final String? _prevTrack = Sound.current;
+
   double get _t => _clock.lastElapsedDuration == null
       ? 0
       : _clock.lastElapsedDuration!.inMicroseconds / 1e6;
@@ -92,6 +95,7 @@ class _QiClashOverlayState extends State<QiClashOverlay>
   @override
   void initState() {
     super.initState();
+    Sound.track('bgm_clash');
     Sound.play('clash_ready');
     Buzz.heartbeat();
     _at(0.6, Buzz.heartbeat);
@@ -167,6 +171,7 @@ class _QiClashOverlayState extends State<QiClashOverlay>
     for (final t in _timers) {
       t.cancel();
     }
+    Sound.track(_prevTrack);
     _clock.dispose();
     _tap.dispose();
     _attackMe.dispose();
