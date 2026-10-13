@@ -34,6 +34,7 @@ class GameScreen extends StatefulWidget {
     this.title,
     this.onTurnEnd,
     this.info,
+    this.panel,
     this.quips = const [],
     this.boss = false,
     this.coach = false,
@@ -57,6 +58,9 @@ class GameScreen extends StatefulWidget {
 
   /// 판 아래 안내 글(목인항 수련 수 등). 없으면 대전장 이름.
   final String Function()? info;
+
+  /// 판 아래 안내 글 위에 놓는 칸(목인항 진행 막대·저장 등).
+  final Widget Function()? panel;
 
   /// 강호행 판이면 제목(예: 「1장 · 하산의 길」). 이때는 판이 끝나면 이겼는지(bool)를 돌려주고 닫는다.
   final String? title;
@@ -733,6 +737,7 @@ class _GameScreenState extends State<GameScreen> {
                         if (_status.isNotEmpty)
                           OutlinedText(_status, size: 20, title: true),
                         const SizedBox(height: 2),
+                        ?widget.panel?.call(),
                         Text(
                           widget.info?.call() ??
                               _match.ruleStatus ??

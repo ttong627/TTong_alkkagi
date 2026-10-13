@@ -367,6 +367,9 @@ class Match extends ChangeNotifier {
         boundary: config.arena.boundary,
         weather: config.weather,
         windSeed: DateTime.now().millisecondsSinceEpoch & 0xffff,
+        // 무게중심(둥근 돌이 맞으면 덜 구름 · 2026-10-14)은 대전에만. 묘수풀이·트릭샷은 정해 둔 풀이가
+        // 예전 물리로 찾은 것이라 그대로 둔다.
+        settle: config.layout == null,
       ) {
     for (final f in config.features) {
       table.addFeature(f);

@@ -134,6 +134,15 @@ void main() {
       expect(r.up(), FlickMiss.tooWeak);
     });
 
+    // 2026-10-14 형 「목인항 수련할 때 자꾸 그냥 통과하는 오류」: 돌 가장자리에 손을 대고 빠르게 쓸어 나가면
+    // 「손을 댄 채 미는 중」으로 보다가 0.3R 을 밀기 전에 돌 밖으로 나가 아무것도 안 하고 끝났다.
+    test('돌 가장자리에 손을 대고 빠르게 쓸어 나가면 그 쪽으로 민다(그냥 통과하지 않음)', () {
+      final s = swipe(const Offset(290, 400), const Offset(300, 0), 0.3);
+      final shot = run(disc, s);
+      expect(shot, isA<FlickShot>());
+      expect(deg((shot as FlickShot).angle), closeTo(0, 5), reason: '오른쪽으로');
+    });
+
     test('돌 위에 손만 대고 떼면 쏘지 않는다', () {
       final r = StrikeReader(disc)
         ..down(const FlickSample(Offset(200, 400), 0));

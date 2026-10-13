@@ -352,8 +352,20 @@ class StrikeReader {
     if (_pushFrom != null) {
       samples.add(p);
       if (!disc.touches(p.pos)) {
-        // 손을 댄 채 밀다가 돌 밖으로 빠져나갔다 → 다시 바깥에서 오는 손끝으로 본다.
         _pushFrom = null;
+        // 2026-10-14 형 「자꾸 그냥 통과」: 손을 댄 채 빠르게 쓸어 돌 밖으로 나가면 [pushTravel] 을 밀기 전이라도
+        // 그 빠르기로 민다. 예전엔 아무것도 안 하고 끝나 손가락이 돌을 그냥 지나갔다.
+        // 천천히 끌어 나가는 것(겨누기·새총 끌기)은 [pushMinPxPerSec] 아래라 그대로 쏘지 않는다.
+        final v = velocityAt(
+          samples.sublist(0, samples.length - 1),
+          p.pos,
+          p.t,
+          tune,
+        );
+        if (v != null && v.distance >= tune.pushMinPxPerSec) {
+          return _fire(v, prev.pos, v, push: true);
+        }
+        // 그 밖에는 다시 바깥에서 오는 손끝으로 본다.
         return null;
       }
       if ((p.pos - _pushFrom!).distance < disc.radius * tune.pushTravel) {

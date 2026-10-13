@@ -104,6 +104,49 @@ abstract final class Training {
       math.max(0, hits - enlightened) * after;
 }
 
+/// 목인항 진행 칸 값(2026-10-14 형 「다음 목표치와 진행 상황을 알 수 있게」).
+class TrainingGoal {
+  const TrainingGoal({
+    required this.stageName,
+    required this.nextName,
+    required this.have,
+    required this.need,
+    required this.stageProgress,
+    required this.todayHits,
+  });
+
+  final String stageName;
+
+  /// 다음 경지 이름(마지막이면 null).
+  final String? nextName;
+
+  /// 쌓인 내공 · 다음 경지에 필요한 내공(마지막이면 같은 값).
+  final double have, need;
+
+  /// 지금 경지 안에서 다음 경지까지 간 비율(0~1).
+  final double stageProgress;
+
+  /// [day] 에 친 수.
+  final int todayHits;
+
+  static TrainingGoal of(Profile p, String day) {
+    final i = p.stage - 1;
+    final base = naegongStages[i].$2;
+    final last = i + 1 >= naegongStages.length;
+    final next = last ? base : naegongStages[i + 1].$2;
+    return TrainingGoal(
+      stageName: naegongStages[i].$1,
+      nextName: last ? null : naegongStages[i + 1].$1,
+      have: p.naegong,
+      need: last ? p.naegong : next,
+      stageProgress: last
+          ? 1
+          : ((p.naegong - base) / (next - base)).clamp(0.0, 1.0),
+      todayHits: p.trainingDay == day ? p.trainingHits : 0,
+    );
+  }
+}
+
 /// 만물상 (설계서 §6.2A·§16.4) 가격(엽전).
 const materialPrices = {
   StoneMaterial.cheongok: 0,

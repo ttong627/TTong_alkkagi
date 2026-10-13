@@ -292,15 +292,37 @@ AiShot _plan(_Request r) {
     best = scored.first.$2;
   }
   double jitter(double maxAbs) => (rand.nextDouble() * 2 - 1) * maxAbs;
+  // 둥근 돌은 잘 안 맞는다(사람 손 흉내 [r.angleError] 에는 따로 주므로 AI 오차에만).
+  final aimHard = aimHardness(r.stones, 1 - r.team);
   return AiShot(
     best.stoneId,
-    best.angle + jitter(r.angleError ?? diff.angleError * r.errorScale),
+    best.angle +
+        jitter(r.angleError ?? diff.angleError * r.errorScale * aimHard),
     best.speed *
         r.powerScale *
         (1 + jitter(r.speedError ?? diff.speedError * r.errorScale)),
     best.hit,
     mode: best.mode,
   );
+}
+
+/// 노리는 편([team])의 살아 있는 돌 모양으로 AI 방향 오차에 곱하는 배수.
+///
+/// 2026-10-14 형 「둥글수록 컨트롤은 어렵지만 상대가 잘 맞추지 못하고」: 둥글수록 맞히기 어렵다 —
+/// 납작 ×1 · 둥근 ×1.15 · 구형 ×1.4 의 평균. [가정 — 실기기로 맞춘다]
+double aimHardness(List<StoneData> stones, int team) {
+  const by = {
+    StoneShape.flat: 1.0,
+    StoneShape.round: 1.15,
+    StoneShape.sphere: 1.4,
+  };
+  var sum = 0.0, n = 0;
+  for (final s in stones) {
+    if (s.out || s.team != team) continue;
+    sum += by[StoneShape.values[s.shape]]!;
+    n++;
+  }
+  return n == 0 ? 1 : sum / n;
 }
 
 /// 한 수를 미리 계산해 점수를 매긴다. 상대 돌 장외 +10, 내 돌 장외 −12,

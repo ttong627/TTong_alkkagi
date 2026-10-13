@@ -82,7 +82,7 @@ void main() {
 
   group('1-03 감속 하한 0.3', () {
     test('빙백한옥(0.15)도 실제 감속은 0.3', () {
-      final t = Table();
+      final t = Table(settle: false);
       expect(t.dampingOf(StoneMaterial.ice, StoneShape.round), 0.3);
       expect(t.dampingOf(StoneMaterial.ice, StoneShape.sphere), 0.3);
       final s = t.addStone(0, 0, material: StoneMaterial.ice);
@@ -101,7 +101,7 @@ void main() {
 
   group('1-04 10초 강제 정지 · 멈춤 0.5cm/s', () {
     test('감속 0이면 600스텝에서 강제로 멈춘다', () {
-      final t = Table(minDamping: 0);
+      final t = Table(minDamping: 0, settle: false);
       final s = t.addStone(0, 0, material: StoneMaterial.ice);
       s.body.linearDamping = 0;
       t.shoot(s, 0, 1.2, 0);
@@ -598,6 +598,60 @@ void main() {
         stopped |= t.terrainEvents.any((e) => e.fx == TerrainFx.frostStop);
       }
       expect(stopped, isTrue);
+      t.dispose();
+    });
+
+    // 2026-10-14 형 「둥글수록 … 내가 작동하는 부분은 엄청 잘 움직이지만 튕기는 부분과 상대가 맞췄을 때는
+    // 강한 중력이 발생해서 잘 구르지 않는다는 설정이 있어야 잘 안 죽어」.
+    test('무게중심: 맞은 구형 돌은 예전보다 · 납작한 돌보다 덜 구른다', () {
+      double pushed(StoneShape shape, {required bool settle}) {
+        final t = Table(settle: settle);
+        final me = t.addStone(0, 10);
+        final tg = t.addStone(0, 0, shape: shape);
+        t.shoot(me, -math.pi / 2, 30, 0);
+        t.runTurn();
+        final d = tg.out ? double.infinity : -tg.position.y;
+        t.dispose();
+        return d;
+      }
+
+      final flat = pushed(StoneShape.flat, settle: true);
+      final sphere = pushed(StoneShape.sphere, settle: true);
+      final oldSphere = pushed(StoneShape.sphere, settle: false);
+      expect(sphere, lessThan(flat), reason: '구형 $sphere · 납작 $flat');
+      expect(sphere, lessThan(oldSphere * 0.8), reason: '예전 구형 $oldSphere');
+    });
+
+    test('무게중심: 내가 쏜 구형 돌은 충돌 전까지 예전처럼 멀리 구른다', () {
+      double roll({required bool settle}) {
+        final t = Table(settle: settle);
+        final me = t.addStone(0, 10, shape: StoneShape.sphere);
+        t.shoot(me, -math.pi / 2, 20, 0);
+        t.runTurn();
+        final d = 10 - me.position.y;
+        t.dispose();
+        return d;
+      }
+
+      expect(roll(settle: true), closeTo(roll(settle: false), 1e-6));
+    });
+
+    test('무게중심: 쏜 돌도 부딪혀 튕긴 뒤에는 무게중심이 걸린다', () {
+      final t = Table();
+      final me = t.addStone(0, 10, shape: StoneShape.sphere);
+      t.addStone(0, 0);
+      final free = me.body.linearDamping;
+      t.shoot(me, -math.pi / 2, 60, 0);
+      expect(me.body.linearDamping, lessThan(free), reason: '쏘는 순간 풀림');
+      final loose = me.body.linearDamping;
+      var guard = 0;
+      while (t.impacts.isEmpty && guard++ < 600) {
+        t.step();
+      }
+      expect(
+        me.body.linearDamping,
+        closeTo(loose * StoneShape.sphere.settleMultiplier, 1e-6),
+      );
       t.dispose();
     });
 

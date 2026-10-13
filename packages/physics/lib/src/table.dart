@@ -129,6 +129,7 @@ class Table {
     this.boundary = Boundary.square,
     this.weather = Weather.clear,
     this.windSeed = 0,
+    this.settle = true,
   }) : _floorFactor = weather == Weather.nightRain
            ? floorFactor * 0.5
            : floorFactor,
@@ -139,6 +140,10 @@ class Table {
 
   /// 감속 하한. 게임은 기본값 0.3 을 쓰고, 시험만 다른 값을 쓴다.
   final double minDamping;
+
+  /// 무게중심([StoneShape.settleMultiplier])을 쓰나. 게임은 켜고, 엔진 측정 재현 시험만 끈다
+  /// (끄면 2026-10-14 전과 똑같이 돈다).
+  final bool settle;
 
   /// 바닥 감속 배수(대전장마다 다름). 1 이면 재질 × 모양 그대로.
   /// 흙바닥은 크게(잘 멈춤), 기름·얼음 바닥은 작게(잘 미끄러짐) 준다. 야우면 절반.
@@ -230,8 +235,23 @@ class Table {
     material.damping * shape.dampingMultiplier * floorFactor,
   );
 
-  /// 이 돌의 지금 감속(재질·모양·바닥 × 돌마다 배수).
-  double dampingFor(Stone s) => dampingOf(s.material, s.shape) * s.dampingScale;
+  /// 이 돌의 지금 감속(재질·모양·바닥 × 돌마다 배수 × 무게중심).
+  /// 쏜 돌이 첫 충돌 전이면 무게중심 배수 없이 잘 구르고, 그 밖의 돌(맞은 돌 · 튕긴 뒤 쏜 돌)은
+  /// [StoneShape.settleMultiplier] 만큼 더 빨리 멈춘다.
+  double dampingFor(Stone s) =>
+      dampingOf(s.material, s.shape) *
+      s.dampingScale *
+      (identical(s, _shooter) && !_firstHit ? 1 : _settleOf(s.shape));
+
+  double _settleOf(StoneShape shape) => settle ? shape.settleMultiplier : 1;
+
+  /// 바닥에 붙은 돌의 감속을 지금 상태에 맞춘다.
+  void _refreshDamping(Iterable<Stone> list) {
+    if (!settle) return;
+    for (final s in list) {
+      if (!s.out && !s.airborne) s.body.linearDamping = dampingFor(s);
+    }
+  }
 
   /// 돌의 감속 배수를 바꾼다(흡성대법: 판 끝까지 간다). 바닥에 붙어 있으면 바로 맞춘다.
   void setDampingScale(Stone s, double scale) {
@@ -275,7 +295,8 @@ class Table {
       BodyDef(
         type: BodyType.dynamic,
         position: Vector2(x, y),
-        linearDamping: dampingOf(material, shape),
+        // 놓인 돌은 쏜 돌이 아니라 처음부터 무게중심이 걸린다.
+        linearDamping: dampingOf(material, shape) * _settleOf(shape),
         angularDamping: PhysicsConstants.angularDamping,
         isBullet: true,
         enableSleep: false,
@@ -384,6 +405,8 @@ class Table {
     _shooter = stone;
     _turnSteps = 0;
     _status = TurnStatus.moving;
+    // 쏜 돌은 잘 구르고, 나머지(지난 수에 쏜 돌 포함)는 무게중심이 걸린다.
+    _refreshDamping(stones);
   }
 
   /// 궁극기 어기어석: 지금 쏜 돌을 [angle] 쪽으로 꺾는다. 빠르기는 그대로(설계서 §3.7).
@@ -653,6 +676,8 @@ class Table {
     final point = Vector2(hit.x, hit.y);
     if (!_firstHit) {
       _firstHit = true;
+      // 부딪혀 튕긴 뒤부터는 쏜 돌에도 무게중심이 걸린다.
+      _refreshDamping([shooter]);
       if (_impactScale != 1) {
         other.body.linearVelocity = other.velocity..scale(_impactScale);
       }
