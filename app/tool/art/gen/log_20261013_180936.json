@@ -1,0 +1,10 @@
+[
+ {
+  "engine": "agy",
+  "id": "maengju",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\maengju_idle.png",
+  "secs": 43.1
+ }
+]

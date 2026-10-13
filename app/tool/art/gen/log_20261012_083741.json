@@ -1,0 +1,306 @@
+[
+ {
+  "engine": "codex",
+  "id": "yeonbi",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\yeonbi_idle.png",
+  "secs": 31.9
+ },
+ {
+  "engine": "codex",
+  "id": "yeonbi",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\yeonbi_attack.png",
+  "secs": 47.7
+ },
+ {
+  "engine": "codex",
+  "id": "cheongmyeong",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\cheongmyeong_idle.png",
+  "secs": 56.2
+ },
+ {
+  "engine": "codex",
+  "id": "cheongmyeong",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\cheongmyeong_attack.png",
+  "secs": 96.4
+ },
+ {
+  "engine": "codex",
+  "id": "banDal",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\banDal_idle.png",
+  "secs": 32.9
+ },
+ {
+  "engine": "codex",
+  "id": "banDal",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\banDal_attack.png",
+  "secs": 56.0
+ },
+ {
+  "engine": "codex",
+  "id": "gurumi",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\gurumi_idle.png",
+  "secs": 34.4
+ },
+ {
+  "engine": "codex",
+  "id": "gurumi",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\gurumi_attack.png",
+  "secs": 78.4
+ },
+ {
+  "engine": "codex",
+  "id": "jeonggak",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\jeonggak_idle.png",
+  "secs": 29.6
+ },
+ {
+  "engine": "codex",
+  "id": "jeonggak",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\jeonggak_attack.png",
+  "secs": 48.1
+ },
+ {
+  "engine": "codex",
+  "id": "yonga",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\yonga_idle.png",
+  "secs": 32.7
+ },
+ {
+  "engine": "codex",
+  "id": "yonga",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\yonga_attack.png",
+  "secs": 55.0
+ },
+ {
+  "engine": "codex",
+  "id": "seolhwa",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\seolhwa_idle.png",
+  "secs": 32.3
+ },
+ {
+  "engine": "codex",
+  "id": "seolhwa",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\seolhwa_attack.png",
+  "secs": 87.2
+ },
+ {
+  "engine": "codex",
+  "id": "chwiseon",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\chwiseon_idle.png",
+  "secs": 33.9
+ },
+ {
+  "engine": "codex",
+  "id": "chwiseon",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\chwiseon_attack.png",
+  "secs": 98.2
+ },
+ {
+  "engine": "codex",
+  "id": "mukgaek",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\mukgaek_idle.png",
+  "secs": 37.6
+ },
+ {
+  "engine": "codex",
+  "id": "mukgaek",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\mukgaek_attack.png",
+  "secs": 48.9
+ },
+ {
+  "engine": "codex",
+  "id": "magyo",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\magyo_idle.png",
+  "secs": 45.9
+ },
+ {
+  "engine": "codex",
+  "id": "magyo",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\magyo_attack.png",
+  "secs": 68.5
+ },
+ {
+  "engine": "codex",
+  "id": "geomhwang",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\geomhwang_idle.png",
+  "secs": 47.9
+ },
+ {
+  "engine": "codex",
+  "id": "geomhwang",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\geomhwang_attack.png",
+  "secs": 49.3
+ },
+ {
+  "engine": "codex",
+  "id": "sinseung",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\sinseung_idle.png",
+  "secs": 32.0
+ },
+ {
+  "engine": "codex",
+  "id": "sinseung",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\sinseung_attack.png",
+  "secs": 82.2
+ },
+ {
+  "engine": "codex",
+  "id": "chonjang",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\chonjang_idle.png",
+  "secs": 28.4
+ },
+ {
+  "engine": "codex",
+  "id": "chonjang",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\chonjang_attack.png",
+  "secs": 52.8
+ },
+ {
+  "engine": "codex",
+  "id": "tongtong",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\tongtong_idle.png",
+  "secs": 30.9
+ },
+ {
+  "engine": "codex",
+  "id": "tongtong",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\tongtong_attack.png",
+  "secs": 123.8
+ },
+ {
+  "engine": "codex",
+  "id": "jagaek",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\jagaek_idle.png",
+  "secs": 28.4
+ },
+ {
+  "engine": "codex",
+  "id": "jagaek",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\jagaek_attack.png",
+  "secs": 80.7
+ },
+ {
+  "engine": "codex",
+  "id": "kubi",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\kubi_idle.png",
+  "secs": 38.0
+ },
+ {
+  "engine": "codex",
+  "id": "kubi",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\kubi_attack.png",
+  "secs": 61.4
+ },
+ {
+  "engine": "codex",
+  "id": "logic",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\logic_idle.png",
+  "secs": 37.8
+ },
+ {
+  "engine": "codex",
+  "id": "logic",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\logic_attack.png",
+  "secs": 72.4
+ },
+ {
+  "engine": "codex",
+  "id": "maengju",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\maengju_idle.png",
+  "secs": 29.5
+ },
+ {
+  "engine": "codex",
+  "id": "maengju",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\maengju_attack.png",
+  "secs": 73.3
+ },
+ {
+  "engine": "codex",
+  "id": "sabu",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\sabu_idle.png",
+  "secs": 31.3
+ },
+ {
+  "engine": "codex",
+  "id": "sabu",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\codex\\sabu_attack.png",
+  "secs": 138.1
+ }
+]

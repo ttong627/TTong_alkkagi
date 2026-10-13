@@ -59,6 +59,10 @@ def make_one(br, prompt: str, dest: Path, shots: Path) -> Path | None:
         box.fill(prompt)
         page.wait_for_timeout(800)
         page.keyboard.press("Enter")
+        # 10-13 실측: 「문제가 발생했습니다」 뒤 글이 입력칸에 그대로 남는 일이 있다 → 보내기 단추로 한 번 더.
+        page.wait_for_timeout(4000)
+        if box.inner_text().strip():
+            page.locator("button[aria-label*='보내기']").first.click(timeout=10000)
         t0 = time.time()
         while time.time() - t0 < WAIT_MAX:
             page.wait_for_timeout(10000)

@@ -1,0 +1,15 @@
+Gemini의 응답
+
+현재 시스템의 오디오 생성 도구 제한으로 인해 직접 음원을 생성해 드릴 수 없어, 기획 중이신 무협 알까기 게임('탄지 무림', '어기어석')의 내공 대결 씬에 바로 적용하실 수 있도록 주로 활용하시는 Suno용 최적화 프롬프트를 정리해 드립니다.
+
+Suno 프롬프트 설정값
+
+Instrumental: 반드시 체크 (가사 없음)
+
+Style of Music: Traditional Korean Wuxia, modern game mix, punchy, 160 BPM, tense inner-energy duel, nail-biting suspense, seamless loop
+
+Title / Prompt Box: Featuring gayageum, geomungo, daegeum, haegeum, taepyeongso, janggu, buk drum, jing gong, kkwaenggwari. Heartbeat-like buk double hits accelerating, rising tremolo haegeum, low drone swelling, frantic climax.
+
+요청하신 악기 구성과 텐션 변화(심장 박동 같은 북소리 가속, 해금 트레몰로 고조)는 30초 내외의 모바일 게임 루프용 긴장감 조성에 매우 훌륭한 기획입니다. 위 영문 프롬프트를 그대로 복사하여 생성하시면 원하시는 깔끔하고 타격감 있는 현대적 믹스의 국악 무협 사운드트랙을 얻으실 수 있습니다.
+
+0:00 / 1:07

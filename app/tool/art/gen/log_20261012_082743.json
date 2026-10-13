@@ -1,0 +1,314 @@
+[
+ {
+  "engine": "agy",
+  "id": "seokdu",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\seokdu_idle.png",
+  "secs": 23.8
+ },
+ {
+  "engine": "agy",
+  "id": "yeonbi",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\yeonbi_idle.png",
+  "secs": 19.0
+ },
+ {
+  "engine": "agy",
+  "id": "yeonbi",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\yeonbi_attack.png",
+  "secs": 19.4
+ },
+ {
+  "engine": "agy",
+  "id": "cheongmyeong",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\cheongmyeong_idle.png",
+  "secs": 19.1
+ },
+ {
+  "engine": "agy",
+  "id": "cheongmyeong",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\cheongmyeong_attack.png",
+  "secs": 19.3
+ },
+ {
+  "engine": "agy",
+  "id": "banDal",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\banDal_idle.png",
+  "secs": 19.5
+ },
+ {
+  "engine": "agy",
+  "id": "banDal",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\banDal_attack.png",
+  "secs": 19.3
+ },
+ {
+  "engine": "agy",
+  "id": "gurumi",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\gurumi_idle.png",
+  "secs": 19.5
+ },
+ {
+  "engine": "agy",
+  "id": "gurumi",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\gurumi_attack.png",
+  "secs": 19.5
+ },
+ {
+  "engine": "agy",
+  "id": "jeonggak",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\jeonggak_idle.png",
+  "secs": 19.8
+ },
+ {
+  "engine": "agy",
+  "id": "jeonggak",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\jeonggak_attack.png",
+  "secs": 20.4
+ },
+ {
+  "engine": "agy",
+  "id": "yonga",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\yonga_idle.png",
+  "secs": 195.3
+ },
+ {
+  "engine": "agy",
+  "id": "yonga",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\yonga_attack.png",
+  "secs": 20.1
+ },
+ {
+  "engine": "agy",
+  "id": "seolhwa",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\seolhwa_idle.png",
+  "secs": 19.6
+ },
+ {
+  "engine": "agy",
+  "id": "seolhwa",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\seolhwa_attack.png",
+  "secs": 20.2
+ },
+ {
+  "engine": "agy",
+  "id": "chwiseon",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\chwiseon_idle.png",
+  "secs": 19.3
+ },
+ {
+  "engine": "agy",
+  "id": "chwiseon",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\chwiseon_attack.png",
+  "secs": 20.3
+ },
+ {
+  "engine": "agy",
+  "id": "mukgaek",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\mukgaek_idle.png",
+  "secs": 19.1
+ },
+ {
+  "engine": "agy",
+  "id": "mukgaek",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\mukgaek_attack.png",
+  "secs": 19.1
+ },
+ {
+  "engine": "agy",
+  "id": "magyo",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\magyo_idle.png",
+  "secs": 239.4
+ },
+ {
+  "engine": "agy",
+  "id": "magyo",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\magyo_attack.png",
+  "secs": 19.9
+ },
+ {
+  "engine": "agy",
+  "id": "geomhwang",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\geomhwang_idle.png",
+  "secs": 19.5
+ },
+ {
+  "engine": "agy",
+  "id": "geomhwang",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\geomhwang_attack.png",
+  "secs": 19.8
+ },
+ {
+  "engine": "agy",
+  "id": "sinseung",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\sinseung_idle.png",
+  "secs": 19.3
+ },
+ {
+  "engine": "agy",
+  "id": "sinseung",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\sinseung_attack.png",
+  "secs": 19.6
+ },
+ {
+  "engine": "agy",
+  "id": "chonjang",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\chonjang_idle.png",
+  "secs": 19.2
+ },
+ {
+  "engine": "agy",
+  "id": "chonjang",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\chonjang_attack.png",
+  "secs": 19.5
+ },
+ {
+  "engine": "agy",
+  "id": "tongtong",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\tongtong_idle.png",
+  "secs": 19.6
+ },
+ {
+  "engine": "agy",
+  "id": "tongtong",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\tongtong_attack.png",
+  "secs": 19.2
+ },
+ {
+  "engine": "agy",
+  "id": "jagaek",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\jagaek_idle.png",
+  "secs": 19.6
+ },
+ {
+  "engine": "agy",
+  "id": "jagaek",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\jagaek_attack.png",
+  "secs": 22.2
+ },
+ {
+  "engine": "agy",
+  "id": "kubi",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\kubi_idle.png",
+  "secs": 19.7
+ },
+ {
+  "engine": "agy",
+  "id": "kubi",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\kubi_attack.png",
+  "secs": 24.1
+ },
+ {
+  "engine": "agy",
+  "id": "logic",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\logic_idle.png",
+  "secs": 19.1
+ },
+ {
+  "engine": "agy",
+  "id": "logic",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\logic_attack.png",
+  "secs": 19.2
+ },
+ {
+  "engine": "agy",
+  "id": "maengju",
+  "pose": "idle",
+  "ok": false,
+  "file": null,
+  "secs": 244.7
+ },
+ {
+  "engine": "agy",
+  "id": "maengju",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\maengju_attack.png",
+  "secs": 19.2
+ },
+ {
+  "engine": "agy",
+  "id": "sabu",
+  "pose": "idle",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\sabu_idle.png",
+  "secs": 19.3
+ },
+ {
+  "engine": "agy",
+  "id": "sabu",
+  "pose": "attack",
+  "ok": true,
+  "file": "app\\tool\\art\\gen\\agy\\sabu_attack.png",
+  "secs": 19.2
+ }
+]
