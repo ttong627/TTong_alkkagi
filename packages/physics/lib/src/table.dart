@@ -51,10 +51,15 @@ class Stone {
   double get mass => stoneMass(material, shape);
 
   /// 지금 위치(cm). 판 중심이 (0, 0).
-  Vector2 get position => body.position;
+  Vector2 get position => _frozenPos ?? body.position;
 
   /// 지금 속도(cm/s).
-  Vector2 get velocity => body.linearVelocity;
+  Vector2 get velocity =>
+      _frozenPos != null ? Vector2.zero() : body.linearVelocity;
+
+  /// 판을 치운 뒤([Table.dispose]) 남겨 둔 마지막 위치. 치운 물리 세계를 다시 읽으면 앱이 그 자리에서
+  /// 꺼진다(Box2D 는 치운 세계 칸을 0 으로 비운다 · 2026-10-14 점검 — 「처음부터」 뒤 옛 판 그리기).
+  Vector2? _frozenPos;
 
   /// 지금 남은 회전량(−1~+1 × 모양 회전 효율).
   double get spin => _spin;
@@ -385,6 +390,11 @@ class Table {
     double innerSpeed = TechniqueConstants.innerSpeed,
   }) {
     if (stone.out) throw StateError('장외된 돌은 쏠 수 없다');
+    // 숫자가 아닌 값(NaN·무한대)은 엔진에 넣지 않는다 — 들어가면 판 전체가 깨진다(2026-10-14 점검).
+    if (!angle.isFinite) angle = 0;
+    if (!speed.isFinite) speed = 0;
+    if (!hit.isFinite) hit = 0;
+    if (!curl.isFinite) curl = 0;
     _inner = inner;
     _technique = technique;
     _curl = curl.clamp(-1.0, 1.0);
@@ -421,6 +431,7 @@ class Table {
   void redirect(double angle) {
     final s = _shooter;
     if (s == null || s.out || _status != TurnStatus.moving) return;
+    if (!angle.isFinite) return;
     final sp = s.velocity.length;
     s.body.linearVelocity = Vector2(math.cos(angle) * sp, math.sin(angle) * sp);
   }
@@ -444,7 +455,7 @@ class Table {
 
   /// 1스텝(1/60초) 진행한다. 화면은 이것을 프레임마다 부른다.
   TurnStatus step() {
-    if (_status != TurnStatus.moving) return _status;
+    if (_disposed || _status != TurnStatus.moving) return _status;
     final shooter = _shooter!;
     final pre = shooter.velocity;
     for (final s in stones) {
@@ -600,6 +611,8 @@ class Table {
 
   /// 한 스텝 뒤: 지물에 부딪힌 돌(경종·지뢰석·청죽)과 혹한.
   void _terrainAfter() {
+    // 터진 지뢰석은 반복이 끝난 뒤 치운다 — 같은 스텝의 다음 충돌이 치운 모양을 읽던 것(2026-10-14 점검).
+    final blown = <Feature>{};
     for (final h in world.contactEvents.hit) {
       final ua = h.shapeA.body.userData, ub = h.shapeB.body.userData;
       final f = ua is Feature ? ua : (ub is Feature ? ub : null);
@@ -617,6 +630,7 @@ class Table {
           }
           terrainEvents.add(TerrainEvent(TerrainFx.gong, f.x, f.y));
         case FeatureKind.mine:
+          if (!blown.add(f)) break;
           final c = Vector2(f.x, f.y);
           st.out = true;
           st.body.linearVelocity = Vector2.zero();
@@ -629,7 +643,6 @@ class Table {
             d.scale(TerrainConstants.minePush / len);
             s.body.linearVelocity = s.velocity + d;
           }
-          _featureBodies.remove(f)?.destroy();
           features.remove(f);
           terrainEvents.add(TerrainEvent(TerrainFx.mine, f.x, f.y));
         case FeatureKind.bamboo:
@@ -639,6 +652,9 @@ class Table {
         case FeatureKind.branch || FeatureKind.pebble || FeatureKind.blackHole:
           break;
       }
+    }
+    for (final f in blown) {
+      _featureBodies.remove(f)?.destroy();
     }
     if (weather == Weather.frost) {
       for (final i in impacts) {
@@ -666,8 +682,8 @@ class Table {
       final a = h.shapeA.body.userData, b = h.shapeB.body.userData;
       if (a is! Stone || b is! Stone) continue;
       impacts.add(Impact(a.id, b.id, h.point.x, h.point.y, h.approachSpeed));
-      _hold(a);
-      _hold(b);
+      _hold(a, b);
+      _hold(b, a);
     }
   }
 
@@ -677,11 +693,14 @@ class Table {
   /// 게임 판: 쏜 돌이 아닌 돌이 이번 수에 처음 맞으면 쏜 돌과의 등급 차이만큼 더(덜) 밀린다
   /// ([StoneMaterial.pushedBy] · 2026-10-14 형 「좋은 재질 … 상대가 때려도 얼마 안 움직이고」·
   /// 「내 등급이 올라갈수록 상대는 잘 밀리고」).
-  void _hold(Stone s) {
+  /// 더 밀기(1 보다 큼)는 쏜 돌이 직접 맞힌 돌에만 — 줄지어 선 돌을 지나며 곱해져 끝 돌이 3배 넘게
+  /// 날아가던 것(2026-10-14 점검). 덜 밀림(1 보다 작음)은 [by] 가 누구든 그대로.
+  void _hold(Stone s, Stone by) {
     final shooter = _shooter;
     if (!settle || shooter == null || identical(s, shooter)) return;
     if (!_held.add(s.id)) return;
-    final k = s.material.pushedBy(shooter.material);
+    var k = s.material.pushedBy(shooter.material);
+    if (!identical(by, shooter) && k > 1) k = 1;
     if (k != 1) s.body.linearVelocity = s.velocity..scale(k);
   }
 
@@ -696,7 +715,8 @@ class Table {
   void _afterShooterHit(Stone shooter, Impact hit, Vector2 pre) {
     final otherId = hit.a == shooter.id ? hit.b : hit.a;
     final other = stones[otherId];
-    if (other.team != shooter.team) _enemiesHit.add(otherId);
+    // 백성 돌(편 2)·보주는 적이 아니다 — 백성 돌 둘을 맞혀도 분신이 나오던 것(2026-10-14 점검).
+    if (other.team <= 1 && other.team != shooter.team) _enemiesHit.add(otherId);
     final point = Vector2(hit.x, hit.y);
     if (!_firstHit) {
       _firstHit = true;
@@ -842,6 +862,19 @@ class Table {
     }
   }
 
-  /// 물리 세계를 정리한다. 다 쓴 판은 반드시 부른다.
-  void dispose() => world.destroy();
+  /// 이미 치웠나([dispose]).
+  bool get disposed => _disposed;
+  bool _disposed = false;
+
+  /// 물리 세계를 정리한다. 다 쓴 판은 반드시 부른다. 치운 뒤에도 돌의 위치·빠르기는 마지막 값으로
+  /// 읽히고 [step] 은 아무것도 하지 않는다(늦게 그리는 화면이 치운 세계를 건드려 꺼지지 않게). 두 번 불러도 된다.
+  void dispose() {
+    if (_disposed) return;
+    for (final s in stones) {
+      s._frozenPos = s.body.position.clone();
+    }
+    _status = TurnStatus.idle;
+    _disposed = true;
+    world.destroy();
+  }
 }

@@ -73,6 +73,13 @@ void main() {
     expect(legendaryPrice(1000, math.Random(3)), inInclusiveRange(300, 500));
     expect(legendaryPrice(0, math.Random(3)), legendaryMinPrice);
     expect(legendaryMinPrice, 150);
+    // 10-14 점검: 값 10배 뒤에도 최소 150 이라 한철(36,000)을 150에 샀다 -> 돌은 정가의 1/4.
+    expect(legendaryFloor('재질:hancheol|x'), 9000);
+    expect(
+      legendaryPrice(0, math.Random(3), floor: legendaryFloor('재질:hancheol|x')),
+      9000,
+    );
+    expect(legendaryFloor('비급|x'), legendaryMinPrice);
   });
 
   test('은둔 고수: 숨은 캐릭터 둘을 차례로, 다 있으면 비급', () {

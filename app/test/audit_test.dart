@@ -57,12 +57,19 @@ void main() {
       expect(p.spendStamina(99 * hour, 10), isTrue);
       expect(p.staminaAt, 100 * hour);
       expect(p.staminaNow(100 * hour), 40, reason: '되돌린 한 시간만큼 공짜로 차면 안 됨');
-      // 사흘 앞선 시각(잘못된 시계)은 지금으로.
+      // 50일 앞선 시각(잘못된 시계)은 지금으로(10-14 유예 이틀 → 30일).
       final q = Profile()
         ..stamina = 50
-        ..staminaAt = 200 * hour;
+        ..staminaAt = (100 + 50 * 24) * hour;
       q.spendStamina(100 * hour, 1);
       expect(q.staminaAt, 100 * hour);
+    });
+
+    // 2026-10-14 점검: 유예 이틀이면 날짜를 사흘 앞뒤로 흔들어 출석을 계속 다시 받았다.
+    test('출석: 사흘 앞서 받고 되돌려도 또 받지 못한다', () {
+      final p = Profile();
+      Attendance.claim(p, '20261015');
+      expect(Attendance.canClaim(p, '20261012'), isFalse);
     });
   });
 

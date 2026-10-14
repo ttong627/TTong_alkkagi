@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:alkkagi_physics/alkkagi_physics.dart';
@@ -88,8 +89,31 @@ class _Request {
 }
 
 /// AI 가 둘 수를 고른다. 휴대폰에서는 화면이 멈추지 않게 따로 계산한다.
-Future<AiShot> chooseAiShot(Match match, {int? seed}) =>
-    compute(_choose, _requestFor(match, seed));
+Future<AiShot> chooseAiShot(Match match, {int? seed}) async {
+  final request = _requestFor(match, seed);
+  AiGate._running++;
+  try {
+    return await compute(_choose, request);
+  } finally {
+    if (--AiGate._running == 0) {
+      AiGate._idle?.complete();
+      AiGate._idle = null;
+    }
+  }
+}
+
+/// AI 계산이 도는 중인가. 따로 도는 계산과 화면이 Box2D 세계 칸 표(프로세스에 하나 · 잠금 없음)를 함께 쓰므로,
+/// 계산 중에는 화면 쪽에서 새 세계를 만들지 않는다(2026-10-14 점검 — 같은 칸을 집으면 앱이 꺼질 수 있다).
+abstract final class AiGate {
+  static int _running = 0;
+  static Completer<void>? _idle;
+
+  static bool get busy => _running > 0;
+
+  /// 계산이 모두 끝날 때.
+  static Future<void> get idle =>
+      busy ? (_idle ??= Completer<void>()).future : Future<void>.value();
+}
 
 /// 같은 계산을 지금 이 자리에서(물리가 이미 준비돼 있어야 한다 · 가상 대전·시험용).
 /// [search]·[angleError]·[speedError] 를 주면 그 실력으로(사람 손 흉내 — 버릇·내공 없이).
@@ -350,52 +374,59 @@ double scoreShot(
     weather: weather,
     half: arena.half,
   );
-  for (final f in features) {
-    t.addFeature(f);
-  }
-  final placed = <Stone?>[];
-  for (final s in stones) {
-    placed.add(
-      s.out
-          ? null
-          : t.addStone(
-              s.x,
-              s.y,
-              material: StoneMaterial.values[s.material],
-              shape: StoneShape.values[s.shape],
-              team: s.team,
-            ),
+  try {
+    for (final f in features) {
+      t.addFeature(f);
+    }
+    final placed = <Stone?>[];
+    for (final s in stones) {
+      placed.add(
+        s.out
+            ? null
+            : t.addStone(
+                s.x,
+                s.y,
+                material: StoneMaterial.values[s.material],
+                shape: StoneShape.values[s.shape],
+                team: s.team,
+              ),
+      );
+    }
+    t.shoot(
+      placed[shooter]!,
+      angle,
+      speed,
+      hit,
+      inner: inner,
+      technique: technique,
     );
-  }
-  t.shoot(
-    placed[shooter]!,
-    angle,
-    speed,
-    hit,
-    inner: inner,
-    technique: technique,
-  );
-  t.runTurn();
-  var score = 0.0;
-  for (var i = 0; i < placed.length; i++) {
-    final s = placed[i];
-    if (s == null || !s.out) continue;
-    if (i == jewel) {
-      score += MatchRule.jewelPoints.toDouble();
-      continue;
+    t.runTurn();
+    var score = 0.0;
+    for (var i = 0; i < placed.length; i++) {
+      final s = placed[i];
+      if (s == null || !s.out) continue;
+      if (i == jewel) {
+        score += MatchRule.jewelPoints.toDouble();
+        continue;
+      }
+      // 내 돌 −12, 상대 돌 +10, 백성 돌 −5.
+      score += s.team == team ? -12 : (s.team == 2 ? -5 : 10);
+      if (rule == MatchRule.general && generals.containsKey(i)) {
+        score += s.team == team ? -100 : 60;
+      }
     }
-    // 내 돌 −12, 상대 돌 +10, 백성 돌 −5.
-    score += s.team == team ? -12 : (s.team == 2 ? -5 : 10);
-    if (rule == MatchRule.general && generals.containsKey(i)) {
-      score += s.team == team ? -100 : 60;
+    final me = placed[shooter]!;
+    if (!me.out) {
+      score +=
+          arena.boundary.edgeDistance(
+            me.position.x,
+            me.position.y,
+            arena.half,
+          ) *
+          0.1;
     }
+    return score;
+  } finally {
+    t.dispose();
   }
-  final me = placed[shooter]!;
-  if (!me.out) {
-    score +=
-        arena.boundary.edgeDistance(me.position.x, me.position.y, arena.half) *
-        0.1;
-  }
-  t.dispose();
-  return score;
 }

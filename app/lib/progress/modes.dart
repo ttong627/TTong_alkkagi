@@ -44,6 +44,13 @@ abstract final class WanderMap {
     return '${monday.year}-$week';
   }
 
+  /// 주 번호를 비교할 수 있는 수로(연 × 100 + 주 · 읽을 수 없으면 −1). 글자로 비교하면 「2026-10」이
+  /// 「2026-9」보다 앞이라 10주차부터 연말까지 새 주로 넘어가지 않았다(2026-10-14 점검).
+  static int order(String week) {
+    final m = RegExp(r'^(\d+)-(\d+)$').firstMatch(week);
+    return m == null ? -1 : int.parse(m[1]!) * 100 + int.parse(m[2]!);
+  }
+
   /// 그 주의 지도.
   static List<List<WanderNode>> build(String week) {
     final r = math.Random(week.hashCode);

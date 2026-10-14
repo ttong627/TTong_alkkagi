@@ -13,6 +13,31 @@ Matcher within15(double ref) => inInclusiveRange(
 void main() {
   setUpAll(initializePhysics);
 
+  // 2026-10-14 점검: 「처음부터」 뒤 옛 판 그리기가 치운 Box2D 세계를 읽어 앱이 꺼졌다(세계 칸이 0 으로 비워짐).
+  test('치운 판: 돌 위치는 마지막 값 · 빠르기 0 · 진행 안 함 · 두 번 치워도 됨', () {
+    final t = Table();
+    final s = t.addStone(1, 2);
+    t.shoot(s, 0, 50, 0);
+    t.step();
+    final at = s.position.clone();
+    t.dispose();
+    expect(t.disposed, isTrue);
+    expect(s.position.x, closeTo(at.x, 1e-9));
+    expect(s.position.y, closeTo(at.y, 1e-9));
+    expect(s.velocity.length, 0);
+    expect(t.step(), TurnStatus.idle);
+    t.dispose();
+  });
+
+  test('숫자가 아닌 값(NaN·무한대)으로 쏴도 판이 깨지지 않는다', () {
+    final t = Table();
+    final s = t.addStone(0, 0);
+    t.shoot(s, double.nan, double.infinity, double.nan);
+    t.runTurn();
+    expect(s.position.x.isFinite && s.position.y.isFinite, isTrue);
+    t.dispose();
+  });
+
   group('1-02 장외 판정', () {
     test('돌 중심이 판 밖으로 나가면 탈락하고 움직이지 않는다', () {
       final t = Table();
@@ -233,6 +258,30 @@ void main() {
           expect(b.pushedBy(a), inInclusiveRange(0.5, 1.5));
         }
       }
+    });
+
+    // 2026-10-14 점검: 더 밀기가 연쇄 충돌마다 곱해져 줄 끝 돌이 3배 넘게 날아갔다.
+    test('더 밀기는 쏜 돌이 직접 맞힌 돌에만 — 줄 끝 돌이 불어나지 않는다', () {
+      final t = Table();
+      final me = t.addStone(
+        0,
+        6.75,
+        material: StoneMaterial.taegeuk,
+        shape: StoneShape.flat,
+      );
+      final row = [
+        for (var k = 0; k < 4; k++)
+          t.addStone(0, 4.5 - k * 2.25, shape: StoneShape.flat),
+      ];
+      const v = 60.0;
+      t.shoot(me, -math.pi / 2, v, 0);
+      var top = 0.0;
+      var guard = 0;
+      while (t.step() == TurnStatus.moving && guard++ < 600) {
+        top = math.max(top, row.last.velocity.length);
+      }
+      t.dispose();
+      expect(top, lessThan(v * 1.8), reason: '줄 끝 돌 최고 빠르기 $top');
     });
 
     test('같은 무게라도 높은 등급 돌로 치면 상대가 더 밀린다(맞은 직후 빠르기)', () {

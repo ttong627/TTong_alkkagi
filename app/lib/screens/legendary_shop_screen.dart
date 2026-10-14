@@ -30,7 +30,11 @@ class _LegendaryShopScreenState extends State<LegendaryShopScreen> {
   void initState() {
     super.initState();
     for (final e in _store.profile.legendary) {
-      _price[e] = legendaryPrice(_store.profile.coins, _rand);
+      _price[e] = legendaryPrice(
+        _store.profile.coins,
+        _rand,
+        floor: legendaryFloor(e),
+      );
     }
     _tick = Timer.periodic(const Duration(seconds: 1), (_) => setState(() {}));
   }
@@ -63,7 +67,11 @@ class _LegendaryShopScreenState extends State<LegendaryShopScreen> {
     // 산 뒤 남은 엽전을 보고 값을 다시 부른다(처음 값으로 여러 개 사던 구멍, 2026-10-11).
     for (final k in _store.profile.legendary) {
       if (!_haggled.contains(k)) {
-        _price[k] = legendaryPrice(_store.profile.coins, _rand);
+        _price[k] = legendaryPrice(
+          _store.profile.coins,
+          _rand,
+          floor: legendaryFloor(k),
+        );
       }
     }
     await _store.save();

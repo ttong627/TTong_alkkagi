@@ -236,6 +236,15 @@ class _DailyScreenState extends State<DailyScreen>
   Widget _quests(Profile p, String day) => ListView(
     padding: const EdgeInsets.all(14),
     children: [
+      // 다 해 놓고 받지 않은 퀘스트가 기간이 바뀌면 말없이 사라지던 것(2026-10-14 점검).
+      const Padding(
+        key: Key('quest-reset-hint'),
+        padding: EdgeInsets.fromLTRB(4, 0, 4, 4),
+        child: Text(
+          '주간은 월요일 0시 · 월간은 1일 · 연간은 1월 1일에 새로 시작해요. 다 했으면 그 전에 받으세요!',
+          style: TextStyle(fontSize: 14, color: Palette.dim),
+        ),
+      ),
       for (final q in QuestPeriod.values) ...[
         Padding(
           padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),

@@ -7,7 +7,7 @@ void main() {
   group('version.json 읽기', () {
     test('올바른 내용', () {
       final i = UpdateInfo.parse(
-        '{"build":131,"apk":"https://github.com/a/b/releases/download/test-latest/tanji-murim-test.apk","sha256":"${'ab' * 32}","size":3000000,"notes":"더 세게"}',
+        '{"build":131,"apk":"https://github.com/ttong627/TTong_alkkagi/releases/download/test-latest/tanji-murim-test.apk","sha256":"${'ab' * 32}","size":3000000,"notes":"더 세게"}',
       )!;
       expect(i.build, 131);
       expect(i.sha256, 'ab' * 32);
@@ -24,7 +24,8 @@ void main() {
       expect(UpdateInfo.parse('[1,2]'), isNull);
     });
     test('지문·크기가 없거나 우리 릴리스 주소가 아니면 받지 않는다', () {
-      const ok = 'https://github.com/a/b/releases/download/t/x.apk';
+      const ok =
+          'https://github.com/ttong627/TTong_alkkagi/releases/download/t/x.apk';
       final sha = 'ab' * 32;
       expect(UpdateInfo.parse('{"build":5,"apk":"$ok"}'), isNull);
       expect(
@@ -33,6 +34,13 @@ void main() {
       );
       expect(
         UpdateInfo.parse('{"build":5,"apk":"$ok","sha256":"$sha"}'),
+        isNull,
+      );
+      // 깃허브라도 남의 저장소 릴리스는 받지 않는다(2026-10-14 점검).
+      expect(
+        UpdateInfo.parse(
+          '{"build":5,"apk":"https://github.com/someone/else/releases/download/t/x.apk","sha256":"$sha","size":9}',
+        ),
         isNull,
       );
       expect(

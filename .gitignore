@@ -5,3 +5,8 @@
 secrets.txt
 key.properties
 
+
+# 내 PC 의 Claude 설정(에이전트·명령·스킬 — 사업 정보가 들어 있다)·파이썬 임시 파일은 올리지 않는다(2026-10-14 점검).
+.claude/
+__pycache__/
+*.pyc

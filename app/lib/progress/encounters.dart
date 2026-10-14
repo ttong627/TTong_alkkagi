@@ -55,12 +55,29 @@ List<String> legendaryStock(Profile p, math.Random r) {
 /// 기인방 값: 노인이 지금 가진 엽전의 30~50% 를 부른다(최소 150 — 엽전을 비우고 들어가 정가 900짜리를
 /// 50에 사던 구멍을 막음, 2026-10-11). 깎기 성공 시 −20%. 화면은 하나 살 때마다 값을 다시 부른다.
 const int legendaryMinPrice = 150;
-int legendaryPrice(int coins, math.Random r, {bool haggled = false}) {
-  final ask = math.max(
-    legendaryMinPrice,
-    (coins * (0.3 + r.nextDouble() * 0.2)).round(),
-  );
+int legendaryPrice(
+  int coins,
+  math.Random r, {
+  bool haggled = false,
+  int floor = legendaryMinPrice,
+}) {
+  final ask = math.max(floor, (coins * (0.3 + r.nextDouble() * 0.2)).round());
   return haggled ? (ask * 0.8).round() : ask;
+}
+
+/// 진열품의 최소 값: 돌·모양은 만물상 값의 4분의 1(최소 150). 값을 10배 올린 뒤(10-14) 엽전을 비우고 들어가
+/// 36,000짜리 한철을 150에 사던 구멍을 막음(2026-10-14 점검). [item] = 「재질:이름|효과」.
+int legendaryFloor(String item) {
+  final what = item.split('|').first;
+  final name = what.contains(':') ? what.split(':')[1] : '';
+  final list = what.startsWith('재질:')
+      ? materialPrices[StoneMaterial.values
+            .where((m) => m.name == name)
+            .firstOrNull]
+      : what.startsWith('모양:')
+      ? shapePrices[StoneShape.values.where((s) => s.name == name).firstOrNull]
+      : null;
+  return math.max(legendaryMinPrice, ((list ?? 0) / 4).round());
 }
 
 /// 판당 기인방 확률: 0.5% + 환생마다 0.1%p, 최대 0.8% (설계서 §5.3·§10.3).
@@ -134,6 +151,8 @@ StoneMaterial pickShard(math.Random r) {
 StoneMaterial? rollShard(Profile p, math.Random r, {double boost = 1}) {
   if (r.nextDouble() >= shardChance * boost) return null;
   final m = pickShard(r);
+  // 이미 완성한 돌의 조각은 나오지 않는다(쓸 곳 없이 쌓이던 것 · 2026-10-14 점검).
+  if (p.materials.contains(m)) return null;
   p.bag[shardKey(m)] = (p.bag[shardKey(m)] ?? 0) + 1;
   return m;
 }

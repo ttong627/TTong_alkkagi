@@ -127,6 +127,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       await Navigator.of(context).push(gameRoute<void>(const HeroPickScreen()));
       if (!mounted) return;
     }
+    // 저장이 손상돼 되살렸거나 새로 시작했으면 한 번 알린다(2026-10-14 점검).
+    if (_store.loadNote case final note?) {
+      _store.loadNote = null;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(note)));
+    }
     // 지난번에 갑자기 꺼졌으면 까닭부터(2026-10-14 형 「자꾸 튕기는 증상」).
     final crash = await CrashLog.pendingReport();
     if (crash != null && mounted) await showCrashReport(context, crash);

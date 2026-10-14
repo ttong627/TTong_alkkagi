@@ -506,7 +506,11 @@ class BattleFx {
     for (final t in _texts) {
       t.t += dt;
     }
-    _texts.removeWhere((t) => t.t >= 1.1);
+    _texts.removeWhere((t) {
+      final done = t.t >= 1.1;
+      if (done) t.painter?.dispose();
+      return done;
+    });
     _glow.updateAll((k, v) => (v.$1, v.$2 - dt));
     _glow.removeWhere((k, v) => v.$2 <= 0);
     _shake *= math.pow(0.02, dt).toDouble();
@@ -529,6 +533,25 @@ class BattleFx {
       final mine = m.table.stones[id].team == 0;
       final custom = mine ? trailColor(m.config.myTrail) : null;
       final base = glow?.$1 ?? custom ?? const Color(0xFFFFFFFF);
+      // 빛나는 꼬리: 흐림은 꼬리 전체에 한 번만(선마다 흐리던 것 — 돌 하나에 13번 · 2026-10-14 점검).
+      if (glow != null) {
+        final start = at(list[0].dx, list[0].dy);
+        final path = Path()..moveTo(start.dx, start.dy);
+        for (var i = 1; i < list.length; i++) {
+          final p = at(list[i].dx, list[i].dy);
+          path.lineTo(p.dx, p.dy);
+        }
+        canvas.drawPath(
+          path,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..color = base.withValues(alpha: 0.35)
+            ..strokeWidth = r * 1.2
+            ..strokeCap = StrokeCap.round
+            ..strokeJoin = StrokeJoin.round
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+        );
+      }
       for (var i = 1; i < list.length; i++) {
         final k = i / list.length;
         canvas.drawLine(
@@ -537,10 +560,7 @@ class BattleFx {
           Paint()
             ..color = base.withValues(alpha: (glow == null ? 0.25 : 0.6) * k)
             ..strokeWidth = r * (glow == null ? 0.8 : 1.4) * k
-            ..strokeCap = StrokeCap.round
-            ..maskFilter = glow == null
-                ? null
-                : const MaskFilter.blur(BlurStyle.normal, 4),
+            ..strokeCap = StrokeCap.round,
         );
       }
     });
@@ -619,18 +639,33 @@ class BattleFx {
       final k = t.t / 1.1;
       final pos = at(t.at.dx, t.at.dy).translate(0, -k * 30);
       final pop = k < 0.15 ? 0.6 + k / 0.15 * 0.6 : 1.2 - (k - 0.15) * 0.25;
-      final style = TextStyle(
-        fontFamily: titleFont,
-        fontFamilyFallback: fallbackFonts,
-        fontSize: t.size * pop,
-        color: t.color.withValues(alpha: (1 - k * k).clamp(0.0, 1.0)),
-        shadows: const [Shadow(blurRadius: 6, color: Color(0xCC000000))],
-      );
-      final tp = TextPainter(
-        text: TextSpan(text: t.s, style: style),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      tp.paint(canvas, pos - Offset(tp.width / 2, tp.height / 2));
+      // 매 장 글자 배치를 다시 하던 것(120Hz 에 글자 수만큼) → 크기는 그림판을 키워서, 투명도는 10단계가
+      // 바뀔 때만 다시 배치(2026-10-14 점검).
+      final step = ((1 - k * k).clamp(0.0, 1.0) * 10).round();
+      if (t.painter == null || t.step != step) {
+        t.painter?.dispose();
+        t.step = step;
+        t.painter = TextPainter(
+          text: TextSpan(
+            text: t.s,
+            style: TextStyle(
+              fontFamily: titleFont,
+              fontFamilyFallback: fallbackFonts,
+              fontSize: t.size,
+              color: t.color.withValues(alpha: step / 10),
+              shadows: const [Shadow(blurRadius: 6, color: Color(0xCC000000))],
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+      }
+      final tp = t.painter!;
+      canvas
+        ..save()
+        ..translate(pos.dx, pos.dy)
+        ..scale(pop);
+      tp.paint(canvas, Offset(-tp.width / 2, -tp.height / 2));
+      canvas.restore();
     }
     for (final st in _streaks) {
       final a = (st.life / 0.4).clamp(0.0, 1.0);
@@ -760,4 +795,8 @@ class _Text {
   final Color color;
   final double size;
   double t = 0;
+
+  /// 한 번 배치한 글자(투명도 단계가 바뀔 때만 다시) · 그 단계.
+  TextPainter? painter;
+  int step = -1;
 }

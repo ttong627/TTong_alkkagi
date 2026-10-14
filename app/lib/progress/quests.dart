@@ -47,6 +47,11 @@ abstract final class Bag {
 
   static void add(Profile p, String key, int n) {
     if (n <= 0) return;
+    // 이미 완성한 조각 돌의 조각은 옥가루로(쓸 곳 없이 쌓이던 것 · 2026-10-14 점검).
+    final owned = StoneMaterial.values.where(
+      (m) => m.shard && shardKey(m) == key && p.materials.contains(m),
+    );
+    if (owned.isNotEmpty) key = Mat.jade.key;
     p.bag[key] = count(p, key) + n;
   }
 

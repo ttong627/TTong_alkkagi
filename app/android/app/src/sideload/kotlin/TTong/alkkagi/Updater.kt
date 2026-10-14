@@ -54,7 +54,7 @@ object Updater {
                     val url = call.argument<String>("url")
                     val sha = call.argument<String>("sha256")
                     val size = (call.argument<Number>("size") ?: 0).toLong()
-                    if (url == null || sha == null || sha.length != 64 || size <= 0) {
+                    if (url == null || !ours(url) || sha == null || sha.length != 64 || size <= 0) {
                         result.error("bad", "url·지문·크기 없음", null)
                     } else {
                         result.success(null)
@@ -64,6 +64,17 @@ object Updater {
                 else -> result.notImplemented()
             }
         }
+    }
+
+    /** 우리 저장소 깃허브 릴리스(https)만 받는다 — 다트 쪽 검사를 한 번 더(2026-10-14 점검). */
+    private fun ours(url: String): Boolean {
+        val u = try {
+            java.net.URI(url)
+        } catch (_: Throwable) {
+            return false
+        }
+        return u.scheme == "https" && u.host == "github.com" &&
+            (u.path ?: "").lowercase().startsWith("/ttong627/ttong_alkkagi/releases/download/")
     }
 
     private fun send(method: String, arg: Any?) {
@@ -78,6 +89,7 @@ object Updater {
      */
     private fun install(ctx: Context, url: String, sha256: String, size: Long) {
         var sessionId = -1
+        var conn: HttpURLConnection? = null
         try {
             val installer = ctx.packageManager.packageInstaller
             val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
@@ -87,15 +99,15 @@ object Updater {
             }
             sessionId = installer.createSession(params)
             installer.openSession(sessionId).use { session ->
-                val conn = URL(url).openConnection() as HttpURLConnection
-                conn.instanceFollowRedirects = true
-                conn.connectTimeout = 15000
-                conn.readTimeout = 30000
-                conn.connect()
-                if (conn.responseCode !in 200..299) throw IllegalStateException("HTTP ${conn.responseCode}")
+                val http = (URL(url).openConnection() as HttpURLConnection).also { conn = it }
+                http.instanceFollowRedirects = true
+                http.connectTimeout = 15000
+                http.readTimeout = 30000
+                http.connect()
+                if (http.responseCode !in 200..299) throw IllegalStateException("HTTP ${http.responseCode}")
                 val total = size
                 val digest = MessageDigest.getInstance("SHA-256")
-                conn.inputStream.use { input ->
+                http.inputStream.use { input ->
                     session.openWrite("base.apk", 0, total).use { out ->
                         val buf = ByteArray(64 * 1024)
                         var done = 0L
@@ -133,14 +145,17 @@ object Updater {
                 )
                 session.commit(pi.intentSender)
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
+            // 메모리 부족 같은 Error 도 잡는다 — 받는 스레드에서 못 잡으면 앱이 꺼진다(2026-10-14 점검).
             if (sessionId >= 0) {
                 try {
                     ctx.packageManager.packageInstaller.abandonSession(sessionId)
-                } catch (_: Exception) {
+                } catch (_: Throwable) {
                 }
             }
             failed(e.message ?: e.javaClass.simpleName)
+        } finally {
+            conn?.disconnect()
         }
     }
 }
@@ -154,7 +169,11 @@ class InstallResultReceiver : BroadcastReceiver() {
                 val confirm = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
                 if (confirm != null) {
                     confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(confirm)
+                    try {
+                        context.startActivity(confirm)
+                    } catch (e: Throwable) {
+                        Updater.failed(e.message ?: "설치 확인 창을 열지 못했습니다")
+                    }
                 }
             }
             PackageInstaller.STATUS_SUCCESS -> Unit

@@ -45,6 +45,11 @@ class _ArenaScreenState extends State<ArenaScreen> {
   @override
   void dispose() {
     _tick?.cancel();
+    // 연전 도중 나가면 모은 판돈은 받고 끝(메모리에만 있어 사라지던 것 · 2026-10-14 점검).
+    if (_inRun && _pot > 0) {
+      _bank();
+      _store.save();
+    }
     super.dispose();
   }
 
@@ -54,7 +59,32 @@ class _ArenaScreenState extends State<ArenaScreen> {
   int _streak = 0;
   int _pot = 0;
 
+  /// 입장·받기를 처리하는 중(두 번 눌러 두 번 내고 두 번 받던 것 · 2026-10-14 점검).
+  bool _busy = false;
+
   int get _now => DateTime.now().millisecondsSinceEpoch;
+
+  /// 판돈을 엽전으로 받는다(3연승 이상이면 징표 +1). 받은 판돈 · 징표 여부를 돌려준다.
+  (int, bool) _bank() {
+    final p = _store.profile;
+    final pot = _pot, token = _streak >= 3;
+    p.coins += pot;
+    if (token) p.tokens++;
+    _pot = 0;
+    _inRun = false;
+    return (pot, token);
+  }
+
+  /// 단추를 한 번만 처리한다(처리하는 동안 다시 눌러도 무시).
+  Future<void> _once(Future<void> Function() f) async {
+    if (_busy) return;
+    _busy = true;
+    try {
+      await f();
+    } finally {
+      _busy = false;
+    }
+  }
 
   Future<void> _enter() async {
     final p = _store.profile;
@@ -126,12 +156,11 @@ class _ArenaScreenState extends State<ArenaScreen> {
   }
 
   Future<void> _cashOut() async {
-    final p = _store.profile;
-    p.coins += _pot;
-    if (_streak >= 3) p.tokens++;
-    _say('엽전 $_pot 받음${_streak >= 3 ? ' · 무림맹 징표 +1' : ''}');
+    if (!_inRun) return;
+    final (pot, token) = _bank();
+    setState(() {});
+    _say('엽전 $pot 받음${token ? ' · 무림맹 징표 +1' : ''}');
     await _store.save();
-    setState(() => _inRun = false);
   }
 
   void _say(String s) =>
@@ -164,7 +193,7 @@ class _ArenaScreenState extends State<ArenaScreen> {
           key: const Key('arena-enter'),
           height: 64,
           color: Palette.red,
-          onTap: can ? _enter : null,
+          onTap: can ? () => _once(_enter) : null,
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: can
@@ -258,7 +287,7 @@ class _ArenaScreenState extends State<ArenaScreen> {
           key: const Key('arena-next'),
           height: 64,
           color: Palette.red,
-          onTap: _fight,
+          onTap: () => _once(_fight),
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
@@ -279,7 +308,7 @@ class _ArenaScreenState extends State<ArenaScreen> {
           color: Palette.jade,
           height: 56,
           fontSize: 22,
-          onTap: _cashOut,
+          onTap: () => _once(_cashOut),
         ),
       ],
     );

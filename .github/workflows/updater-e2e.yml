@@ -21,6 +21,8 @@ env:
 
 jobs:
   self-update:
+    # 쓰기 권한이 필요한 시험(임시 릴리스) — 다른 저장소에서 온 PR 에서는 돌리지 않는다(2026-10-14 점검).
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -33,7 +35,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
@@ -70,7 +72,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: 에뮬레이터에서 빌드 1 켜기 → 스스로 빌드 2 로 바뀌는지
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         with:
           api-level: 34
           target: google_apis

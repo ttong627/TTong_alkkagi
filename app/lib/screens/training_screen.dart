@@ -201,7 +201,7 @@ class _TrainingScreenState extends State<TrainingScreen>
   String _info() => '이번에 내공 +${_gained.toStringAsFixed(1)} · $_last';
 
   /// 진행 칸: 다음 경지까지 · 오늘 깨달음 30타 · 저장 상태(2026-10-14 형 「다음 목표치와 진행 상황」).
-  Widget _panel() {
+  Widget _panel(Match m) {
     final p = _store.profile;
     final g = TrainingGoal.of(p, today());
     final saved = _savedAt;
@@ -226,7 +226,8 @@ class _TrainingScreenState extends State<TrainingScreen>
               const SizedBox(width: 6),
               TextButton(
                 key: const Key('drill-pick'),
-                onPressed: _pickDrill,
+                // 돌이 움직이는 동안은 못 바꾼다 — 판이 새로 만들어져 그 수가 세어지지 않았다(2026-10-14 점검).
+                onPressed: m.isMoving ? null : _pickDrill,
                 child: const Text('단계'),
               ),
             ],

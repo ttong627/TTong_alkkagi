@@ -65,7 +65,7 @@ class GameScreen extends StatefulWidget {
   final String Function()? info;
 
   /// 판 아래 안내 글 위에 놓는 칸(목인항 진행 막대·저장 등).
-  final Widget Function()? panel;
+  final Widget Function(Match match)? panel;
 
   /// 강호행 판이면 제목(예: 「1장 · 하산의 길」). 이때는 판이 끝나면 이겼는지(bool)를 돌려주고 닫는다.
   final String? title;
@@ -363,6 +363,9 @@ class _GameScreenState extends State<GameScreen> {
   /// 일시정지: 손만 막는 것이 아니라 물리·AI 도 멈춘다(창 아래에서 상대가 두던 것 · 2026-10-11 점검).
   void _setPaused(bool v) {
     if (_paused == v) return;
+    // 판이 끝나 결과를 기다리는 동안(절명기 연출 1.9초 등)은 멈출 수 없다 — 이긴 판을 「나가기」로
+    // 진 판으로 만들던 것(2026-10-14 점검).
+    if (v && _match.isOver) return;
     setState(() => _paused = v);
     _game.paused = v;
     if (!v) WidgetsBinding.instance.addPostFrameCallback((_) => _onMatch());
@@ -378,17 +381,24 @@ class _GameScreenState extends State<GameScreen> {
   /// 멈출 때 [GameScreen.onPause] 가 돌려준 글.
   String? _pauseNote;
 
-  void _restart() {
-    _game.paused = false;
+  Future<void> _restart() async {
+    if (AiGate.busy) {
+      // AI 계산이 끝난 뒤에 새 물리 세계를 만든다([AiGate]) · 늦게 오는 옛 수는 판 번호로 버린다.
+      _gen++;
+      await AiGate.idle;
+      if (!mounted) return;
+    }
+    // 옛 판은 멈춰 두고 화면이 새 판으로 바뀐 뒤에 치운다 — 옛 그리기(Flame 한 장)·사라지는 손끝 화면이
+    // 한 번 더 읽는다(2026-10-14 점검 · 치운 물리 세계를 읽으면 앱이 꺼진다).
+    final old = _match..removeListener(_onMatch);
+    _game.paused = true;
     setState(() {
       _paused = false;
       _aiThinking = false;
-      _match
-        ..removeListener(_onMatch)
-        ..dispose();
       _newMatch();
       _timeLeft = (widget.timeLimit ?? 0).toDouble();
     });
+    Future<void>.delayed(const Duration(milliseconds: 500), old.dispose);
   }
 
   bool _wasMoving = false;
@@ -528,11 +538,43 @@ class _GameScreenState extends State<GameScreen> {
     return math.atan2(d.y, d.x);
   }
 
+  /// AI 계산이 실패했을 때 둘 수: 칠 수 있는 첫 돌로 가장 가까운 상대 돌을 겨눈다(없으면 null).
+  AiShot? _fallbackShot() {
+    final stones = _match.table.stones;
+    for (final me in stones) {
+      if (!_match.canShoot(me)) continue;
+      phys.Stone? best;
+      for (final o in stones) {
+        if (o.out || o.team == me.team) continue;
+        if (best == null ||
+            (o.position - me.position).length <
+                (best.position - me.position).length) {
+          best = o;
+        }
+      }
+      final d = best == null ? phys.Vector2(0, 1) : best.position - me.position;
+      return AiShot(me.id, math.atan2(d.y, d.x), 80, 0);
+    }
+    return null;
+  }
+
   Future<void> _playAi() async {
     final gen = _gen;
     setState(() => _aiThinking = true);
     final started = DateTime.now();
-    final shot = await chooseAiShot(_match);
+    AiShot? planned;
+    try {
+      planned = await chooseAiShot(_match);
+    } catch (e) {
+      // 계산이 실패해도 판이 멈추지 않게 — 가장 가까운 상대 돌을 향해 평범하게 한 수(2026-10-14 점검).
+      debugPrint('AI 계산 실패: $e');
+    }
+    if (!mounted || gen != _gen) return;
+    final shot = planned ?? _fallbackShot();
+    if (shot == null) {
+      setState(() => _aiThinking = false);
+      return;
+    }
     final waited = DateTime.now().difference(started);
     if (waited < const Duration(milliseconds: 700)) {
       await Future<void>.delayed(const Duration(milliseconds: 700) - waited);
@@ -851,7 +893,7 @@ class _GameScreenState extends State<GameScreen> {
                         if (_status.isNotEmpty)
                           OutlinedText(_status, size: 20, title: true),
                         const SizedBox(height: 2),
-                        ?widget.panel?.call(),
+                        ?widget.panel?.call(_match),
                         Text(
                           widget.info?.call() ??
                               _match.ruleStatus ??

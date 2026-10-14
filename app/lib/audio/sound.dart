@@ -82,6 +82,10 @@ abstract final class Sound {
     'jingle_chapter',
   ];
 
+  /// 재생 위치를 화면 한 장마다 묻지 않게 한다(audioplayers 기본값). 효과음 플레이어(SoundPool)는 「다 냄」 신호가
+  /// 없어 한 번 내면 영영 「재생 중」이라, 90여 개가 120Hz 로 메인 스레드를 불렀다(2026-10-14 점검 · 이 게임은 위치를 안 쓴다).
+  static AudioPlayer _quiet(AudioPlayer p) => p..positionUpdater = null;
+
   static Future<void> init() async {
     try {
       // 실행마다 새 임시 폴더에 소리를 복사해 쌓이지 않게 한 폴더로 고정.
@@ -92,7 +96,7 @@ abstract final class Sound {
             .build(),
       );
       // 음악 먼저(로비 곡이 효과음을 다 읽을 때까지 기다리지 않게).
-      _music = AudioPlayer()..setReleaseMode(ReleaseMode.loop);
+      _music = _quiet(AudioPlayer())..setReleaseMode(ReleaseMode.loop);
       _ready = true;
       Settings.instance.addListener(_applyVolumes);
       WidgetsBinding.instance.addObserver(_Lifecycle());
@@ -104,12 +108,13 @@ abstract final class Sound {
     // 효과음은 함께 읽고, 하나가 실패해도 나머지는 그대로 낸다.
     await Future.wait([
       for (final n in effects)
-        _Voices.load('sounds/$n.ogg', _voices[n] ?? 2)
+        // 겹쳐 낼 일이 드문 소리는 하나(플레이어 91 → 약 58 · 2026-10-14 점검 — SoundPool 하나를 함께 쓴다).
+        _Voices.load('sounds/$n.ogg', _voices[n] ?? 1)
             .then<void>((v) => _pools[n] = v)
             .catchError((Object e) => debugPrint('효과음 $n 실패: $e')),
       () async {
         try {
-          final s = AudioPlayer()..setReleaseMode(ReleaseMode.loop);
+          final s = _quiet(AudioPlayer())..setReleaseMode(ReleaseMode.loop);
           await s.setSource(AssetSource('sounds/slide.ogg'));
           await s.setVolume(0);
           _slide = s;
@@ -247,7 +252,7 @@ class _Voices {
   static Future<_Voices> load(String path, int count) async {
     final ps = <AudioPlayer>[];
     for (var i = 0; i < count; i++) {
-      final p = AudioPlayer();
+      final p = Sound._quiet(AudioPlayer());
       await p.setPlayerMode(PlayerMode.lowLatency);
       await p.setReleaseMode(ReleaseMode.stop);
       await p.setSource(AssetSource(path));

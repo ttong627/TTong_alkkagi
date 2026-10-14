@@ -318,6 +318,8 @@ class _StageCard extends StatelessWidget {
                   Art.background(scene),
                   fit: BoxFit.cover,
                   alignment: const Alignment(0, 0.3),
+                  // 카드는 폭 한 칸 — 1080×1920 그대로 풀면 장마다 약 8MB(2026-10-14 점검).
+                  cacheWidth: 720,
                 ),
               ),
               Positioned.fill(

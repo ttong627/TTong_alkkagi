@@ -132,7 +132,17 @@ object Diag {
     @RequiresApi(Build.VERSION_CODES.R)
     private fun traceOf(info: ApplicationExitInfo): String? {
         val bytes = try {
-            info.traceInputStream?.use { it.readBytes() }
+            // 앞 256KB 만(응답 없음 기록은 수 MB 일 수 있다 — 화면 스레드에서 읽는다 · 2026-10-14 점검).
+            info.traceInputStream?.use { input ->
+                val out = java.io.ByteArrayOutputStream()
+                val buf = ByteArray(16 * 1024)
+                while (out.size() < 256 * 1024) {
+                    val n = input.read(buf)
+                    if (n < 0) break
+                    out.write(buf, 0, n)
+                }
+                out.toByteArray()
+            }
         } catch (_: Throwable) {
             null
         } ?: return null
