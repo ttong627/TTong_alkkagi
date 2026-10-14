@@ -250,18 +250,14 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
     // 판 밖으로 떨어지는 돌: 작아지며 흐려진다.
     for (final f in fx.falls) {
       final k = (f.t / FallingStone.life).clamp(0.0, 1.0);
+      final at = _toScreen(f.pos.dx, f.pos.dy);
+      final rr = r * _scale * (1 - 0.6 * k);
+      // 흐리게 할 칸은 돌 둘레만(경계 없는 칸은 화면 전체 크기 임시 그림판을 돌마다 만들었다 · 2026-10-14 점검).
       canvas.saveLayer(
-        null,
+        Rect.fromCircle(center: at, radius: rr * 2),
         Paint()..color = Color.fromRGBO(255, 255, 255, 1 - k),
       );
-      paintTopStone(
-        canvas,
-        _toScreen(f.pos.dx, f.pos.dy),
-        r * _scale * (1 - 0.6 * k),
-        f.team,
-        f.material,
-        shape: f.shape,
-      );
+      paintTopStone(canvas, at, rr, f.team, f.material, shape: f.shape);
       canvas.restore();
     }
     fx.paintOver(canvas, Size(size.x, size.y), _toScreen, _scale);

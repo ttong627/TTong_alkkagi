@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 구글 자동 백업(안드로이드 11 이하): 진행은 그대로 백업하고, 꺼짐 기록 파일만 뺀다(2026-10-14 점검). -->
+<full-backup-content>
+    <exclude domain="file" path="last_java_crash.txt"/>
+</full-backup-content>

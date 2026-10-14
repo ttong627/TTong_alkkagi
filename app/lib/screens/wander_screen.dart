@@ -63,7 +63,7 @@ class _WanderScreenState extends State<WanderScreen> {
     });
     final p = _store.profile;
     // 주는 앞으로만 넘어간다(시계를 되돌려 지도·완주 보상을 다시 받던 것 — 2026-10-11).
-    if (_week.compareTo(p.wanderWeek) > 0) {
+    if (WanderMap.order(_week) > WanderMap.order(p.wanderWeek)) {
       p
         ..wanderWeek = _week
         ..wanderRow = 0

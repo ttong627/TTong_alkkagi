@@ -47,13 +47,29 @@ Future<void> main() async {
   runApp(const AlkkagiApp());
 }
 
+/// 어느 화면에서든 짧은 알림을 띄우는 창구(저장 실패 등).
+final appMessenger = GlobalKey<ScaffoldMessengerState>();
+
+/// 저장 실패 알림(10초에 한 번까지 · 2026-10-14 점검 — 조용히 실패하던 것).
+int _lastSaveWarn = 0;
+void _warnSaveFailed() {
+  final now = DateTime.now().millisecondsSinceEpoch;
+  if (now - _lastSaveWarn < 10000) return;
+  _lastSaveWarn = now;
+  appMessenger.currentState?.showSnackBar(
+    const SnackBar(content: Text('저장하지 못했어요 — 폰 저장 공간을 확인해 주세요')),
+  );
+}
+
 /// 탄지무림 앱.
 class AlkkagiApp extends StatelessWidget {
   const AlkkagiApp({super.key});
 
   @override
   Widget build(BuildContext context) {
+    ProfileStore.onSaveFailed = _warnSaveFailed;
     return MaterialApp(
+      scaffoldMessengerKey: appMessenger,
       title: '알까기 · 탄지무림',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),

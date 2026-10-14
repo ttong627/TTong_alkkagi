@@ -30,6 +30,9 @@ class UpdateInfo {
   /// APK 를 받을 수 있는 곳(우리 저장소의 깃허브 릴리스).
   static const allowedHosts = {'github.com'};
 
+  /// 그 가운데 우리 저장소 릴리스 경로만(아무 깃허브 저장소나 받던 것 · 2026-10-14 점검 · 대소문자 무시).
+  static const allowedPath = '/ttong627/ttong_alkkagi/releases/download/';
+
   /// 빌드 번호(첫 화면 「빌드 N」과 같은 수).
   final int build;
 
@@ -54,7 +57,10 @@ class UpdateInfo {
       if (b is! int || a is! String) return null;
       // https · 우리 릴리스 주소만 · 지문과 크기가 있어야 받는다(2026-10-11 점검).
       final u = Uri.tryParse(a);
-      if (u == null || u.scheme != 'https' || !allowedHosts.contains(u.host)) {
+      if (u == null ||
+          u.scheme != 'https' ||
+          !allowedHosts.contains(u.host) ||
+          !u.path.toLowerCase().startsWith(allowedPath)) {
         return null;
       }
       if (h is! String || !RegExp(r'^[0-9a-f]{64}$').hasMatch(h)) return null;

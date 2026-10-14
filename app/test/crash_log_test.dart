@@ -57,6 +57,14 @@ void main() {
     expect(list.every((e) => e.length <= CrashLog.maxLength), isTrue);
   });
 
+  test('같은 오류가 되풀이되면 한 번만 적는다', () async {
+    await CrashLog.note('되풀이 오류', null);
+    await CrashLog.note('되풀이 오류', null);
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList('diag.dartErrors')!;
+    expect(list.where((e) => e.contains('되풀이 오류')), hasLength(1));
+  });
+
   test('까닭을 읽지 못해도(채널 없음) 조용히 지나간다', () async {
     expect(await CrashLog.pendingReport(), isNull);
   });

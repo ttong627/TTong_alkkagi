@@ -24,6 +24,13 @@ void main() {
     expect(a.every((r) => r.length == WanderMap.cols), isTrue);
   });
 
+  // 2026-10-14 점검: 글자로 비교해 10주차부터 연말까지 새 주로 넘어가지 않았다.
+  test('강호유랑 주 차례: 9주 → 10주 · 연말 → 새해 · 빈 값은 가장 앞', () {
+    expect(WanderMap.order('2026-10'), greaterThan(WanderMap.order('2026-9')));
+    expect(WanderMap.order('2027-1'), greaterThan(WanderMap.order('2026-52')));
+    expect(WanderMap.order(''), lessThan(WanderMap.order('2026-1')));
+  });
+
   test('진기: 6분에 1 · 최대 100 · 모자라면 못 씀', () {
     final p = Profile()
       ..stamina = 5

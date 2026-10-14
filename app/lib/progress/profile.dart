@@ -394,6 +394,8 @@ class Profile {
     rebirths++;
     danCores++;
     naegong = 0;
+    // 내공이 0 으로 돌아가니 경지 축하도 처음부터(두 번째 회차에 축하가 나오지 않던 것 · 2026-10-14 점검).
+    celebratedStage = 1;
     trainingPoints = 0;
     for (final st in Stat.values) {
       stats[st] = 0;
@@ -436,10 +438,10 @@ class Profile {
   }
 
   /// 진기 시각을 [now]로 옮긴다. 시계를 되돌린 채 쓰고 다시 돌려 그 사이 진기를 공짜로 채우지 못하게,
-  /// 저장된 시각이 더 뒤면 그대로 둔다 — 단 이틀 넘게 앞서 있으면(시계가 잘못 앞서 갔던 흔적) [now]로.
+  /// 저장된 시각이 더 뒤면 그대로 둔다 — 단 30일 넘게 앞서 있으면(시계가 잘못 앞서 갔던 흔적) [now]로(10-14 이틀 → 30일).
   /// 2026-10-11 점검.
   void _markStamina(int now) {
-    const grace = 2 * Duration.millisecondsPerDay;
+    const grace = 30 * Duration.millisecondsPerDay;
     staminaAt = (staminaAt > now && staminaAt - now <= grace) ? staminaAt : now;
   }
 
@@ -653,26 +655,26 @@ class Profile {
     final p = Profile();
     p.hero = _byName(Fighter.values, j['hero']);
     p.school = _byName(Technique.values, j['school']);
-    p.done.addAll((j['done'] as List? ?? []).cast<String>());
-    for (final h in (j['heroes'] as List? ?? [])) {
+    p.done.addAll(_strs(j['done']));
+    for (final h in _list(j['heroes'])) {
       final v = _byName(Fighter.values, h);
       if (v != null) p.heroes.add(v);
     }
-    p.naegong = (j['naegong'] as num? ?? 0).toDouble();
-    p.trainingPoints = (j['tp'] as num? ?? 0).toDouble();
-    p.trainingDay = j['tday'] as String? ?? '';
-    p.trainingHits = j['thits'] as int? ?? 0;
-    final st = j['stats'] as Map? ?? {};
+    p.naegong = _num(j['naegong'], 0);
+    p.trainingPoints = _num(j['tp'], 0);
+    p.trainingDay = _str(j['tday'], '');
+    p.trainingHits = _int(j['thits'], 0);
+    final st = _map(j['stats']);
     for (final s in Stat.values) {
-      p.stats[s] = (st[s.name] as int? ?? 0).clamp(0, maxStatLevel);
+      p.stats[s] = _int(st[s.name], 0).clamp(0, maxStatLevel);
     }
-    p.coins = j['coins'] as int? ?? 0;
-    p.silver = j['silver'] as int? ?? 0;
-    for (final m in (j['materials'] as List? ?? [])) {
+    p.coins = _int(j['coins'], 0);
+    p.silver = _int(j['silver'], 0);
+    for (final m in _list(j['materials'])) {
       final v = _byName(StoneMaterial.values, m);
       if (v != null) p.materials.add(v);
     }
-    for (final m in (j['shapes'] as List? ?? [])) {
+    for (final m in _list(j['shapes'])) {
       final v = _byName(StoneShape.values, m);
       if (v != null) p.shapes.add(v);
     }
@@ -680,87 +682,84 @@ class Profile {
     if (mat != null && p.materials.contains(mat)) p.material = mat;
     final sh = _byName(StoneShape.values, j['shape']);
     if (sh != null && p.shapes.contains(sh)) p.shape = sh;
-    p.codex.addAll((j['codex'] as List? ?? []).cast<String>());
-    p.tokens = j['tokens'] as int? ?? 0;
-    p.totalHits = j['totalHits'] as int? ?? 0;
-    p.stamina = (j['stamina'] as num? ?? Stamina.max).toDouble();
-    p.staminaAt = j['staminaAt'] as int? ?? 0;
-    p.perks.addAll((j['perks'] as List? ?? []).cast<String>());
-    p.secretArts = (j['secretArts'] as int? ?? 0).clamp(
-      0,
-      Profile.maxSecretArts,
-    );
-    p.trails.addAll((j['trails'] as List? ?? []).cast<String>());
-    p.trail = j['trail'] as String? ?? '기본';
-    p.legendaryUntil = j['legUntil'] as int? ?? 0;
-    p.legendary.addAll((j['legendary'] as List? ?? []).cast<String>());
-    p.puzzles.addAll((j['puzzles'] as List? ?? []).cast<int>());
-    final ps = j['puzzleStars'] as Map? ?? {};
+    p.codex.addAll(_strs(j['codex']));
+    p.tokens = _int(j['tokens'], 0);
+    p.totalHits = _int(j['totalHits'], 0);
+    p.stamina = _num(j['stamina'], Stamina.max);
+    p.staminaAt = _int(j['staminaAt'], 0);
+    p.perks.addAll(_strs(j['perks']));
+    p.secretArts = _int(j['secretArts'], 0).clamp(0, Profile.maxSecretArts);
+    p.trails.addAll(_strs(j['trails']));
+    p.trail = _str(j['trail'], '기본');
+    p.legendaryUntil = _int(j['legUntil'], 0);
+    p.legendary.addAll(_strs(j['legendary']));
+    p.puzzles.addAll(_ints(j['puzzles']));
+    final ps = _map(j['puzzleStars']);
     for (final e in ps.entries) {
       final id = int.tryParse('${e.key}');
       if (id != null && e.value is int) {
         p.puzzleStars[id] = (e.value as int).clamp(0, 3);
       }
     }
-    p.wanderWeek = j['wanderWeek'] as String? ?? '';
-    p.wanderRow = j['wanderRow'] as int? ?? 0;
-    p.arenaBest = j['arenaBest'] as int? ?? 0;
-    p.rebirths = j['rebirths'] as int? ?? 0;
-    p.danCores = j['danCores'] as int? ?? 0;
-    final tr = j['tree'] as Map? ?? {};
+    p.wanderWeek = _str(j['wanderWeek'], '');
+    p.wanderRow = _int(j['wanderRow'], 0);
+    p.arenaBest = _int(j['arenaBest'], 0);
+    p.rebirths = _int(j['rebirths'], 0);
+    p.danCores = _int(j['danCores'], 0);
+    final tr = _map(j['tree']);
     for (final n in TreeNode.values) {
-      p.tree[n] = (tr[n.name] as int? ?? 0).clamp(0, TreeNode.maxLevel);
+      p.tree[n] = _int(tr[n.name], 0).clamp(0, TreeNode.maxLevel);
     }
-    p.hairs.addAll((j['hairs'] as List? ?? []).cast<int>());
-    p.robes.addAll((j['robes'] as List? ?? []).cast<int>());
-    p.face = (j['face'] as int? ?? 0).clamp(0, faceShapes.length - 1);
-    final h = j['hair'] as int? ?? 0;
+    p.hairs.addAll(_ints(j['hairs']));
+    p.robes.addAll(_ints(j['robes']));
+    p.face = _int(j['face'], 0).clamp(0, faceShapes.length - 1);
+    final h = _int(j['hair'], 0);
     p.hair = p.hairs.contains(h) ? h : 0;
-    final r = j['robe'] as int? ?? 0;
+    final r = _int(j['robe'], 0);
     p.robe = p.robes.contains(r) ? r : 0;
     // 입문 칸이 없는 옛 저장(입문이 생기기 전 판)도 새 입문을 한 번 거친다(형 지시 2026-10-11:
     // 처음 할 일을 강제로 익히게). 진행은 그대로 두고 입문만 한다.
-    p.tutorialDone = j['tutorial'] as bool? ?? false;
-    p.easyMode = j['easy'] as bool? ?? true;
-    p.attendDay = j['attendDay'] as String? ?? '';
-    p.attendCount = j['attendCount'] as int? ?? 0;
-    p.missionDay = j['missionDay'] as String? ?? '';
-    final mc = j['missionCounts'] as Map? ?? {};
-    final lt = j['lifetime'] as Map? ?? {};
+    p.tutorialDone = _bool(j['tutorial'], false);
+    p.easyMode = _bool(j['easy'], true);
+    p.attendDay = _str(j['attendDay'], '');
+    p.attendCount = _int(j['attendCount'], 0);
+    p.missionDay = _str(j['missionDay'], '');
+    final mc = _map(j['missionCounts']);
+    final lt = _map(j['lifetime']);
     for (final d in Deed.values) {
       if (mc[d.name] is int) p.missionCounts[d] = mc[d.name] as int;
       if (lt[d.name] is int) p.lifetime[d] = lt[d.name] as int;
     }
-    p.missionClaimed.addAll((j['missionClaimed'] as List? ?? []).cast<int>());
-    p.achieved.addAll((j['achieved'] as List? ?? []).cast<String>());
-    for (final e in (j['bag'] as Map? ?? {}).entries) {
+    p.missionClaimed.addAll(_ints(j['missionClaimed']));
+    p.achieved.addAll(_strs(j['achieved']));
+    for (final e in _map(j['bag']).entries) {
       if (e.value is int && (e.value as int) > 0) {
         p.bag['${e.key}'] = e.value as int;
       }
     }
-    p.drillCleared = (j['drillCleared'] as int? ?? 0).clamp(0, 99);
-    p.drillIndex = (j['drillIndex'] as int? ?? 0).clamp(0, 99);
-    p.drillProgress = (j['drillProgress'] as int? ?? 0).clamp(0, 999);
-    for (final e in (j['questKeys'] as Map? ?? {}).entries) {
+    p.drillCleared = _int(j['drillCleared'], 0).clamp(0, 99);
+    p.drillIndex = _int(j['drillIndex'], 0).clamp(0, 99);
+    p.drillProgress = _int(j['drillProgress'], 0).clamp(0, 999);
+    for (final e in _map(j['questKeys']).entries) {
       if (e.value is String) p.questKeys['${e.key}'] = e.value as String;
     }
-    for (final e in (j['questCounts'] as Map? ?? {}).entries) {
+    for (final e in _map(j['questCounts']).entries) {
       if (e.value is int) p.questCounts['${e.key}'] = e.value as int;
     }
-    p.questClaimed.addAll((j['questClaimed'] as List? ?? []).cast<String>());
-    final st2 = j['stars'] as Map? ?? {};
+    p.questClaimed.addAll(_strs(j['questClaimed']));
+    final st2 = _map(j['stars']);
     for (final e in st2.entries) {
       if (e.value is int) {
-        p.stars[e.key as String] = (e.value as int).clamp(0, 3);
+        p.stars['${e.key}'] = (e.value as int).clamp(0, 3);
       }
     }
-    p.seenHints.addAll((j['seenHints'] as List? ?? []).cast<String>());
-    p.seclusionDay = j['seclusionDay'] as String? ?? '';
-    p.wanderWins = j['wanderWins'] as int? ?? 0;
-    p.encounterDay = j['encDay'] as String? ?? '';
-    p.encountersToday = j['encToday'] as int? ?? 0;
+    p.seenHints.addAll(_strs(j['seenHints']));
+    p.seclusionDay = _str(j['seclusionDay'], '');
+    p.wanderWins = _int(j['wanderWins'], 0);
+    p.encounterDay = _str(j['encDay'], '');
+    p.encountersToday = _int(j['encToday'], 0);
     // 칸이 없는 옛 저장은 지금 경지를 이미 축하한 것으로 본다(켜자마자 몰아서 축하하지 않게).
-    p.celebratedStage = j['celebrated'] as int? ?? p.stage;
+    p.celebratedStage = _int(j['celebrated'], p.stage);
     p._sanitize();
     return p;
   }
@@ -834,7 +833,8 @@ String today([DateTime? now]) {
 /// 날짜는 앞으로만 넘어간다(시계를 되돌려 같은 보상을 또 받는 것 막기). 그런데 시계가 한 번 잘못 앞서
 /// 갔으면(2027년) 그날까지 출석·임무·목인항이 잠겼다 → 저장된 날이 [day]보다 [graceDays]일 넘게 앞서
 /// 있으면 잘못된 날로 보고 잊는다(빈 문자열) · 2026-10-11 점검.
-String saneDay(String stored, String day, {int graceDays = 2}) {
+/// 2026-10-14 점검: 유예가 이틀이면 날짜를 사흘 앞뒤로 흔들어 출석·임무·깨달음을 계속 다시 받았다 → 30일.
+String saneDay(String stored, String day, {int graceDays = 30}) {
   final a = _dayNumber(stored), b = _dayNumber(day);
   if (a == null || b == null) return stored;
   return a - b > graceDays ? '' : stored;
@@ -849,3 +849,14 @@ int? _dayNumber(String yyyymmdd) {
   return DateTime.utc(y, m, d).millisecondsSinceEpoch ~/
       Duration.millisecondsPerDay;
 }
+
+// 저장 읽기 — 칸 하나의 형식이 틀려도 그 칸만 기본값으로 읽는다(예전엔 하나만 틀려도 진행 전체를 버렸다 ·
+// 2026-10-14 점검).
+List<Object?> _list(Object? v) => v is List ? v : const [];
+Map<Object?, Object?> _map(Object? v) => v is Map ? v : const {};
+Iterable<String> _strs(Object? v) => _list(v).whereType<String>();
+Iterable<int> _ints(Object? v) => _list(v).whereType<int>();
+int _int(Object? v, int d) => v is int ? v : d;
+double _num(Object? v, num d) => (v is num ? v : d).toDouble();
+String _str(Object? v, String d) => v is String ? v : d;
+bool _bool(Object? v, bool d) => v is bool ? v : d;

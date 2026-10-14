@@ -5,7 +5,9 @@
         android:label="알까기"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:allowBackup="true">
+        android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules">
         <!-- 구글 자동 백업: 폰을 바꾸거나 다시 깔아도 진행이 돌아오게 둔다(진행 백업 코드와 함께 · 2026-10-11 점검). -->
         <activity
             android:name=".MainActivity"

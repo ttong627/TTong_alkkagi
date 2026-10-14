@@ -30,8 +30,22 @@ abstract final class CrashLog {
     };
   }
 
+  /// 바로 앞에 적은 오류 · 이번 실행에 적은 수 · 차례 — 매 장면 되풀이되는 오류가 저장소를 두드리지 않게
+  /// (같은 것은 건너뛰고 한 번 실행에 [maxPerRun] 개까지 · 차례대로 써서 서로 덮지 않게 · 2026-10-14 점검).
+  static String? _last;
+  static int _written = 0;
+  static const maxPerRun = 20;
+  static Future<void> _chain = Future.value();
+
   /// 오류 하나를 적는다(최근 [keep] 개).
-  static Future<void> note(String error, StackTrace? stack) async {
+  static Future<void> note(String error, StackTrace? stack) {
+    if (error == _last || _written >= maxPerRun) return Future.value();
+    _last = error;
+    _written++;
+    return _chain = _chain.then((_) => _write(error, stack));
+  }
+
+  static Future<void> _write(String error, StackTrace? stack) async {
     final lines = (stack?.toString() ?? '').split('\n').take(12).join('\n');
     final entry = '${DateTime.now().toIso8601String()} $error\n$lines';
     try {
@@ -65,6 +79,8 @@ abstract final class CrashLog {
       ].join('\n\n');
       await prefs.setInt(_seenKey, time);
       await prefs.setString(_reportKey, report);
+      // 보고에 실은 오류는 비운다(다음 꺼짐 보고에 옛 오류가 섞이지 않게).
+      await prefs.remove(_errorsKey);
       return report;
     } catch (_) {
       return null;

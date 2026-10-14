@@ -76,6 +76,9 @@ class _FlickViewState extends State<FlickView>
   final _rand = math.Random();
   final _particles = <_Particle>[];
 
+  /// 아직 만들지 않은 입자 몫(초당 개수를 장면마다 나눠 쌓는다).
+  double _spawn = 0;
+
   StrikeReader? _reader;
   StoneDisc? _disc;
 
@@ -187,7 +190,10 @@ class _FlickViewState extends State<FlickView>
     final disc = _disc;
     if (disc != null && _launch == null) {
       // 손을 대고 있으면 겨눈 내공만큼, 아니면 은은하게 기가 피어오른다.
-      final rate = _down ? 2 + _power * 12 : 1;
+      // 초당 개수로(장면마다 만들면 120Hz 폰에서 두 배) · 한 번에 160개까지(2026-10-14 점검 — 1800개까지 쌓였다).
+      _spawn += (_down ? 2 + _power * 12 : 1) * 60 * dt;
+      final rate = math.min(_spawn.floor(), 160 - _particles.length);
+      _spawn -= _spawn.floor();
       for (var i = 0; i < rate; i++) {
         final a = _rand.nextDouble() * math.pi * 2;
         final out = Offset(math.cos(a), math.sin(a));
