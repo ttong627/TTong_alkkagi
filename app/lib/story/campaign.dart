@@ -97,7 +97,8 @@ abstract final class Campaign {
     'r1': AiTune(errorScale: 7.5, blunder: 0.3),
     'c3': AiTune(errorScale: 3),
     'c4': AiTune(errorScale: 8),
-    'r2': AiTune(errorScale: 3),
+    // 등급 차이 밀림(10-14) 뒤 보통(48%)과 붙어 ×3 → ×4(60%).
+    'r2': AiTune(errorScale: 4),
     'c5': AiTune(errorScale: 2),
     'r3': AiTune(errorScale: 10, bossQi: 1),
     'c6': AiTune(

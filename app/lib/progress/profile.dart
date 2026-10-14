@@ -44,7 +44,7 @@ enum Fighter {
 /// 윤회천기(설계서 §10.3): 천년내단 1개로 한 칸씩 연다(갈래마다 3칸).
 enum TreeNode {
   legend('기연의 눈', '기인방 등장 0.5% → 칸마다 +0.1%p (최대 0.8%)'),
-  training('깨달음', '목인항 첫 30타 보너스 300% → 최대 500% (30타 내공 90 → 150)'),
+  training('깨달음', '목인항 첫 30타 보너스 600% → 최대 1000% (30타 내공 180 → 300)'),
   stamina('진기 그릇', '진기 최대 100 → 칸마다 +20 (최대 160)');
 
   const TreeNode(this.label, this.help);
@@ -88,11 +88,12 @@ int stageOf(double naegong) {
   return s;
 }
 
-/// 목인항 하루 수련 (설계서 §5.2): 처음 30타는 3배(깨달음), 31타부터 0.1배.
+/// 목인항 하루 수련 (설계서 §5.2): 처음 30타는 6배(깨달음), 31타부터 0.3배.
+/// 2026-10-14 형 「육성 속도가 빠르게」: 3배·0.1배 → 6배·0.3배(하루 30타 내공 90 → 180).
 abstract final class Training {
   static const int enlightened = 30;
-  static const double bonus = 3;
-  static const double after = 0.1;
+  static const double bonus = 6;
+  static const double after = 0.3;
 
   /// 그날 [hitsBefore] 타를 친 뒤 한 번 더 쳤을 때 얻는 내공. [first] 는 첫 30타 배수(윤회천기로 오름).
   static double gain(int hitsBefore, {double first = bonus}) =>
@@ -371,8 +372,8 @@ class Profile {
   /// 비승(환생) 메뉴가 열렸나: 6장 우승 + 내공 생사경(8단계).
   bool get canRebirth => done.contains('c6') && stage >= naegongStages.length;
 
-  /// 목인항 첫 30타 배수: 3 → 윤회천기 「깨달음」 칸마다 +⅔ (최대 5).
-  double get trainingFirst => Training.bonus + tree[TreeNode.training]! * 2 / 3;
+  /// 목인항 첫 30타 배수: 6 → 윤회천기 「깨달음」 칸마다 +4/3 (최대 10).
+  double get trainingFirst => Training.bonus + tree[TreeNode.training]! * 4 / 3;
 
   /// 진기 최대: 100 → 「진기 그릇」 칸마다 +20 (최대 160).
   int get staminaMax => Stamina.max + 20 * tree[TreeNode.stamina]!;

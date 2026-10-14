@@ -7,28 +7,28 @@ import 'package:alkkagi_physics/alkkagi_physics.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('목인항 (설계서 §5.2): 하루 처음 30타 ×3, 그 뒤 ×0.1', () {
-    test('표의 값: 30타 90 · 100타 97 · 300타 117 · 1,000타 187', () {
-      expect(Training.dayTotal(30), closeTo(90, 1e-9));
-      expect(Training.dayTotal(100), closeTo(97, 1e-9));
-      expect(Training.dayTotal(300), closeTo(117, 1e-9));
-      expect(Training.dayTotal(1000), closeTo(187, 1e-9));
+  group('목인항 (설계서 §5.2): 하루 처음 30타 ×6, 그 뒤 ×0.3 (2026-10-14 육성 빠르게)', () {
+    test('표의 값: 30타 180 · 100타 201 · 300타 261 · 1,000타 471', () {
+      expect(Training.dayTotal(30), closeTo(180, 1e-9));
+      expect(Training.dayTotal(100), closeTo(201, 1e-9));
+      expect(Training.dayTotal(300), closeTo(261, 1e-9));
+      expect(Training.dayTotal(1000), closeTo(471, 1e-9));
     });
 
-    test('날이 바뀌면 처음부터 센다 · 30일×30타 = 2,700', () {
+    test('날이 바뀌면 처음부터 센다 · 30일×30타 = 5,400', () {
       final p = Profile();
       for (var d = 1; d <= 30; d++) {
         for (var i = 0; i < 30; i++) {
           p.trainHit('202611${d.toString().padLeft(2, '0')}');
         }
       }
-      expect(p.naegong, closeTo(2700, 1e-6));
-      expect(p.trainingPoints, closeTo(2700, 1e-6));
+      expect(p.naegong, closeTo(5400, 1e-6));
+      expect(p.trainingPoints, closeTo(5400, 1e-6));
       final q = Profile();
       for (var i = 0; i < 900; i++) {
         q.trainHit('20261101');
       }
-      expect(q.naegong, closeTo(177, 1e-6));
+      expect(q.naegong, closeTo(441, 1e-6));
     });
   });
 
@@ -261,21 +261,33 @@ void main() {
       expect(p.canRebirth, isFalse);
     });
 
-    test('윤회천기: 내단 1개로 한 칸, 갈래마다 3칸 — 30타 내공 90 → 150 · 진기 160 · 기인방 0.8%', () {
-      final p = Profile()..danCores = 9;
-      expect(Training.dayTotal(30, first: p.trainingFirst), closeTo(90, 1e-9));
-      for (var i = 0; i < 4; i++) {
-        p.openTree(TreeNode.training);
-        p.openTree(TreeNode.stamina);
-        p.openTree(TreeNode.legend);
-      }
-      expect(p.danCores, 0);
-      expect(p.tree[TreeNode.training], 3);
-      expect(Training.dayTotal(30, first: p.trainingFirst), closeTo(150, 1e-9));
-      expect(p.staminaMax, 160);
-      expect(legendaryChance(p.tree[TreeNode.legend]!), closeTo(0.008, 1e-12));
-      expect(p.openTree(TreeNode.legend), isFalse);
-    });
+    test(
+      '윤회천기: 내단 1개로 한 칸, 갈래마다 3칸 — 30타 내공 180 → 300 · 진기 160 · 기인방 0.8%',
+      () {
+        final p = Profile()..danCores = 9;
+        expect(
+          Training.dayTotal(30, first: p.trainingFirst),
+          closeTo(180, 1e-9),
+        );
+        for (var i = 0; i < 4; i++) {
+          p.openTree(TreeNode.training);
+          p.openTree(TreeNode.stamina);
+          p.openTree(TreeNode.legend);
+        }
+        expect(p.danCores, 0);
+        expect(p.tree[TreeNode.training], 3);
+        expect(
+          Training.dayTotal(30, first: p.trainingFirst),
+          closeTo(300, 1e-9),
+        );
+        expect(p.staminaMax, 160);
+        expect(
+          legendaryChance(p.tree[TreeNode.legend]!),
+          closeTo(0.008, 1e-12),
+        );
+        expect(p.openTree(TreeNode.legend), isFalse);
+      },
+    );
 
     test('환생 세계: 블랙홀·지뢰석이 더해지고 묵현 무공이 바뀐다 · 저장 되읽기', () {
       final p = ready()..rebirth(Fighter.sinseung);

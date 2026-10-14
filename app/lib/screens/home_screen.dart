@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../audio/sound.dart';
 import '../e2e.dart';
+import '../progress/crash_log.dart';
 import '../progress/daily.dart';
 import '../progress/profile.dart';
 import '../progress/quests.dart';
@@ -20,6 +21,7 @@ import '../version.dart';
 import 'arena_screen.dart';
 import 'campaign_screen.dart';
 import 'codex_screen.dart';
+import 'crash_report_dialog.dart';
 import 'credits_screen.dart';
 import 'daily_screen.dart';
 import 'depot_screen.dart';
@@ -125,6 +127,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       await Navigator.of(context).push(gameRoute<void>(const HeroPickScreen()));
       if (!mounted) return;
     }
+    // 지난번에 갑자기 꺼졌으면 까닭부터(2026-10-14 형 「자꾸 튕기는 증상」).
+    final crash = await CrashLog.pendingReport();
+    if (crash != null && mounted) await showCrashReport(context, crash);
     if (Attendance.canClaim(p, today()) && mounted) {
       await _open(const DailyScreen(tab: 0));
     }

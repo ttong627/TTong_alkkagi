@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'audio/sound.dart';
 import 'e2e.dart';
 import 'input/touch_feed.dart';
+import 'progress/crash_log.dart';
 import 'progress/settings.dart';
 import 'progress/store.dart';
 import 'screens/home_screen.dart';
@@ -18,6 +19,8 @@ import 'ui/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Dart 오류를 적어 두었다가 갑자기 꺼진 까닭과 함께 보여 준다(2026-10-14 형 「자꾸 튕기는 증상」).
+  CrashLog.install();
   await initializePhysics();
   // 안드로이드: 손끝 점을 빠짐없이·닿은 넓이까지 받는다(돌 맞히기·위아래 타격점).
   TouchFeed.instance.start();

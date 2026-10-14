@@ -5,10 +5,12 @@ import 'package:flutter/services.dart';
 
 import '../game/flick.dart';
 import '../input/touch_feed.dart';
+import '../progress/crash_log.dart';
 import '../progress/settings.dart';
 import '../progress/store.dart';
 import '../ui/kit.dart';
 import '../ui/theme.dart';
+import 'crash_report_dialog.dart';
 import 'tutorial_screen.dart';
 
 /// 설정 화면(설계서 §16.6): 자주 쓰는 것(소리·진동·왼손잡이·백업)을 위에, 손맛·센서·입문 다시는 「고급」 안에.
@@ -294,6 +296,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 const _SensorCheck(),
+                // 2026-10-14 형 「자꾸 튕기는 증상」: 지난번 갑자기 꺼진 까닭을 다시 보고 복사.
+                ListTile(
+                  title: const Text('앱 꺼짐 기록'),
+                  subtitle: const Text('갑자기 꺼졌을 때의 까닭 — 복사해서 보내 주세요'),
+                  trailing: OutlinedButton(
+                    key: const Key('crash-log'),
+                    onPressed: () async {
+                      final r = await CrashLog.lastReport();
+                      if (!context.mounted) return;
+                      if (r == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('꺼짐 기록이 없어요')),
+                        );
+                        return;
+                      }
+                      await showCrashReport(context, r);
+                    },
+                    child: const Text('보기'),
+                  ),
+                ),
                 const SizedBox(height: 8),
                 GameButton(
                   key: const Key('replay-tutorial'),
