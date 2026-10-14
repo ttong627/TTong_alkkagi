@@ -671,15 +671,18 @@ class Table {
     }
   }
 
-  /// 이번 수에 이미 등급만큼 깎은 돌.
+  /// 이번 수에 이미 등급 차이를 곱한 돌.
   final Set<int> _held = {};
 
-  /// 게임 판: 쏜 돌이 아닌 돌이 이번 수에 처음 맞으면 등급만큼만 밀린다
-  /// ([StoneMaterial.hitKeep] · 2026-10-14 형 「좋은 재질 … 상대가 때려도 얼마 안 움직이고」).
+  /// 게임 판: 쏜 돌이 아닌 돌이 이번 수에 처음 맞으면 쏜 돌과의 등급 차이만큼 더(덜) 밀린다
+  /// ([StoneMaterial.pushedBy] · 2026-10-14 형 「좋은 재질 … 상대가 때려도 얼마 안 움직이고」·
+  /// 「내 등급이 올라갈수록 상대는 잘 밀리고」).
   void _hold(Stone s) {
-    if (!settle || identical(s, _shooter) || !_held.add(s.id)) return;
-    final k = s.material.hitKeep;
-    if (k < 1) s.body.linearVelocity = s.velocity..scale(k);
+    final shooter = _shooter;
+    if (!settle || shooter == null || identical(s, shooter)) return;
+    if (!_held.add(s.id)) return;
+    final k = s.material.pushedBy(shooter.material);
+    if (k != 1) s.body.linearVelocity = s.velocity..scale(k);
   }
 
   Impact? _impactOf(Stone s) {

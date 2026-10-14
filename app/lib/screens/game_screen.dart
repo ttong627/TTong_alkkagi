@@ -34,6 +34,7 @@ class GameScreen extends StatefulWidget {
     required this.config,
     this.title,
     this.onTurnEnd,
+    this.onPause,
     this.info,
     this.panel,
     this.quips = const [],
@@ -56,6 +57,9 @@ class GameScreen extends StatefulWidget {
 
   /// 한 수가 끝날 때마다(목인항 등).
   final void Function(Match match)? onTurnEnd;
+
+  /// 일시정지(중지)할 때 부른다. 돌려준 글을 멈춤 창에 띄운다(목인항 「수련 저장됨 · 시:분」).
+  final Future<String> Function()? onPause;
 
   /// 판 아래 안내 글(목인항 수련 수 등). 없으면 대전장 이름.
   final String Function()? info;
@@ -362,7 +366,17 @@ class _GameScreenState extends State<GameScreen> {
     setState(() => _paused = v);
     _game.paused = v;
     if (!v) WidgetsBinding.instance.addPostFrameCallback((_) => _onMatch());
+    if (v && widget.onPause != null) {
+      // 2026-10-14 형 「목인항 수련하다가 중지하면 저장되게」.
+      setState(() => _pauseNote = '저장 중…');
+      widget.onPause!().then((note) {
+        if (mounted) setState(() => _pauseNote = note);
+      });
+    }
   }
+
+  /// 멈출 때 [GameScreen.onPause] 가 돌려준 글.
+  String? _pauseNote;
 
   void _restart() {
     _game.paused = false;
@@ -923,8 +937,9 @@ class _GameScreenState extends State<GameScreen> {
                   onResume: () => _setPaused(false),
                   // 판을 거는 판(강호행·투기장·기연 등)은 다시 하기로 진 판을 지울 수 없다.
                   onRestart: widget.title == null ? _restart : null,
-                  // 진 판이 되는 판(강호행·투기장 등)은 한 번 묻는다.
-                  quitLoses: widget.title != null,
+                  // 진 판이 되는 판(강호행·투기장 등)은 한 번 묻는다. 목인항은 지는 판이 아니다.
+                  quitLoses: widget.title != null && !widget.config.training,
+                  note: widget.onPause == null ? null : _pauseNote,
                   onQuit: () {
                     _setPaused(false);
                     if (widget.title != null) {
@@ -1331,11 +1346,15 @@ class _PauseMenu extends StatefulWidget {
     required this.onRestart,
     required this.onQuit,
     this.quitLoses = false,
+    this.note,
   });
   final VoidCallback onResume;
   final VoidCallback? onRestart;
   final VoidCallback onQuit;
   final bool quitLoses;
+
+  /// 제목 아래 한 줄(목인항 「수련 저장됨 · 시:분」).
+  final String? note;
 
   @override
   State<_PauseMenu> createState() => _PauseMenuState();
@@ -1374,6 +1393,15 @@ class _PauseMenuState extends State<_PauseMenu> {
                   title: true,
                   color: Palette.gold,
                 ),
+                if (widget.note case final note?) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    note,
+                    key: const Key('pause-note'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 15, color: Palette.jade),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 GameButton(
                   key: const Key('resume'),

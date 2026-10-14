@@ -40,7 +40,7 @@ void main() {
     expect(p.drillCleared, 0);
     final step = Drills.record(p, 0, const DrillShot(touched: 1));
     expect(step.cleared, isTrue);
-    expect(step.reward!.naegong, 15);
+    expect(step.reward!.naegong, 30);
     expect(p.drillCleared, 1);
     expect(Drills.open(p), 2);
     // 다시 깨면 보상 없음.

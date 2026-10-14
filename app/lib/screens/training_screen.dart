@@ -12,7 +12,7 @@ import 'game_screen.dart';
 import '../ui/kit.dart';
 import '../ui/theme.dart';
 
-/// 목인항: 목각 더미를 맞힐 때마다 1타. 하루 처음 30타는 내공 3배(깨달음), 그 뒤 0.1배
+/// 목인항: 목각 더미를 맞힐 때마다 1타. 하루 처음 30타는 내공 6배(깨달음), 그 뒤 0.3배
 /// (설계서 §5.2). 꾸준히 매일 30타가 가장 빨리 큰다.
 class TrainingScreen extends StatefulWidget {
   const TrainingScreen({super.key});
@@ -21,14 +21,16 @@ class TrainingScreen extends StatefulWidget {
   State<TrainingScreen> createState() => _TrainingScreenState();
 }
 
-class _TrainingScreenState extends State<TrainingScreen> {
+class _TrainingScreenState extends State<TrainingScreen>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // 첫 방문 안내(설계서 §16.13).
     WidgetsBinding.instance.addPostFrameCallback(
       (_) =>
-          firstVisit(context, 'training', '목각 더미를 맞혀라. 하루 처음 30타는 내공이 세 배다!'),
+          firstVisit(context, 'training', '목각 더미를 맞혀라. 하루 처음 30타는 내공이 여섯 배다!'),
     );
   }
 
@@ -43,9 +45,16 @@ class _TrainingScreenState extends State<TrainingScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     // 나갈 때도 한 번 더 저장한다(수련은 칠 때마다 저장되지만, 끝맺음을 분명히).
     _store.save();
     super.dispose();
+  }
+
+  /// 앱을 내리거나 끄면 저장(2026-10-14 형 「수련하다가 중지하면 저장되게」).
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) _store.save();
   }
 
   Future<void> _save() async {
@@ -56,6 +65,18 @@ class _TrainingScreenState extends State<TrainingScreen> {
       if (ok) _savedAt = DateTime.now();
     });
   }
+
+  /// 일시정지(중지)하면 저장하고 멈춤 창에 알린다.
+  Future<String> _saveOnPause() async {
+    await _save();
+    final t = _savedAt;
+    return _saveFailed || t == null
+        ? '저장 실패 — 다시 멈춰 주세요'
+        : '수련 저장됨 · ${_hm(t)}';
+  }
+
+  static String _hm(DateTime t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
   /// 지금 하는 수련 단계(0~9 · drills.dart · 2026-10-14 형 「목인항 수련 단계별로」).
   late int _drill = _store.profile.drillIndex.clamp(
@@ -223,7 +244,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
           _bar(
             g.todayHits >= Training.enlightened
                 ? '오늘 깨달음 다 채움 — 이제 1타 내공 0.1'
-                : '오늘 깨달음 ${g.todayHits}/${Training.enlightened}타 (내공 3배)',
+                : '오늘 깨달음 ${g.todayHits}/${Training.enlightened}타 (내공 ${p.trainingFirst.round()}배)',
             g.todayHits / Training.enlightened,
             Palette.jade,
             const Key('goal-today'),
@@ -237,7 +258,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                     ? '저장 실패 — 다시 눌러 주세요'
                     : saved == null
                     ? '칠 때마다 저절로 저장돼요'
-                    : '저장됨 · ${saved.hour.toString().padLeft(2, '0')}:${saved.minute.toString().padLeft(2, '0')}',
+                    : '저장됨 · ${_hm(saved)}',
                 key: const Key('training-saved'),
                 style: TextStyle(
                   fontSize: 13,
@@ -294,6 +315,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
         myStartQi: _d.fullQi ? maxQi : 0,
       ),
       onTurnEnd: _onTurnEnd,
+      onPause: _saveOnPause,
       info: _info,
       panel: _panel,
     );

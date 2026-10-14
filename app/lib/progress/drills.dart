@@ -172,9 +172,9 @@ abstract final class Drills {
     if (i < p.drillCleared) {
       return const DrillStep(counted: true, cleared: true);
     }
-    // 처음 깼다: 단계가 오를수록 큰 보상.
+    // 처음 깼다: 단계가 오를수록 큰 보상(2026-10-14 형 「육성 속도가 빠르게」 — 15·10 → 30·20 씩).
     p.drillCleared = i + 1;
-    final naegong = 15 * (i + 1), tp = 10 * (i + 1);
+    final naegong = 30 * (i + 1), tp = 20 * (i + 1);
     p.naegong += naegong;
     p.trainingPoints += tp;
     if (d.perk case final perk?) p.perks.add(perk);

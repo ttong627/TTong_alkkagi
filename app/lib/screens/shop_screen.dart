@@ -185,8 +185,17 @@ class _ShopScreenState extends State<ShopScreen> {
               padding: EdgeInsets.only(bottom: 4),
               child: _Hint('엽전이 모자라요 · 강호행에서 모아요'),
             ),
-          // 2026-10-14: 등급(1~13단) 순서 · 높은 단일수록 덜 튕기고 덜 밀린다 · 조각 돌은 조각으로 완성.
-          const SectionHead('재질 — 높은 단일수록 덜 튕기고 덜 밀림', icon: 'shop'),
+          // 2026-10-14: 등급(1~13단) 순서 · 단이 높을수록 친 상대는 더 밀리고 내 돌은 덜 튕기고 덜 밀린다
+          // (등급 차이 한 단에 4%) · 조각 돌은 조각으로 완성.
+          const SectionHead('재질 · 1~13단', icon: 'shop'),
+          const Padding(
+            key: Key('grade-help'),
+            padding: EdgeInsets.fromLTRB(4, 0, 4, 6),
+            child: Text(
+              '단이 높을수록 내가 친 상대 돌은 더 밀리고, 내 돌은 덜 튕기고 덜 밀린다(한 단에 4%)',
+              style: TextStyle(fontSize: 15, color: Palette.dim),
+            ),
+          ),
           for (final m in [
             ...StoneMaterial.values,
           ]..sort((a, b) => a.grade - b.grade))

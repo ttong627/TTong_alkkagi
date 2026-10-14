@@ -48,7 +48,7 @@ void main() {
     // 2026-10-14 형 「저장 기능과 다음 목표치와 진행 상황」: 진행 막대 둘 · 저장 단추 · 저장됨 표시.
     expect(find.byKey(const Key('goal-stage')), findsOneWidget);
     expect(find.textContaining('삼류 → 이류'), findsOneWidget);
-    expect(find.text('오늘 깨달음 1/30타 (내공 3배)'), findsOneWidget);
+    expect(find.text('오늘 깨달음 1/30타 (내공 6배)'), findsOneWidget);
     await t.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 300)),
     );

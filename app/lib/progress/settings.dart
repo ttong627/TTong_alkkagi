@@ -177,7 +177,10 @@ abstract final class Buzz {
   /// 여러 번 떨기: (길이ms, 세기 0~255 — 0 이면 쉼) 목록.
   static void pattern(List<(int, int)> raw) {
     if (!Settings.instance.vibration || raw.isEmpty) return;
-    final steps = [for (final (ms, amp) in raw) (ms, _scale(amp))];
+    // 떠는 칸만 줄이고 쉬는 칸은 그대로(쿵-쿵 박자는 남긴다).
+    final steps = [
+      for (final (ms, amp) in raw) (amp > 0 ? _len(ms) : ms, _scale(amp)),
+    ];
     _lastMs = DateTime.now().millisecondsSinceEpoch;
     log.addAll(steps.where((s) => s.$2 > 0));
     if (_native) {
@@ -205,12 +208,18 @@ abstract final class Buzz {
   static void heartbeat() =>
       pattern(const [(0, 0), (35, 200), (110, 0), (25, 120)]);
 
-  /// 설정의 진동 세기를 곱한다(쉬는 칸 0 은 그대로 · 1~255).
-  static int _scale(int amp) =>
-      amp <= 0 ? 0 : (amp * Settings.instance.vibeLevel).round().clamp(1, 255);
+  /// 2026-10-14 형 「진동을 조금 줄여주고」: 모든 진동의 길이·세기를 0.8배.
+  static const _soft = 0.8;
 
-  static bool _pulse(int ms, int raw) {
-    final amp = _scale(raw);
+  /// 설정의 진동 세기를 곱한다(쉬는 칸 0 은 그대로 · 1~255).
+  static int _scale(int amp) => amp <= 0
+      ? 0
+      : (amp * Settings.instance.vibeLevel * _soft).round().clamp(1, 255);
+
+  static int _len(int ms) => (ms * _soft).round();
+
+  static bool _pulse(int rawMs, int rawAmp) {
+    final ms = _len(rawMs), amp = _scale(rawAmp);
     log.add((ms, amp));
     if (log.length > 64) log.removeRange(0, log.length - 64);
     if (!_native) return false;

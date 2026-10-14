@@ -219,6 +219,47 @@ void main() {
         lessThan(kicked(StoneMaterial.cheongok)),
       );
     });
+
+    // 2026-10-14 형 「내가 깐 공에 상대방은 잘 밀려야 하고 내 등급이 올라갈수록 상대는 잘 밀리고
+    // 내 돌은 움직임이 작아져야 해」 — 친 돌과 맞은 돌의 등급 차이로 정한다.
+    test('등급 차이: 높은 단이 치면 더 밀리고, 높은 단은 덜 밀린다(한 단에 4% · 0.5~1.5)', () {
+      const c = StoneMaterial.cheongok, t13 = StoneMaterial.taegeuk;
+      expect(c.pushedBy(c), 1);
+      expect(c.pushedBy(t13), closeTo(1.48, 1e-9));
+      expect(t13.pushedBy(c), closeTo(0.52, 1e-9));
+      expect(StoneMaterial.ice.pushedBy(c), StoneMaterial.ice.hitKeep);
+      for (final a in StoneMaterial.values) {
+        for (final b in StoneMaterial.values) {
+          expect(b.pushedBy(a), inInclusiveRange(0.5, 1.5));
+        }
+      }
+    });
+
+    test('같은 무게라도 높은 등급 돌로 치면 상대가 더 밀린다(맞은 직후 빠르기)', () {
+      double kick(StoneMaterial shooter) {
+        final t = Table();
+        // 붙여 놓고 쳐서 굴러가는 동안의 감속 차이를 없앤다.
+        final me = t.addStone(
+          0,
+          2.4,
+          material: shooter,
+          shape: StoneShape.flat,
+        );
+        final tg = t.addStone(0, 0, shape: StoneShape.flat);
+        t.shoot(me, -math.pi / 2, 30, 0);
+        var guard = 0;
+        while (t.impacts.isEmpty && guard++ < 600) {
+          t.step();
+        }
+        final v = tg.velocity.length;
+        t.dispose();
+        return v;
+      }
+
+      // 청옥 1.0 · 빙백한옥 1.0 — 무게가 같고 6단이 친다 → 1 + 0.04 × 5 = 1.2배.
+      final base = kick(StoneMaterial.cheongok);
+      expect(kick(StoneMaterial.ice), closeTo(base * 1.2, base * 0.05));
+    });
     test('모양 3종', () {
       expect(
         [
