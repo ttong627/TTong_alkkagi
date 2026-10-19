@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 
-import '../game/avatar.dart';
-import '../progress/profile.dart';
+import '../game/fx_colors.dart';
 import '../progress/store.dart';
 import '../ui/art.dart';
 import '../ui/kit.dart';
 import '../ui/theme.dart';
 
-/// 외형 꾸미기(설계서 §2.5): 얼굴형·머리·도복 색. 앞 3가지는 처음부터, 나머지는 은자 3개씩.
+/// 꾸미기: 내 돌이 날아갈 때 남는 잔상 고르기.
+///
+/// 2026-10-19 형 「꾸미기가 엉망인데 위치도 그렇고 이미지도 하나도 안맞고 완전 개판」·「이상하면 꾸미기 기능을 빼던지」:
+/// 예전 얼굴·머리·도복은 코드로 그린 작은 인형이라 무협 캐릭터 그림과 맞지 않았고 다른 화면 어디에도 쓰이지 않았다 → 뺐다.
+/// 대신 모아도 고를 곳이 없던 잔상(보급소·수레 객잔·기인방·무공 「불꽃 궤적」)을 여기서 고른다.
 class LookScreen extends StatefulWidget {
   const LookScreen({super.key});
 
@@ -15,126 +18,172 @@ class LookScreen extends StatefulWidget {
   State<LookScreen> createState() => _LookScreenState();
 }
 
+/// 잔상 이름 · 얻는 곳.
+const trailCatalog = [
+  ('기본', '처음부터'),
+  ('금빛 잔상', '기인방'),
+  ('불꽃', '무공 「불꽃 궤적」'),
+  ('달맞이', '무림맹 보급소 · 강호유랑 수레 객잔'),
+  ('청죽', '무림맹 보급소 · 강호유랑 수레 객잔'),
+  ('먹물', '무림맹 보급소 · 강호유랑 수레 객잔'),
+];
+
 class _LookScreenState extends State<LookScreen> {
   final _store = ProfileStore.instance;
 
-  Future<void> _pick({int? face, int? hair, int? robe}) async {
-    final p = _store.profile;
-    if (hair != null && !p.hairs.contains(hair)) {
-      if (!p.buyHair(hair)) return _need();
-    }
-    if (robe != null && !p.robes.contains(robe)) {
-      if (!p.buyRobe(robe)) return _need();
-    }
-    if (face != null) p.face = face;
-    if (hair != null) p.hair = hair;
-    if (robe != null) p.robe = robe;
+  Future<void> _pick(String name) async {
+    _store.profile.trail = name;
     await _store.save();
     if (mounted) setState(() {});
   }
 
-  void _need() => ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(const SnackBar(content: Text('은자가 모자라요 — 강호행 장을 처음 깨면 받아요')));
-
   @override
   Widget build(BuildContext context) {
     final p = _store.profile;
-    final poor = p.silver < lookPrice;
-    // 얼굴·머리·도복 한 칸: 못 가진 것은 자물쇠 + 은자 값(모자라면 붉게).
-    Widget chip(String label, bool on, bool owned, VoidCallback tap) =>
-        GameChip(
-          label: label,
-          selected: on,
-          locked: !owned,
-          onTap: tap,
-          trailing: owned
-              ? null
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Image.asset(Art.icon('silver'), width: 22),
-                    Text(
-                      '$lookPrice',
-                      style: TextStyle(
-                        fontFamily: titleFont,
-                        fontSize: 15,
-                        color: poor ? const Color(0xFFFF8A75) : Palette.text,
-                      ),
-                    ),
-                  ],
-                ),
-        );
-    Widget group(String title, String icon, List<Widget> chips) => Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: GlassPanel(
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        radius: 18,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SectionHead(title, icon: icon),
-            Wrap(spacing: 8, runSpacing: 8, children: chips),
-          ],
-        ),
-      ),
-    );
+    final hero = p.hero;
     return GameScaffold(
       background: 'lobby',
-      appBar: AppBar(
-        title: const Text('꾸미기'),
-        actions: [
-          CurrencyPill(icon: 'silver', value: p.silver),
-          const SizedBox(width: 12),
-        ],
-      ),
+      appBar: AppBar(title: const Text('꾸미기')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
         children: [
-          Center(
-            child: GlassPanel(
-              radius: 90,
-              padding: const EdgeInsets.all(14),
-              child: Avatar.of(p, size: 140),
+          if (hero != null)
+            SizedBox(
+              height: 300,
+              child: Stack(
+                alignment: Alignment.bottomCenter,
+                children: [
+                  Image.asset(
+                    Art.character(Art.fighterId(hero)),
+                    height: 300,
+                    fit: BoxFit.contain,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: OutlinedText(hero.label, size: 22),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 12),
+          GlassPanel(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            radius: 18,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SectionHead('돌 잔상', icon: 'look'),
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    '내 돌이 날아갈 때 남는 빛 — 모든 판에 나와요',
+                    style: TextStyle(fontSize: 14, color: Palette.dim),
+                  ),
+                ),
+                for (final (name, where) in trailCatalog)
+                  _TrailRow(
+                    key: Key('trail-$name'),
+                    name: name,
+                    where: where,
+                    owned: name == '기본' || p.trails.contains(name),
+                    selected: p.trail == name,
+                    onTap: () => _pick(name),
+                  ),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
-          group('얼굴', 'look', [
-            for (var i = 0; i < faceShapes.length; i++)
-              chip(faceShapes[i], p.face == i, true, () => _pick(face: i)),
-          ]),
-          group('머리', 'look', [
-            for (var i = 0; i < hairStyles.length; i++)
-              chip(
-                hairStyles[i],
-                p.hair == i,
-                p.hairs.contains(i),
-                () => _pick(hair: i),
-              ),
-          ]),
-          group('도복', 'look', [
-            for (var i = 0; i < robeColors.length; i++)
-              chip(
-                robeNames[i],
-                p.robe == i,
-                p.robes.contains(i),
-                () => _pick(robe: i),
-              ),
-          ]),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.info_outline, size: 18, color: Palette.dim),
-              SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  '능력치와 무관 · 환생해도 유지',
-                  style: TextStyle(fontSize: 15, color: Palette.dim),
-                ),
-              ),
-            ],
+          const SizedBox(height: 10),
+          const Text(
+            '능력치와 무관 · 환생해도 유지',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Palette.dim),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 잔상 한 줄: 색 띠 미리보기 · 이름 · 얻는 곳(못 가졌을 때) · 고름 표시.
+class _TrailRow extends StatelessWidget {
+  const _TrailRow({
+    super.key,
+    required this.name,
+    required this.where,
+    required this.owned,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String name;
+  final String where;
+  final bool owned;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = trailColor(name) ?? Palette.text;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Material(
+        color: selected
+            ? Palette.gold.withValues(alpha: 0.18)
+            : Colors.white.withValues(alpha: owned ? 0.07 : 0.03),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: owned ? onTap : null,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            child: Row(
+              children: [
+                // 색 띠: 왼쪽은 옅고 돌 쪽(오른쪽)으로 진해지는 꼬리.
+                Container(
+                  width: 64,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(7),
+                    gradient: LinearGradient(
+                      colors: [
+                        color.withValues(alpha: 0),
+                        color.withValues(alpha: owned ? 0.95 : 0.3),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: owned ? Palette.text : Palette.dim,
+                        ),
+                      ),
+                      if (!owned)
+                        Text(
+                          '얻는 곳: $where',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Palette.dim,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (selected)
+                  const Icon(Icons.check_circle, color: Palette.gold)
+                else if (!owned)
+                  Image.asset(Art.icon('lock'), width: 26),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

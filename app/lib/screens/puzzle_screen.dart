@@ -54,6 +54,7 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
       mode: MatchMode.practice,
       myMaterial: p.material,
       myShape: p.shape,
+      myTrail: p.trailOrNull,
       powerScale: p.maxSpeed / baseMaxSpeed,
       spinScale: p.spinScale,
     );

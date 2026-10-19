@@ -55,6 +55,7 @@ class Puzzle {
     civilians: civilians,
     myMaterial: base.myMaterial,
     myShape: base.myShape,
+    myTrail: base.myTrail,
     powerScale: base.powerScale,
     spinScale: base.spinScale,
   );

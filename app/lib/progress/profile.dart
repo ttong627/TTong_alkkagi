@@ -350,24 +350,8 @@ class Profile {
   /// 축하를 보여 준 내공 경지(이보다 높아지면 로비·목인항에서 한 번 축하).
   int celebratedStage = 1;
 
-  /// 머리·도복 디자인 사기(은자 [lookPrice]).
-  bool buyHair(int i) {
-    if (i < 0 || i >= hairStyles.length || hairs.contains(i)) return false;
-    if (silver < lookPrice) return false;
-    silver -= lookPrice;
-    hairs.add(i);
-    codex.add('외형:머리$i');
-    return true;
-  }
-
-  bool buyRobe(int i) {
-    if (i < 0 || i >= robeColors.length || robes.contains(i)) return false;
-    if (silver < lookPrice) return false;
-    silver -= lookPrice;
-    robes.add(i);
-    codex.add('외형:도복$i');
-    return true;
-  }
+  /// 고른 잔상(기본이면 null — 판 설정 [MatchConfig.myTrail] 에 그대로).
+  String? get trailOrNull => trail == '기본' ? null : trail;
 
   /// 비승(환생) 메뉴가 열렸나: 6장 우승 + 내공 생사경(8단계).
   bool get canRebirth => done.contains('c6') && stage >= naegongStages.length;

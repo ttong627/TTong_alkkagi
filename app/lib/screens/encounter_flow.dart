@@ -125,6 +125,7 @@ Future<void> afterRound(BuildContext context, {double boost = 1}) async {
               shotLimit: hermitPuzzle.shots,
               myMaterial: p.material,
               myShape: p.shape,
+              myTrail: p.trailOrNull,
               powerScale: p.maxSpeed / baseMaxSpeed,
             ),
           ),

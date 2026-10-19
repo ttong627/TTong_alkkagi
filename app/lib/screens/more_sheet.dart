@@ -120,7 +120,7 @@ class MoreSheet extends StatelessWidget {
                   key: const Key('more-look'),
                   icon: 'look',
                   label: '꾸미기',
-                  help: '얼굴형 · 머리 · 도복 색',
+                  help: '내 돌이 날아갈 때 남는 잔상 고르기',
                   onTap: () => open(const LookScreen()),
                 ),
                 _MoreItem(

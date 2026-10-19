@@ -181,7 +181,7 @@ abstract final class Campaign {
       steers: p.steersTotal,
       steerSeconds: p.steerSeconds,
       opponentName: opponentName,
-      myTrail: p.trail == '기본' ? null : p.trail,
+      myTrail: p.trailOrNull,
       qiSaver: p.perks.contains('내공 아낌'),
       impactScale:
           (p.perks.contains('첫 충돌 반발+5%') ? 1.05 : 1) *

@@ -68,7 +68,7 @@ class _RebirthScreenState extends State<RebirthScreen> {
         title: const Text('정말 환생하겠습니까?'),
         content: const Text(
           '처음으로: 내공·능력치·강호행 진행·엽전·수련 포인트·문파\n'
-          '그대로: 은자·징표·재질·모양·외형·꾸미기·캐릭터·도감·기인방 효과\n'
+          '그대로: 은자·징표·재질·모양·잔상·캐릭터·도감·기인방 효과\n'
           '얻음: 천년내단 1 · 환생 전용 캐릭터 · 어두운 마교 세계(블랙홀·지뢰석)',
         ),
         actions: [
