@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 적응형 아이콘(안드로이드 8+): 뒤는 짙은 자줏빛, 앞은 검지·돌 그림(tool/art/appicon.mjs). -->
+<!-- 적응형 아이콘(안드로이드 8+): 뒤 칸에 코덱스 그림(머리띠 흰 돌 · tool/art/apply_appicon.py), 앞 칸은 비움. 흑백은 예전 검지·돌. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background"/>
+    <background android:drawable="@mipmap/ic_launcher_background"/>
     <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
     <monochrome android:drawable="@mipmap/ic_launcher_monochrome"/>
 </adaptive-icon>
