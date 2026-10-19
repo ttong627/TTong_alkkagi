@@ -240,9 +240,10 @@ Offset? velocityAt(
 /// 너무 세게 치면 손이 흔들려 회심이 아니다. 값은 [가정], 가상 시험(tool/flick_sim.dart)에서 터지는
 /// 비율을 재어 둔다.
 abstract final class CriticalRule {
-  static const double maxOffset = 0.15;
-  static const double minPower = 0.5;
-  static const double maxPower = 0.9;
+  // 2026-10-20 형 「자꾸 회심이 발생을 하고」: 가운데로 튕기면 거의 다 회심이었다(0.15 · 세기 0.5~0.9) → 좁힘.
+  static const double maxOffset = 0.06;
+  static const double minPower = 0.6;
+  static const double maxPower = 0.82;
 
   /// 회심이면 처음 속도 배수.
   static const double speedBonus = 1.15;
@@ -525,8 +526,8 @@ class PullReader {
   static const double grab = 1.6;
   static const double minPull = 0.6;
   static const double fullPull = 3.6;
-  static const double sweetLo = 0.62;
-  static const double sweetHi = 0.74;
+  static const double sweetLo = 0.66;
+  static const double sweetHi = 0.72;
 
   Offset? _now;
   bool _held = false;

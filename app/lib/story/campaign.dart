@@ -192,8 +192,8 @@ abstract final class Campaign {
       knockoutQiMax: h == Fighter.mukgaek ? 2 : (perkKnock ? 99 : 0),
       // 정각 · 목인항 연속 정타 수련(집중 숙련 · 2026-10-14).
       critWidth: h == Fighter.jeonggak
-          ? 0.2
-          : (p.perks.contains('집중 숙련') ? 0.18 : CriticalRule.maxOffset),
+          ? 0.1
+          : (p.perks.contains('집중 숙련') ? 0.09 : CriticalRule.maxOffset),
       aimAssist: aimAssist,
       weather: weather,
       features: features,

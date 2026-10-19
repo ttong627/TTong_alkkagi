@@ -283,10 +283,15 @@ class MatchConfig {
     this.aiErrorScale = 1,
     this.aiPowerScale = 1,
     this.aiBlunder = 0,
+    this.edgeTipChance = 0.35,
   });
 
   /// AI 가 가장 좋은 수 대신 그 아래 후보에서 고를 확률(0~1). 「쉬움」의 실수.
   final double aiBlunder;
+
+  /// 판 가장자리에 아슬아슬하게 멈춘 돌이 기우뚱 떨어질 확률(0 이면 끔 · 2026-10-20 형 「가끔 뽀록이라하는
+  /// 재수 좋게 처리되는 부분이랑 열받는 부분도」). 이번 수에 움직인 돌만 · 묘수풀이·목인항에는 없다.
+  final double edgeTipChance;
 
   /// AI 세기 배수(1 = 그대로). 늘 세게 치는 고수(통통)를 「쉬움」에서 누그러뜨린다.
   final double aiPowerScale;
@@ -440,6 +445,15 @@ class Match extends ChangeNotifier {
       ) {
     for (final f in config.features) {
       table.addFeature(f);
+    }
+    // 대전장 기본 담장·장애물(묘수풀이·트릭샷·목인항 제외 · 판에 지물이 이미 있으면 담장만).
+    if (config.layout == null && !config.training) {
+      for (final f in arenaLayout(
+        config.arena,
+        obstacles: config.features.isEmpty,
+      )) {
+        table.addFeature(f);
+      }
     }
     for (final c in config.civilians) {
       table.addStone(c.x, c.y, team: 2, material: c.material, shape: c.shape);
@@ -673,6 +687,12 @@ class Match extends ChangeNotifier {
       _qi[team] = math.min(maxQi, _qi[team] + 1 + extra);
     }
     _aliveBefore = alive(1 - team);
+    _aliveIds
+      ..clear()
+      ..addAll([
+        for (final st in table.stones)
+          if (!st.out) st.id,
+      ]);
     _jewelBefore = jewelId != null && !_isOut(jewelId);
     shotsTaken[team]++;
     _ownBefore = alive(team);
@@ -685,6 +705,9 @@ class Match extends ChangeNotifier {
       StrikeMode.inner || StrikeMode.ultimate =>
         team == 0 ? config.martial : config.opponentMartial,
     };
+    if (mine && config.layout == null && config.mode != MatchMode.twoPlayer) {
+      angle = nudgeAngle(s, angle);
+    }
     table.shoot(
       s,
       angle,
@@ -697,6 +720,8 @@ class Match extends ChangeNotifier {
       spinScale: mine ? config.spinScale : 1,
       impactScale: mine ? config.impactScale : 1,
       innerSpeed: mine ? config.innerSpeed : TechniqueConstants.innerSpeed,
+      // 회심 평타로 정면을 맞히면 박살(묘수풀이·트릭샷은 정해 둔 풀이를 지킨다).
+      shatter: lastCritical && config.layout == null && !config.training,
     );
     _turnCount++;
     notifyListeners();
@@ -777,6 +802,7 @@ class Match extends ChangeNotifier {
     table.endTurn();
     _clashThisTurn = false;
     _artThisTurn = false;
+    _edgeLuck();
     _finishTurn();
     notifyListeners();
     return true;
@@ -808,15 +834,102 @@ class Match extends ChangeNotifier {
   /// 6장 바닥이 지금 불꽃인가.
   bool fireFloor = false;
 
+  /// 방향 보정(2026-10-20 형 「방향 보정도 살짝 필요하고」): 상대 돌 쪽에서 [nudgeMax] 라디안(약 4도)
+  /// 안으로 겨눴으면 가장 가까운 상대 돌 쪽으로 반([nudgeKeep])만 꺾는다. 멀리 빗나간 수는 그대로.
+  static const double nudgeMax = 0.07, nudgeKeep = 0.5;
+
+  double nudgeAngle(Stone s, double angle) {
+    var best = nudgeMax;
+    double? fix;
+    for (final o in table.stones) {
+      if (o.out || o.team != 1 - s.team) continue;
+      final d = o.position - s.position;
+      var diff = math.atan2(d.y, d.x) - angle;
+      while (diff > math.pi) {
+        diff -= 2 * math.pi;
+      }
+      while (diff < -math.pi) {
+        diff += 2 * math.pi;
+      }
+      if (diff.abs() < best) {
+        best = diff.abs();
+        fix = diff;
+      }
+    }
+    return fix == null ? angle : angle + fix * nudgeKeep;
+  }
+
+  /// 이번 수의 운(뽀록 · 아슬아슬) — 연출([BattleFx.onTurnEnd])이 읽는다.
+  final luckEvents = <LuckEvent>[];
+
+  /// 이번 수에 쏜 편이 직접 맞히지 않았는데 떨어진 상대 돌 수(어부지리 · 뽀록).
+  int lastFluke = 0;
+
+  /// 이번 수에 쏜 돌이 상대 돌을 하나도 못 맞혔나(헛손질).
+  bool lastMissed = false;
+
+  /// 내가 상대 돌을 연달아 떨어뜨린 수(연타). 2 부터 한 수에 엽전 [comboCoin] × 연타.
+  int combo = 0;
+
+  /// 목인항: 더미를 연달아 맞힌 수.
+  int trainStreak = 0;
+  static const int comboCoin = 5;
+
+  /// 쏘기 직전 판 위에 있던 돌.
+  final _aliveIds = <int>{};
+
+  /// 멈춘 뒤: 이번 수에 움직인 돌이 가장자리에 걸쳐 섰으면 확률로 떨어뜨린다(뽀록), 아니면 「아슬아슬」.
+  void _edgeLuck() {
+    luckEvents.clear();
+    if (config.training || config.layout != null || config.edgeTipChance <= 0) {
+      return;
+    }
+    final shooter = table.shooter;
+    const r = PhysicsConstants.stoneRadius;
+    for (final s in table.stones) {
+      if (s.out || s.team > 1 || s.airborne) continue;
+      if (!identical(s, shooter) && !touchedThisTurn.contains(s.id)) continue;
+      final p = s.position;
+      if (table.boundary.edgeDistance(p.x, p.y, table.half) > r * 0.4) continue;
+      final tip = _rand.nextDouble() < config.edgeTipChance;
+      if (tip) table.tipOff(s);
+      luckEvents.add(LuckEvent(tip, s, p.x, p.y));
+    }
+  }
+
   void _finishTurn() {
     if (config.shiftingFloor) {
       fireFloor = !fireFloor;
       table.floorFactor = fireFloor ? 1.3 : config.arena.floorFactor;
     }
-    if (config.training) return;
+    if (config.training) {
+      // 목인항 연타: 더미를 맞힌 수가 이어진 수(2026-10-20 형 「수련이랑 목인함 … 단조로와서 지루해」).
+      final hit = table.stones.any(
+        (s) => s.team == 1 && touchedThisTurn.contains(s.id),
+      );
+      trainStreak = hit ? trainStreak + 1 : 0;
+      return;
+    }
     lastShooter = _turn;
     lastKnocked = _aliveBefore - alive(1 - _turn);
     lastSelfLost = _ownBefore - alive(_turn);
+    final foe = 1 - _turn;
+    lastFluke = table.stones
+        .where(
+          (s) =>
+              s.team == foe &&
+              s.out &&
+              _aliveIds.contains(s.id) &&
+              !touchedThisTurn.contains(s.id),
+        )
+        .length;
+    lastMissed = !table.stones.any(
+      (s) => s.team == foe && touchedThisTurn.contains(s.id),
+    );
+    if (_turn == 0 && config.mode == MatchMode.vsAi) {
+      combo = lastKnocked > 0 ? combo + 1 : 0;
+      if (combo >= 2) bonusCoins += comboCoin * combo;
+    }
     if (_turn == 0) bestKnock = math.max(bestKnock, lastKnocked);
     if (_turn == 0 && lastKnocked >= 2 && config.mode == MatchMode.vsAi) {
       bonusCoins += multiKnockCoin * lastKnocked;
@@ -1098,4 +1211,14 @@ class Match extends ChangeNotifier {
     table.dispose();
     super.dispose();
   }
+}
+
+/// 가장자리 운 한 번: [tipped] 면 기우뚱 떨어짐(뽀록), 아니면 걸쳐서 버팀(아슬아슬).
+class LuckEvent {
+  const LuckEvent(this.tipped, this.stone, this.x, this.y);
+  final bool tipped;
+  final Stone stone;
+  final double x;
+  final double y;
+  int get team => stone.team;
 }

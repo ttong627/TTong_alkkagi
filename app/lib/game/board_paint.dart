@@ -618,11 +618,138 @@ void paintFeature(
   Canvas canvas,
   Feature f,
   Offset Function(double x, double y) at,
-  double scale,
-) {
+  double scale, {
+  (double, double, double)? pose,
+}) {
   final c = at(f.x, f.y);
   final r = f.size * scale;
   switch (f.kind) {
+    case FeatureKind.pillar:
+      // 회전 기둥: 지금 자리·각도로 다각형 돌기둥(금빛 테 · 가운데 소용돌이 · 2026-10-20).
+      final (px, py, pa) = pose ?? (f.x, f.y, f.angle);
+      final pc = at(px, py);
+      final n = f.sides.clamp(3, 8);
+      Path poly(double rr) {
+        final path = Path();
+        for (var k = 0; k < n; k++) {
+          final a = pa + k * 2 * math.pi / n;
+          final p = pc + Offset(math.cos(a), math.sin(a)) * rr;
+          if (k == 0) {
+            path.moveTo(p.dx, p.dy);
+          } else {
+            path.lineTo(p.dx, p.dy);
+          }
+        }
+        return path..close();
+      }
+
+      canvas.drawPath(
+        poly(r * 1.12).shift(Offset(r * 0.12, r * 0.18)),
+        Paint()..color = const Color(0x77000000),
+      );
+      canvas.drawPath(poly(r * 1.08), Paint()..color = const Color(0xFF2A1A0A));
+      canvas.drawPath(
+        poly(r),
+        Paint()
+          ..shader = Gradient.radial(pc, r, const [
+            Color(0xFFE9C46A),
+            Color(0xFF9A6A2A),
+          ]),
+      );
+      canvas.drawPath(
+        poly(r * 0.62),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = math.max(1.5, r * 0.1)
+          ..color = const Color(0xCC5A3A12),
+      );
+      // 도는 쪽을 알려 주는 소용돌이 한 줄.
+      canvas.drawArc(
+        Rect.fromCircle(center: pc, radius: r * 0.35),
+        pa,
+        math.pi * 1.2,
+        false,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = math.max(1.5, r * 0.12)
+          ..color = const Color(0xFFFFF1C2),
+      );
+    case FeatureKind.fence:
+      // 담장: 나무 널빤지 벽 한 토막(위에서 본 모습 · 2026-10-20). 부딪히는 안쪽 면은 그대로 두고
+      // 판 바깥쪽으로만 두껍게 그려 눈에 띄게 한다.
+      canvas.save();
+      canvas.translate(c.dx, c.dy);
+      canvas.rotate(f.angle);
+      final h = TerrainConstants.fenceHalfThickness * 2 * scale;
+      final normal = Offset(-math.sin(f.angle), math.cos(f.angle));
+      final sign = (f.x * normal.dx + f.y * normal.dy) >= 0 ? 1.0 : -1.0;
+      final thick = h * 2.6;
+      final inner = -sign * h / 2;
+      final rect = Rect.fromLTWH(
+        -r,
+        sign > 0 ? inner : inner - thick,
+        r * 2,
+        thick,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          rect.inflate(h * 0.2),
+          Radius.circular(h * 0.4),
+        ),
+        Paint()..color = const Color(0xE62A1608),
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, Radius.circular(h * 0.3)),
+        Paint()..color = const Color(0xFFB07A44),
+      );
+      final seam = Paint()
+        ..color = const Color(0xFF5A3A1C)
+        ..strokeWidth = math.max(1, h * 0.1);
+      for (var x = -r + r / 3; x < r; x += r / 3) {
+        canvas.drawLine(Offset(x, rect.top), Offset(x, rect.bottom), seam);
+      }
+      canvas.drawLine(
+        Offset(-r, inner + sign * h * 0.3),
+        Offset(r, inner + sign * h * 0.3),
+        Paint()
+          ..color = const Color(0x99FFE2B0)
+          ..strokeWidth = math.max(1.5, h * 0.2),
+      );
+      for (final x in [-r, r]) {
+        canvas.drawCircle(
+          Offset(x, rect.center.dy),
+          thick * 0.55,
+          Paint()..color = const Color(0xFF3A2410),
+        );
+        canvas.drawCircle(
+          Offset(x, rect.center.dy),
+          thick * 0.38,
+          Paint()..color = const Color(0xFFC8925A),
+        );
+      }
+      canvas.restore();
+    case FeatureKind.rock:
+      // 바위: 짙은 그림자 · 회색 몸 · 진한 테 · 밝은 윗면.
+      canvas.drawCircle(
+        c.translate(r * 0.12, r * 0.18),
+        r * 1.08,
+        Paint()..color = const Color(0x66000000),
+      );
+      canvas.drawCircle(c, r, Paint()..color = const Color(0xFF7A756B));
+      canvas.drawCircle(
+        c,
+        r,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = math.max(1.5, r * 0.12)
+          ..color = const Color(0xFF2E2B26),
+      );
+      canvas.drawCircle(
+        c.translate(-r * 0.25, -r * 0.3),
+        r * 0.5,
+        Paint()..color = const Color(0x55FFFFFF),
+      );
     case FeatureKind.branch:
       canvas.save();
       canvas.translate(c.dx, c.dy);
@@ -818,5 +945,143 @@ void paintWeather(
           p,
         );
       }
+  }
+}
+
+/// 돌 표정(2026-10-20 형 「묘한 중독성이랑 은근히 웃기도 재미가」 · 앱 아이콘의 귀여운 흰 돌처럼).
+enum StoneMood { calm, scared, fierce, dizzy, eek }
+
+/// 돌 위에 얼굴을 그린다. [blink] 0~1(1 이면 눈 감음). 흰 돌은 짙은 이목구비, 검은 돌은 밝은 이목구비.
+void paintStoneFace(
+  Canvas canvas,
+  Offset c,
+  double r,
+  int team,
+  StoneMood mood, {
+  double blink = 0,
+  double t = 0,
+}) {
+  if (r < 6) return; // 너무 작으면 그리지 않는다.
+  final ink = team == 0 ? const Color(0xDD2A1A12) : const Color(0xEEF4EEE2);
+  final line = Paint()
+    ..color = ink
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = math.max(1, r * 0.09)
+    ..strokeCap = StrokeCap.round;
+  final fill = Paint()..color = ink;
+  final ex = r * 0.32, ey = -r * 0.08, er = r * 0.12;
+  final l = c.translate(-ex, ey), rr = c.translate(ex, ey);
+  switch (mood) {
+    case StoneMood.calm:
+      if (blink > 0.5) {
+        for (final e in [l, rr]) {
+          canvas.drawLine(e.translate(-er, 0), e.translate(er, 0), line);
+        }
+      } else {
+        canvas.drawOval(
+          Rect.fromCenter(center: l, width: er * 1.5, height: er * 2),
+          fill,
+        );
+        canvas.drawOval(
+          Rect.fromCenter(center: rr, width: er * 1.5, height: er * 2),
+          fill,
+        );
+      }
+      canvas.drawArc(
+        Rect.fromCenter(
+          center: c.translate(0, r * 0.22),
+          width: r * 0.4,
+          height: r * 0.25,
+        ),
+        0.2,
+        math.pi - 0.4,
+        false,
+        line,
+      );
+    case StoneMood.scared:
+      final white = Paint()..color = const Color(0xFFFFFFFF);
+      for (final e in [l, rr]) {
+        canvas.drawCircle(e, er * 1.5, white);
+        canvas.drawCircle(
+          e,
+          er * 1.5,
+          line..strokeWidth = math.max(1, r * 0.06),
+        );
+        canvas.drawCircle(
+          e.translate(0, er * 0.3),
+          er * 0.55,
+          Paint()..color = const Color(0xFF1A1010),
+        );
+      }
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: c.translate(0, r * 0.32),
+          width: r * 0.18,
+          height: r * 0.24,
+        ),
+        fill,
+      );
+      // 땀방울.
+      final drop = c.translate(
+        r * 0.62,
+        -r * 0.45 + math.sin(t * 6) * r * 0.04,
+      );
+      canvas.drawCircle(
+        drop,
+        r * 0.11,
+        Paint()..color = const Color(0xFF7FC8FF),
+      );
+    case StoneMood.fierce:
+      for (final (e, s) in [(l, 1.0), (rr, -1.0)]) {
+        canvas.drawCircle(e, er * 0.9, fill);
+        canvas.drawLine(
+          e.translate(-er * 1.4 * s, -er * 2.1),
+          e.translate(er * 1.2 * s, -er * 1.2),
+          line,
+        );
+      }
+      canvas.drawArc(
+        Rect.fromCenter(
+          center: c.translate(0, r * 0.2),
+          width: r * 0.5,
+          height: r * 0.35,
+        ),
+        0.1,
+        math.pi - 0.2,
+        false,
+        line,
+      );
+    case StoneMood.dizzy:
+      for (final e in [l, rr]) {
+        final p = Path();
+        for (var k = 0; k <= 24; k++) {
+          final a = t * 8 + k * 0.5;
+          final rad = er * 1.6 * k / 24;
+          final q = e + Offset(math.cos(a), math.sin(a)) * rad;
+          k == 0 ? p.moveTo(q.dx, q.dy) : p.lineTo(q.dx, q.dy);
+        }
+        canvas.drawPath(p, line);
+      }
+      final w = Path()..moveTo(c.dx - r * 0.22, c.dy + r * 0.3);
+      for (var k = 1; k <= 4; k++) {
+        w.lineTo(
+          c.dx - r * 0.22 + k * r * 0.11,
+          c.dy + r * 0.3 + (k.isOdd ? -1 : 1) * r * 0.06,
+        );
+      }
+      canvas.drawPath(w, line);
+    case StoneMood.eek:
+      for (final e in [l, rr]) {
+        canvas.drawLine(e.translate(-er, -er), e.translate(er, er), line);
+        canvas.drawLine(e.translate(-er, er), e.translate(er, -er), line);
+      }
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: c.translate(0, r * 0.3),
+          width: r * 0.28,
+          height: r * 0.34,
+        ),
+        fill,
+      );
   }
 }
