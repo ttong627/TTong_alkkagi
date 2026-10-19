@@ -1,6 +1,10 @@
 {
   "_설명": "2026-10-19 형 「나머지 기능에서도 그래픽을 다 바꿔주고 코덱스를 이용한 이미지 제작해서 다 적용」 — 배경 7 · 대전장 바닥 6 · 아이콘 31 을 캐릭터(wuxia_cast.json)와 같은 손그림 무협 화풍으로. 뜻(무엇을 그린 그림인지)은 예전 그림 그대로.",
   "kinds": {
+    "appicon_cute": {
+      "ratio": "1:1",
+      "style": "Cute and pretty mobile game app icon, kawaii chibi style (big head about 2.5 heads tall, big sparkling eyes, rosy cheeks), soft clean cel shading with smooth thick dark outlines, bright cheerful saturated colors, glossy highlights, very simple and instantly readable at 48 pixels, the subject large and centered, background fills the whole square edge to edge (no transparent or white area, no rounded corners, no border). Keep every important element inside the central 65% because the corners will be cut by a circle mask. No text, no letters, no Chinese characters, no numbers, no logo, no watermark."
+    },
     "bg": {
       "ratio": "9:16",
       "style": "Vertical background painting for a Korean wuxia mobile game, same art direction as premium hand-painted anime cel-shaded wuxia character art: rich painterly East Asian landscape, layered atmospheric perspective, ink-wash mountains and mist, warm cinematic light, detailed but calm. The lower 60% of the image must stay low-contrast and uncluttered because game menus and characters are drawn on top of it. No people, no characters, no animals in the foreground, no text, no letters, no calligraphy, no signature, no watermark, no frame, no UI."
@@ -12,6 +16,10 @@
     "icon": {
       "ratio": "1:1",
       "style": "Single game UI icon for a Korean wuxia mobile game, premium hand-painted anime cel shading with clean confident dark ink outline, rich warm colors, soft highlight from the upper left, bold simple silhouette that stays readable when shown as small as 24 pixels, the object centered and filling about 80% of the image, background is ONE flat solid pure green color (#00FF00) with nothing else in it — no ground, no cast shadow, no glow outside the object, no text, no letters, no numbers unless asked, no signature, no watermark, no frame."
+    },
+    "appicon": {
+      "ratio": "1:1",
+      "style": "Mobile game app icon artwork, premium hand-painted anime cel-shaded wuxia style matching the attached reference, extremely bold, high contrast and instantly readable at 48 pixels, one strong central subject, dramatic lighting and a glowing golden qi burst, rich deep crimson and ink-black background with swirling golden energy that fills the whole square edge to edge (no transparent or white area, no rounded corners, no border, no frame). Keep every important element inside the central 60% of the square because the corners will be cut off by a circle mask. No text, no letters, no Chinese characters, no numbers, no logo, no watermark, no signature."
     }
   },
   "items": [
@@ -62,6 +70,15 @@
     {"id": "training", "kind": "icon", "desc": "A wooden wing chun training dummy (mok-in-jang) with arms sticking out, with small orange impact marks."},
     {"id": "wander", "kind": "icon", "desc": "An antique brass compass with a red and white needle (wandering the martial world)."},
     {"id": "weather", "kind": "icon", "desc": "A swirling grey-blue storm cloud with a few rain streaks and a small lightning bolt (heavenly weather)."},
-    {"id": "terrain", "kind": "icon", "desc": "A small rocky outcrop with a gnarled pine tree growing on it and a little bamboo shoot beside it (terrain features on the board)."}
+    {"id": "terrain", "kind": "icon", "desc": "A small rocky outcrop with a gnarled pine tree growing on it and a little bamboo shoot beside it (terrain features on the board)."},
+
+    {"id": "appicon_a", "kind": "appicon", "desc": "Close-up of a martial artist's index finger, glowing with golden inner energy, flicking a glossy white go stone that smashes into a black go stone; the black stone cracks and flies away with sparks and a shockwave ring."},
+    {"id": "appicon_b", "kind": "appicon", "desc": "A glossy white go stone wrapped in a blazing golden-orange qi aura, shooting diagonally from lower left to upper right like a comet, slamming into a black go stone which shatters into fragments; motion streaks and ink splashes."},
+    {"id": "appicon_c", "kind": "appicon", "desc": "A heroic young wuxia swordsman's hand in a red sleeve, two fingers raised in a sword-finger gesture, a white go stone launching off the fingertip trailing golden fire, a black stone exploding in front of it; dramatic close-up."},
+    {"id": "appicon_d", "kind": "appicon", "desc": "ICONIC AND SIMPLE: one huge glossy white go stone in the exact center, outlined in a thick bright gold rim light, with a single clean golden index finger tip touching it from the lower left; behind it a single black go stone cracking in half with three big shards; background is a nearly flat deep crimson-to-black radial gradient with one bold golden circular shockwave ring. Very few elements, very large shapes, strong silhouette, no busy textures."},
+    {"id": "appicon_e", "kind": "appicon", "desc": "ICONIC AND SIMPLE: a big glossy white go stone flying from left to right with a short thick golden flame trail, hitting a big black go stone that bursts with a bold golden starburst; the two stones fill the middle of the icon; background is a calm deep ink-black with a subtle red glow and a faint golden circle. Very few elements, very large shapes, strong contrast, no busy textures."},
+    {"id": "appicon_f", "kind": "appicon_cute", "desc": "A cute chibi young wuxia boy in a red robe with a topknot, grinning confidently, flicking a big round white go stone with his index finger across a wooden go board toward a big round black go stone that is flying away with a funny shocked face and little stars; small golden sparkle at the fingertip. Warm wooden board and soft red background."},
+    {"id": "appicon_g", "kind": "appicon_cute", "desc": "Close up of a go board corner seen from slightly above: a big glossy white go stone with a determined cute face and a tiny red martial-arts headband bumping a big black go stone with a dizzy swirly-eyes face off the edge of the board, a cute chibi hand with a pointing finger just behind the white stone, comic impact star burst. Warm wood board, deep red background."},
+    {"id": "appicon_h", "kind": "appicon_cute", "desc": "A cute chibi wuxia girl in a sky-blue robe with a ponytail and pink ribbon, winking, holding up her index finger ready to flick, a big round white go stone in front of her finger and a big round black go stone with a surprised face nearby on a wooden go board; heart and sparkle accents. Soft warm background."}
   ]
 }

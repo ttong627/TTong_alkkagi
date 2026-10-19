@@ -1,4 +1,5 @@
 // 앱 아이콘·스토어 그림(설계서 §16.13).
+// ⚠️2026-10-19 부터 앱 아이콘·스토어 아이콘·큰 그림은 코덱스 그림(apply_appicon.py) — 이 파일로 덮어쓰지 않는다(흑백 아이콘만 여기 것).
 // 쓰기(저장소 루트): node app/tool/art/appicon.mjs
 //  - store/icon-512.png · store/feature-graphic-1024x500.png
 //  - app/android/app/src/main/res/mipmap-*/ic_launcher.png (옛 안드로이드)

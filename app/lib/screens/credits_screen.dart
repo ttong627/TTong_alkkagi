@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../ui/art.dart';
 import '../ui/kit.dart';
 import '../ui/theme.dart';
 import '../version.dart';
@@ -25,9 +26,45 @@ class CreditsScreen extends StatelessWidget {
                 color: Palette.gold,
                 align: TextAlign.start,
               ),
-              const SizedBox(height: 6),
-              const Text('(주)웰쉐어로지스', style: TextStyle(fontSize: 18)),
               Text(versionLabel, style: const TextStyle(color: Palette.dim)),
+              const SizedBox(height: 14),
+              // 만든 곳(2026-10-19 형 「제작자에 웰쉐어로지스와 함께 로고 넣어줘야 해」).
+              Container(
+                key: const Key('credits-maker'),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    Image.asset(Art.icon('wslogis'), height: 56),
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '제작',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF6B5B66),
+                            ),
+                          ),
+                          Text(
+                            '(주)웰쉐어로지스',
+                            style: TextStyle(
+                              fontFamily: titleFont,
+                              fontSize: 22,
+                              color: Color(0xFF2A1830),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 14),
               const Text(
                 '그림 · 소리',
@@ -38,7 +75,7 @@ class CreditsScreen extends StatelessWidget {
                 ),
               ),
               const Text(
-                '캐릭터·배경·아이콘·효과음·국악풍 배경 음악은 모두 이 게임을 위해 코드로 직접 그리고 합성했습니다.',
+                '캐릭터·배경·아이콘 그림과 국악풍 배경 음악은 이 게임만을 위해 AI 도구(코덱스·재미나이)로 만들었고, 효과음은 코드로 합성했습니다.',
               ),
               const SizedBox(height: 14),
               const Text(
@@ -56,6 +93,20 @@ class CreditsScreen extends StatelessWidget {
                 'Do Hyeon — Copyright 2018 The Do Hyeon Project Authors',
               ),
               const Text('SIL Open Font License 1.1'),
+              const SizedBox(height: 14),
+              const Text(
+                '개인정보처리방침',
+                style: TextStyle(
+                  fontFamily: titleFont,
+                  fontSize: 18,
+                  color: Palette.gold,
+                ),
+              ),
+              const Text('수집하는 개인정보 없음 · 전문:'),
+              const SelectableText(
+                'https://github.com/ttong627/TTong_alkkagi/blob/main/docs/개인정보처리방침.md',
+                style: TextStyle(fontSize: 13, color: Palette.dim),
+              ),
               const SizedBox(height: 10),
               Align(
                 alignment: Alignment.centerLeft,
