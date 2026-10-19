@@ -5,6 +5,7 @@ import '../game/arena.dart';
 import '../game/fx_colors.dart';
 import '../game/match.dart';
 import '../game/schools.dart';
+import '../progress/store.dart';
 import '../ui/kit.dart';
 import '../ui/theme.dart';
 import 'game_screen.dart';
@@ -48,6 +49,7 @@ class _FreePlayScreenState extends State<FreePlayScreen> {
             difficulty: _difficulty,
             myMaterial: _material,
             myShape: _shape,
+            myTrail: ProfileStore.instance.profile.trailOrNull,
             arena: _arena,
             martial: _martial,
             opponentMartial: mode == MatchMode.twoPlayer

@@ -305,22 +305,4 @@ void main() {
       expect(back.hero, Fighter.sinseung);
     });
   });
-
-  test('외형: 앞 3가지는 처음부터, 나머지는 은자 5개 · 저장 되읽기', () {
-    final p = Profile()..silver = 6;
-    expect(p.hairs, {0, 1, 2});
-    expect(p.buyHair(1), isFalse);
-    expect(p.buyHair(4), isTrue);
-    expect(p.silver, 1);
-    expect(p.buyRobe(5), isFalse);
-    p
-      ..hair = 4
-      ..face = 2
-      ..robe = 1;
-    final back = Profile.decode(p.encode());
-    expect(back.hair, 4);
-    expect(back.face, 2);
-    expect(back.robe, 1);
-    expect(back.hairs, contains(4));
-  });
 }

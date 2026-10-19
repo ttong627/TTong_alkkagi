@@ -310,6 +310,7 @@ class _TrainingScreenState extends State<TrainingScreen>
         opponentName: '목각 더미',
         myMaterial: p.material,
         myShape: p.shape,
+        myTrail: p.trailOrNull,
         powerScale: p.maxSpeed / baseMaxSpeed,
         spinScale: p.spinScale,
         trainingDummies: _d.dummies,
