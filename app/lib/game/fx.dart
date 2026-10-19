@@ -8,6 +8,7 @@ import '../progress/settings.dart';
 import 'board_paint.dart';
 import 'fx_colors.dart';
 import 'match.dart';
+import 'pets.dart';
 import '../ui/theme.dart';
 
 /// 부딪힌 빠르기(cm/s)에 따른 연출 단계.
@@ -137,6 +138,26 @@ class BattleFx {
 
   /// 한 수를 쏜 순간.
   void onShot(Match m, phys.Stone s) {
+    final at0 = Offset(s.position.x, s.position.y);
+    if (m.lastVolley && m.config.pet != null) {
+      _text(
+        at0.translate(0, -3.2),
+        m.config.pet == PetKind.dragon ? '금룡 합공!!' : '백호 합공!',
+        const Color(0xFFFFB04A),
+        size: 34,
+      );
+      _rings.add(_Ring(at0, 0.5, 8, 0.5, const Color(0xFFFFB04A)));
+      _shake = math.max(_shake, 8);
+      Sound.play('tech_clone');
+    } else if (m.lastPetAssist) {
+      _text(
+        at0.translate(0, -3.2),
+        '날쌘돌 함께 튕기기!',
+        const Color(0xFFFFD86A),
+        size: 24,
+      );
+      Sound.play('whoosh');
+    }
     final at = Offset(s.position.x, s.position.y);
     // 떠나는 돌 뒤로 바람 줄기·흙먼지(얼마나 세게 쳤는지 보이게).
     final v = s.velocity;
@@ -185,6 +206,14 @@ class BattleFx {
         _rings.add(_Ring(at, 1, 10, 0.6, ultimateColor));
         _burst(at, ultimateColor, 40, 30);
         _text(at.translate(0, -2.5), '어기어석!', ultimateColor, size: 34);
+        if (m.lastWing > 0) {
+          _text(
+            at.translate(0, 0.5),
+            '동행 ${m.lastWing}!',
+            ultimateColor,
+            size: 26,
+          );
+        }
         _flash = 0.5;
         _flashColor = ultimateColor;
         steerLeft = m.config.steerSeconds;

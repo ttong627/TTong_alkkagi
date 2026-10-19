@@ -16,6 +16,8 @@ import 'package:alkkagi/story/course.dart';
 import 'package:alkkagi/screens/codex_screen.dart';
 import 'package:alkkagi/screens/credits_screen.dart';
 import 'package:alkkagi/screens/look_screen.dart';
+import 'package:alkkagi/screens/pet_screen.dart';
+import 'package:alkkagi/game/pets.dart';
 import 'package:alkkagi/screens/daily_screen.dart';
 import 'package:alkkagi/screens/dialogue_screen.dart';
 import 'package:alkkagi/screens/free_play_screen.dart';
@@ -201,6 +203,19 @@ void main() {
     await _shot(t, const CodexScreen(), 'codex');
     await _shot(t, const LookScreen(), 'look');
     await _shot(t, const CreditsScreen(), 'credits');
+    await _shot(t, const PetScreen(), 'pets');
+    await _shot(
+      t,
+      const GameScreen(
+        config: MatchConfig(
+          mode: MatchMode.vsAi,
+          arena: Arena.turtleMarket,
+          pet: PetKind.tiger,
+        ),
+        title: '영수 합공',
+      ),
+      'game_pet',
+    );
     await _shot(t, const SettingsScreen(), 'settings');
     await _shot(t, const SplashScreen(), 'splash', settleMs: 800);
     await _shot(t, const HomeScreen(), 'lobby');

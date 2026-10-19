@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:alkkagi_physics/alkkagi_physics.dart';
 
+import '../game/pets.dart';
 import 'daily.dart';
 
 /// 캐릭터 10종 (설계서 §2.2·§16.3).
@@ -260,6 +261,33 @@ class Profile {
 
   /// 꾸미기: 잔상 빛깔(보급소·기인방).
   final trails = <String>{'기본'};
+
+  /// 영수: 데려온 영수와 레벨 · 지금 데리고 다니는 영수(2026-10-20). 날쌘돌은 처음부터.
+  final pets = <PetKind, int>{PetKind.squirrel: 1};
+  PetKind? pet = PetKind.squirrel;
+
+  /// 엽전으로 영수를 데려온다(이미 있거나 엽전이 모자라면 false).
+  bool adoptPet(PetKind k) {
+    if (pets.containsKey(k) || coins < k.price) return false;
+    coins -= k.price;
+    pets[k] = 1;
+    pet = k;
+    return true;
+  }
+
+  /// 엽전 먹이로 레벨을 올린다(최고 레벨이거나 모자라면 false).
+  bool feedPet(PetKind k) {
+    final lv = pets[k];
+    if (lv == null || lv >= PetKind.maxLevel) return false;
+    final cost = PetKind.feedCost(lv);
+    if (coins < cost) return false;
+    coins -= cost;
+    pets[k] = lv + 1;
+    return true;
+  }
+
+  /// 데리고 다니는 영수의 레벨(없으면 1).
+  int get petLevel => pets[pet] ?? 1;
   String trail = '기본';
 
   /// 기인방이 열려 있는 끝 시각(밀리초)과 진열품.
@@ -585,6 +613,8 @@ class Profile {
     'perks': perks.toList(),
     'secretArts': secretArts,
     'trails': trails.toList(),
+    'pets': {for (final e in pets.entries) e.key.name: e.value},
+    'pet': pet?.name,
     'trail': trail,
     'legUntil': legendaryUntil,
     'legendary': legendary,
@@ -674,6 +704,16 @@ class Profile {
     p.perks.addAll(_strs(j['perks']));
     p.secretArts = _int(j['secretArts'], 0).clamp(0, Profile.maxSecretArts);
     p.trails.addAll(_strs(j['trails']));
+    for (final e in _map(j['pets']).entries) {
+      final k = PetKind.values.where((x) => x.name == e.key).firstOrNull;
+      if (k != null) p.pets[k] = _int(e.value, 1).clamp(1, PetKind.maxLevel);
+    }
+    final petName = j['pet'];
+    if (j.containsKey('pet')) {
+      p.pet = PetKind.values
+          .where((x) => x.name == petName && p.pets.containsKey(x))
+          .firstOrNull;
+    }
     p.trail = _str(j['trail'], '기본');
     p.legendaryUntil = _int(j['legUntil'], 0);
     p.legendary.addAll(_strs(j['legendary']));

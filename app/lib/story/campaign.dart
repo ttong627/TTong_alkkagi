@@ -191,6 +191,12 @@ abstract final class Campaign {
       knockoutQiChance: h == Fighter.mukgaek ? 1 : (perkKnock ? 0.1 : 0),
       knockoutQiMax: h == Fighter.mukgaek ? 2 : (perkKnock ? 99 : 0),
       // 정각 · 목인항 연속 정타 수련(집중 숙련 · 2026-10-14).
+      pet: p.pet,
+      petLevel: p.petLevel,
+      // 어기어석 동행: 일류(3) 1 · 초절정(5) 2 · 현경(7) 3.
+      ultimateWing: p.stage >= 7
+          ? 3
+          : (p.stage >= 5 ? 2 : (p.stage >= 3 ? 1 : 0)),
       critWidth: h == Fighter.jeonggak
           ? 0.1
           : (p.perks.contains('집중 숙련') ? 0.09 : CriticalRule.maxOffset),

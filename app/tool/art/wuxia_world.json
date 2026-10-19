@@ -1,6 +1,10 @@
 {
   "_설명": "2026-10-19 형 「나머지 기능에서도 그래픽을 다 바꿔주고 코덱스를 이용한 이미지 제작해서 다 적용」 — 배경 7 · 대전장 바닥 6 · 아이콘 31 을 캐릭터(wuxia_cast.json)와 같은 손그림 무협 화풍으로. 뜻(무엇을 그린 그림인지)은 예전 그림 그대로.",
   "kinds": {
+    "pet": {
+      "ratio": "1:1",
+      "style": "Cute and pretty mobile game pet character, kawaii chibi style (big round head, big sparkling eyes, rosy cheeks, tiny body), soft clean cel shading with smooth thick dark outlines, bright cheerful colors, glossy highlights, full body centered filling about 80% of the image, friendly pose, simple and readable at 64 pixels, background is ONE flat solid pure green color (#00FF00) with nothing else — no ground, no shadow, no text, no letters, no watermark."
+    },
     "appicon_cute": {
       "ratio": "1:1",
       "style": "Cute and pretty mobile game app icon, kawaii chibi style (big head about 2.5 heads tall, big sparkling eyes, rosy cheeks), soft clean cel shading with smooth thick dark outlines, bright cheerful saturated colors, glossy highlights, very simple and instantly readable at 48 pixels, the subject large and centered, background fills the whole square edge to edge (no transparent or white area, no rounded corners, no border). Keep every important element inside the central 65% because the corners will be cut by a circle mask. No text, no letters, no Chinese characters, no numbers, no logo, no watermark."
@@ -79,6 +83,12 @@
     {"id": "appicon_e", "kind": "appicon", "desc": "ICONIC AND SIMPLE: a big glossy white go stone flying from left to right with a short thick golden flame trail, hitting a big black go stone that bursts with a bold golden starburst; the two stones fill the middle of the icon; background is a calm deep ink-black with a subtle red glow and a faint golden circle. Very few elements, very large shapes, strong contrast, no busy textures."},
     {"id": "appicon_f", "kind": "appicon_cute", "desc": "A cute chibi young wuxia boy in a red robe with a topknot, grinning confidently, flicking a big round white go stone with his index finger across a wooden go board toward a big round black go stone that is flying away with a funny shocked face and little stars; small golden sparkle at the fingertip. Warm wooden board and soft red background."},
     {"id": "appicon_g", "kind": "appicon_cute", "desc": "Close up of a go board corner seen from slightly above: a big glossy white go stone with a determined cute face and a tiny red martial-arts headband bumping a big black go stone with a dizzy swirly-eyes face off the edge of the board, a cute chibi hand with a pointing finger just behind the white stone, comic impact star burst. Warm wood board, deep red background."},
-    {"id": "appicon_h", "kind": "appicon_cute", "desc": "A cute chibi wuxia girl in a sky-blue robe with a ponytail and pink ribbon, winking, holding up her index finger ready to flick, a big round white go stone in front of her finger and a big round black go stone with a surprised face nearby on a wooden go board; heart and sparkle accents. Soft warm background."}
+    {"id": "appicon_h", "kind": "appicon_cute", "desc": "A cute chibi wuxia girl in a sky-blue robe with a ponytail and pink ribbon, winking, holding up her index finger ready to flick, a big round white go stone in front of her finger and a big round black go stone with a surprised face nearby on a wooden go board; heart and sparkle accents. Soft warm background."},
+    {"id": "pet_squirrel", "kind": "pet", "desc": "A tiny chibi red squirrel martial-arts sidekick with a big fluffy tail and a little red headband, crouched ready to flick a small white go stone with its paw, energetic grin."},
+    {"id": "pet_turtle", "kind": "pet", "desc": "A chubby chibi green turtle guardian with a sturdy golden-patterned shell like a shield, wearing a tiny blue sash, standing proudly with arms crossed, calm confident smile."},
+    {"id": "pet_crane", "kind": "pet", "desc": "An elegant chibi white crane with a red crown, wings slightly spread, wearing a tiny scholar hat, one wing pointing forward as if aiming, gentle wise smile."},
+    {"id": "pet_tiger", "kind": "pet", "desc": "A chibi white tiger cub with black stripes and bright blue eyes, fierce but cute expression, paw raised ready to strike, tiny golden bracelet, little fang showing."},
+    {"id": "pet_dragon", "kind": "pet", "desc": "A chibi golden eastern dragon (long body, tiny horns, whiskers, small cloud puffs) curled happily, holding a glowing white go stone like a pearl, sparkling eyes, majestic but adorable."},
+    {"id": "pet", "kind": "icon", "desc": "A cute golden paw print inside a small round jade badge (pet companions menu icon)."}
   ]
 }

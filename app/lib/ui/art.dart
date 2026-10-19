@@ -70,6 +70,15 @@ abstract final class Art {
     'chest',
     'mail',
     'rank',
+    'weather',
+    'terrain',
+    'wslogis',
+    'pet',
+    'pet_squirrel',
+    'pet_turtle',
+    'pet_crane',
+    'pet_tiger',
+    'pet_dragon',
   ];
 
   // ── 대전장(Flame)이 캔버스에 바로 그릴 바닥 그림: 미리 읽어 둔다.
