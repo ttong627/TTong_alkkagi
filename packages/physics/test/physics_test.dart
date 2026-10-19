@@ -218,7 +218,8 @@ void main() {
 
     test('같은 힘으로 맞아도 높은 등급 돌일수록 덜 밀린다(맞은 직후 빠르기)', () {
       double kicked(StoneMaterial m) {
-        final t = Table();
+        // 등급 값만 본다(둘이 하기 규칙 — 내 편 미끄럼 보정 없이).
+        final t = Table(favoredTeam: null);
         final me = t.addStone(0, 10);
         final tg = t.addStone(0, 0, material: m, shape: StoneShape.flat);
         t.shoot(me, -math.pi / 2, 30, 0);
@@ -284,30 +285,112 @@ void main() {
       expect(top, lessThan(v * 1.8), reason: '줄 끝 돌 최고 빠르기 $top');
     });
 
-    test('같은 무게라도 높은 등급 돌로 치면 상대가 더 밀린다(맞은 직후 빠르기)', () {
-      double kick(StoneMaterial shooter) {
+    /// 붙여 놓고 쳐서(굴러가는 동안의 감속 차이를 없앰) 맞은 직후 (맞은 돌, 쏜 돌) 빠르기.
+    (double, double) kick(
+      StoneMaterial shooter,
+      StoneMaterial target, {
+      int shooterTeam = 0,
+      int targetTeam = 1,
+      int? favored = 0,
+    }) {
+      final t = Table(favoredTeam: favored);
+      final me = t.addStone(
+        0,
+        2.4,
+        material: shooter,
+        shape: StoneShape.flat,
+        team: shooterTeam,
+      );
+      final tg = t.addStone(
+        0,
+        0,
+        material: target,
+        shape: StoneShape.flat,
+        team: targetTeam,
+      );
+      t.shoot(me, -math.pi / 2, 30, 0);
+      var guard = 0;
+      while (t.impacts.isEmpty && guard++ < 600) {
+        t.step();
+      }
+      final v = (tg.velocity.length, me.velocity.length);
+      t.dispose();
+      return v;
+    }
+
+    const c = StoneMaterial.cheongok;
+
+    test('둘이 하기(우대 편 없음): 같은 무게라도 높은 등급 돌로 치면 더 밀린다', () {
+      // 청옥 1.0 · 빙백한옥 1.0 — 무게가 같고 6단이 친다 → 1 + 0.04 × 5 = 1.2배.
+      final base = kick(c, c, favored: null).$1;
+      expect(
+        kick(StoneMaterial.ice, c, favored: null).$1,
+        closeTo(base * 1.2, base * 0.05),
+      );
+    });
+
+    test('내 돌로 친 상대 돌은 내 등급이 높을수록 더 밀린다(1단 ×1.2 → 13단 ×1.8)', () {
+      final even = kick(c, c, favored: null).$1;
+      expect(kick(c, c).$1, closeTo(even * 1.2, even * 0.05));
+      // 빙백한옥(6단)도 무게 1.0 — 1.2 + 0.05 × 5 = 1.45배.
+      expect(kick(StoneMaterial.ice, c).$1, closeTo(even * 1.45, even * 0.05));
+      expect(StoneMaterial.taegeuk.strikeBoost, closeTo(1.8, 1e-9));
+    });
+
+    test('무거운 상대 돌(현철)도 내 돌에 맞으면 같은 무게를 친 만큼 이상 밀린다', () {
+      final even = kick(c, c, favored: null).$1;
+      final before = kick(c, StoneMaterial.hyeoncheol, favored: null).$1;
+      final now = kick(c, StoneMaterial.hyeoncheol).$1;
+      expect(before, lessThan(even * 0.7), reason: '무게 탓에 덜 밀리던 것');
+      expect(now, greaterThan(even * 1.1));
+    });
+
+    test('상대 돌에 맞은 내 돌은 무게 이득 없이 내 등급만큼 덜 밀린다', () {
+      final even = kick(c, c, favored: null).$1;
+      double hitMine(StoneMaterial mine) => kick(
+        StoneMaterial.hyeoncheol,
+        mine,
+        shooterTeam: 1,
+        targetTeam: 0,
+      ).$1;
+      expect(hitMine(c), lessThanOrEqualTo(even * 1.05));
+      // 빙백한옥(6단 · 무게 1.0): 등급 0.8 × 미끄럼 보정(감속이 청옥보다 작아 더 줄임).
+      expect(hitMine(StoneMaterial.ice), lessThanOrEqualTo(even * 0.82));
+    });
+
+    test('상대 돌에 맞은 내 돌이 밀려난 거리: 13단은 1단의 3분의 2 아래 · 금강석도 청옥보다 덜', () {
+      double pushed(StoneMaterial mine) {
         final t = Table();
-        // 붙여 놓고 쳐서 굴러가는 동안의 감속 차이를 없앤다.
-        final me = t.addStone(
+        final foe = t.addStone(
           0,
-          2.4,
-          material: shooter,
-          shape: StoneShape.flat,
+          12,
+          material: StoneMaterial.hyeoncheol,
+          team: 1,
         );
-        final tg = t.addStone(0, 0, shape: StoneShape.flat);
-        t.shoot(me, -math.pi / 2, 30, 0);
+        final me = t.addStone(0, 0, material: mine);
+        final start = me.position.clone();
+        t.shoot(foe, -math.pi / 2, 50, 0);
         var guard = 0;
-        while (t.impacts.isEmpty && guard++ < 600) {
-          t.step();
-        }
-        final v = tg.velocity.length;
+        while (t.step() == TurnStatus.moving && guard++ < 3000) {}
+        final d = (me.position - start).length;
         t.dispose();
-        return v;
+        return d;
       }
 
-      // 청옥 1.0 · 빙백한옥 1.0 — 무게가 같고 6단이 친다 → 1 + 0.04 × 5 = 1.2배.
-      final base = kick(StoneMaterial.cheongok);
-      expect(kick(StoneMaterial.ice), closeTo(base * 1.2, base * 0.05));
+      final low = pushed(c);
+      expect(pushed(StoneMaterial.taegeuk), lessThan(low * 2 / 3));
+      expect(pushed(StoneMaterial.diamond), lessThan(low));
+    });
+
+    test('내 쏜 돌은 상대 쏜 돌보다 덜 튕긴다', () {
+      final mine = kick(c, StoneMaterial.hyeoncheol).$2;
+      final theirs = kick(
+        c,
+        StoneMaterial.hyeoncheol,
+        shooterTeam: 1,
+        targetTeam: 0,
+      ).$2;
+      expect(mine, lessThan(theirs * 0.75));
     });
     test('모양 3종', () {
       expect(

@@ -91,6 +91,10 @@ enum StoneMaterial {
   /// 엔진은 두 돌 반발 가운데 큰 값을 쓰므로, 맞은 돌 쪽에서 따로 곱한다.
   double pushedBy(StoneMaterial attacker) =>
       (1 + 0.04 * (attacker.grade - grade)).clamp(0.5, 1.5);
+
+  /// 내 편 돌로 상대 돌을 직접 맞혔을 때 상대가 더 밀리는 배수: 1단 ×1.2 → 13단 ×1.8
+  /// (2026-10-19 형 「상대방 돌은 내 돌과 부딪혔을때 더 많이 움직여야 해 · 고수가 되어 갈수록 더 커져야」).
+  double get strikeBoost => 1.2 + 0.05 * (grade - 1);
 }
 
 /// 모양 3종 (설계서 v2 §3.6).

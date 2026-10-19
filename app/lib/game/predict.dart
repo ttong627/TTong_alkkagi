@@ -29,6 +29,7 @@ List<Offset> predictPath(
         : Weather.clear,
     settle: match.table.settle,
     half: match.table.half,
+    favoredTeam: match.table.favoredTeam,
   );
   final path = <Offset>[];
   // 중간에 오류가 나도 세계는 반드시 치운다(남으면 128칸뿐인 세계 표가 찬다 · 2026-10-14 점검).
