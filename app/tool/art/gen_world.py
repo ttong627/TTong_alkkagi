@@ -106,8 +106,8 @@ def cover(im: Image.Image, size: tuple[int, int]) -> Image.Image:
     return im.crop((x, y, x + w, y + h))
 
 
-def icon(im: Image.Image) -> Image.Image:
-    """초록 지우기 → 그림만 잘라 → 정사각형 가운데(여백 6%) → 320."""
+def icon(im: Image.Image, size: tuple[int, int] = SIZE["icon"]) -> Image.Image:
+    """초록 지우기 → 그림만 잘라 → 정사각형 가운데(여백 6%) → [size]."""
     im = key_green(im)
     box = im.getchannel("A").point(lambda v: 255 if v > 24 else 0).getbbox()
     if box:
@@ -115,7 +115,7 @@ def icon(im: Image.Image) -> Image.Image:
     side = round(max(im.size) / 0.88)
     sq = Image.new("RGBA", (side, side), (0, 0, 0, 0))
     sq.alpha_composite(im, ((side - im.width) // 2, (side - im.height) // 2))
-    return sq.resize(SIZE["icon"], Image.LANCZOS)
+    return sq.resize(size, Image.LANCZOS)
 
 
 def apply(a) -> int:
@@ -130,9 +130,12 @@ def apply(a) -> int:
             miss.append(it["id"])
             continue
         im = Image.open(src)
-        if it["kind"] == "icon":
+        if it["kind"].startswith("appicon"):
+            continue  # 앱 아이콘은 apply_appicon.py 가 만든다.
+        if it["kind"] in ("icon", "pet"):
             dest = ASSETS / "icons" / f"{it['id']}.webp"
-            icon(im).save(dest, "WEBP", quality=90, method=6)
+            size = (480, 480) if it["kind"] == "pet" else SIZE["icon"]
+            icon(im, size).save(dest, "WEBP", quality=90, method=6)
         else:
             dest = ASSETS / "scenes" / f"{it['id']}.webp"
             cover(im.convert("RGB"), SIZE[it["kind"]]).save(dest, "WEBP", quality=82, method=6)

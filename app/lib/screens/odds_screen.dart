@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../game/flick.dart';
+import '../game/match.dart';
+import '../game/pets.dart';
 import '../progress/encounters.dart';
 import '../ui/art.dart';
 import '../ui/kit.dart';
@@ -30,6 +32,17 @@ class OddsScreen extends StatelessWidget {
       ('취선', '20%', '회심 때 내공 +1칸 더'),
       ('기인방 「내공 아낌」', '10%', '내공 쓸 때 1칸 돌려받음'),
       ('기인방 「장외 시 기」', '10%', '상대 돌 떨어뜨릴 때 내공 +1칸'),
+      (
+        '가장자리 기우뚱',
+        pct(const MatchConfig(mode: MatchMode.vsAi).edgeTipChance),
+        '이번 수에 움직인 돌이 판 끝에 걸쳐 서면(뽀록)',
+      ),
+      ('회전 기둥', '±34도 · ×0.85~1.4', '맞은 돌이 엇나가는 방향·세기'),
+      (
+        '영수 날쌘돌',
+        '${pct(PetKind.assistChance(1))}~${pct(PetKind.assistChance(PetKind.maxLevel))}',
+        '내가 칠 때 함께 튕기기(레벨)',
+      ),
     ];
     return GameScaffold(
       background: 'logicMarble',

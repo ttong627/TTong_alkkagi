@@ -160,6 +160,9 @@ class Table {
   /// 등급 밀림에서 우대하는 편(사람 = 편 0). null 이면 두 편 공평(둘이 하기 — 등급 차이만 본다).
   final int? favoredTeam;
 
+  /// 영수 금강(수호 · 2026-10-20): 상대가 칠 때 우대 편 돌이 밀리는 배수(1 = 그대로).
+  double heroGuard = 1;
+
   /// 바닥 감속 배수(대전장마다 다름). 1 이면 재질 × 모양 그대로.
   /// 흙바닥은 크게(잘 멈춤), 기름·얼음 바닥은 작게(잘 미끄러짐) 준다. 야우면 절반.
   double get floorFactor => _floorFactor;
@@ -442,6 +445,7 @@ class Table {
     if (stone.out) throw StateError('장외된 돌은 쏠 수 없다');
     _shatter = shatter;
     shattered.clear();
+    wing.clear();
     // 숫자가 아닌 값(NaN·무한대)은 엔진에 넣지 않는다 — 들어가면 판 전체가 깨진다(2026-10-14 점검).
     if (!angle.isFinite) angle = 0;
     if (!speed.isFinite) speed = 0;
@@ -484,8 +488,26 @@ class Table {
     final s = _shooter;
     if (s == null || s.out || _status != TurnStatus.moving) return;
     if (!angle.isFinite) return;
-    final sp = s.velocity.length;
-    s.body.linearVelocity = Vector2(math.cos(angle) * sp, math.sin(angle) * sp);
+    for (final st in [s, ...wing]) {
+      if (st.out) continue;
+      final sp = st.velocity.length;
+      st.body.linearVelocity = Vector2(
+        math.cos(angle) * sp,
+        math.sin(angle) * sp,
+      );
+    }
+  }
+
+  /// 함께 날아간 내 돌(어기어석 동행 · 영수 합공 · 2026-10-20). 꺾기([redirect])도 같이 받는다.
+  final wing = <Stone>[];
+
+  /// 쏜 직후 같은 편 돌 [s] 를 [angle] 쪽으로 [speed] 로 함께 날린다(쏜 돌이 아니므로 회심·무공은 없다).
+  void launchWing(Stone s, double angle, double speed) {
+    if (s.out || _disposed || identical(s, _shooter)) return;
+    if (!angle.isFinite || !speed.isFinite) return;
+    final v = speed.clamp(0.0, PhysicsConstants.maxShotSpeed);
+    s.body.linearVelocity = Vector2(math.cos(angle) * v, math.sin(angle) * v);
+    wing.add(s);
   }
 
   /// 처음 빠르기 [speed] · 타격점 [hit] → (옆 빠르기, 위로 빠르기) cm/s.
@@ -819,7 +841,9 @@ class Table {
       final even = direct && shooter.team != hero && weight > 1
           ? 1 / weight
           : 1.0;
-      return s.material.hitKeep * even * _glide(s);
+      // 영수 금강(수호): 상대 수에는 더 덜 밀린다.
+      final guard = shooter.team != hero ? heroGuard : 1.0;
+      return s.material.hitKeep * even * _glide(s) * guard;
     }
     if (direct && shooter.team == hero && s.team <= 1) {
       final even = weight < 1 ? 1 / weight : 1.0;

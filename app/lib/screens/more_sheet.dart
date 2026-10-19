@@ -13,6 +13,7 @@ import 'free_play_screen.dart';
 import 'legendary_shop_screen.dart';
 import 'look_screen.dart';
 import 'odds_screen.dart';
+import 'pet_screen.dart';
 import 'puzzle_screen.dart';
 import 'rebirth_screen.dart';
 import 'settings_screen.dart';
@@ -109,6 +110,15 @@ class MoreSheet extends StatelessWidget {
                 ),
               ]),
               _group('성장 · 꾸미기', [
+                _MoreItem(
+                  key: const Key('more-pet'),
+                  icon: 'pet',
+                  label: '영수',
+                  help: profile.pet == null
+                      ? '함께 싸우는 펫 — 데려오기 · 먹이 · 함께 다니기'
+                      : '함께 다니는 중: ${profile.pet!.label} Lv.${profile.petLevel}',
+                  onTap: () => open(const PetScreen()),
+                ),
                 _MoreItem(
                   key: const Key('more-codex'),
                   icon: 'codex',

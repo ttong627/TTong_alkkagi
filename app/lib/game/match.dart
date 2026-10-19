@@ -4,6 +4,7 @@ import 'package:alkkagi_physics/alkkagi_physics.dart';
 import 'package:flutter/foundation.dart';
 
 import 'arena.dart';
+import 'pets.dart';
 
 /// 판 모드.
 enum MatchMode {
@@ -284,6 +285,9 @@ class MatchConfig {
     this.aiPowerScale = 1,
     this.aiBlunder = 0,
     this.edgeTipChance = 0.35,
+    this.ultimateWing = 0,
+    this.pet,
+    this.petLevel = 1,
   });
 
   /// AI 가 가장 좋은 수 대신 그 아래 후보에서 고를 확률(0~1). 「쉬움」의 실수.
@@ -292,6 +296,14 @@ class MatchConfig {
   /// 판 가장자리에 아슬아슬하게 멈춘 돌이 기우뚱 떨어질 확률(0 이면 끔 · 2026-10-20 형 「가끔 뽀록이라하는
   /// 재수 좋게 처리되는 부분이랑 열받는 부분도」). 이번 수에 움직인 돌만 · 묘수풀이·목인항에는 없다.
   final double edgeTipChance;
+
+  /// 어기어석 때 함께 날아가는 내 돌 수(내공 경지 · 2026-10-20 형 「내 내공이 올라가면 어기어석으로 공격할때
+  /// 내공에 따라 몇개 돌을 함께 조정 할 수 있도록」). 쏜 돌에 가까운 돌부터, 꺾기도 같이 받는다.
+  final int ultimateWing;
+
+  /// 데려온 영수와 레벨(사람 대 AI 판 · [PetKind]).
+  final PetKind? pet;
+  final int petLevel;
 
   /// AI 세기 배수(1 = 그대로). 늘 세게 치는 고수(통통)를 「쉬움」에서 누그러뜨린다.
   final double aiPowerScale;
@@ -445,6 +457,9 @@ class Match extends ChangeNotifier {
       ) {
     for (final f in config.features) {
       table.addFeature(f);
+    }
+    if (config.pet == PetKind.turtle) {
+      table.heroGuard = PetKind.guard(config.petLevel);
     }
     // 대전장 기본 담장·장애물(묘수풀이·트릭샷·목인항 제외 · 판에 지물이 이미 있으면 담장만).
     if (config.layout == null && !config.training) {
@@ -721,8 +736,32 @@ class Match extends ChangeNotifier {
       impactScale: mine ? config.impactScale : 1,
       innerSpeed: mine ? config.innerSpeed : TechniqueConstants.innerSpeed,
       // 회심 평타로 정면을 맞히면 박살(묘수풀이·트릭샷은 정해 둔 풀이를 지킨다).
-      shatter: lastCritical && config.layout == null && !config.training,
+      shatter:
+          (lastCritical ||
+              (mine && volleyArmed && config.pet == PetKind.dragon)) &&
+          config.layout == null &&
+          !config.training,
     );
+    lastWing = 0;
+    lastPetAssist = false;
+    var wing = mine && m == StrikeMode.ultimate ? config.ultimateWing : 0;
+    if (mine && volleyArmed) {
+      wing += config.pet!.volleyWing(config.petLevel);
+      volleysLeft--;
+      volleyArmed = false;
+      lastVolley = true;
+    } else {
+      lastVolley = false;
+    }
+    if (wing > 0) lastWing = _launchWing(s, angle, speed * 0.85, wing);
+    // 날쌘돌: 확률로 내 돌 하나를 그 돌에서 가장 가까운 상대 돌 쪽으로 함께 튕긴다.
+    if (mine &&
+        config.pet == PetKind.squirrel &&
+        config.layout == null &&
+        !config.training &&
+        _rand.nextDouble() < PetKind.assistChance(config.petLevel)) {
+      lastPetAssist = _squirrel(s);
+    }
     _turnCount++;
     notifyListeners();
   }
@@ -839,7 +878,9 @@ class Match extends ChangeNotifier {
   static const double nudgeMax = 0.07, nudgeKeep = 0.5;
 
   double nudgeAngle(Stone s, double angle) {
-    var best = nudgeMax;
+    var best = config.pet == PetKind.crane
+        ? PetKind.aim(config.petLevel)
+        : nudgeMax;
     double? fix;
     for (final o in table.stones) {
       if (o.out || o.team != 1 - s.team) continue;
@@ -870,6 +911,71 @@ class Match extends ChangeNotifier {
 
   /// 내가 상대 돌을 연달아 떨어뜨린 수(연타). 2 부터 한 수에 엽전 [comboCoin] × 연타.
   int combo = 0;
+
+  /// 영수 합공(백호·금룡): 남은 횟수 · 다음 수에 쓰기로 했나 · 이번 수가 합공이었나.
+  late int volleysLeft = config.pet?.volleys(config.petLevel) ?? 0;
+  bool volleyArmed = false;
+  bool lastVolley = false;
+
+  /// 합공 켜고 끄기(내 차례에 · 남은 횟수가 있을 때).
+  void toggleVolley() {
+    if (volleysLeft <= 0 || isMoving || _turn != 0) return;
+    volleyArmed = !volleyArmed;
+    notifyListeners();
+  }
+
+  /// 이번 수에 날쌘돌이 함께 튕겼나(연출용).
+  bool lastPetAssist = false;
+
+  bool _squirrel(Stone shooter) {
+    Stone? best;
+    Stone? target;
+    var bestD = double.infinity;
+    for (final o in table.stones) {
+      if (o.out || identical(o, shooter) || o.team != shooter.team) continue;
+      for (final e in table.stones) {
+        if (e.out || e.team != 1 - shooter.team) continue;
+        final d = (e.position - o.position).length;
+        if (d < bestD) {
+          bestD = d;
+          best = o;
+          target = e;
+        }
+      }
+    }
+    if (best == null || target == null) return false;
+    final d = target.position - best.position;
+    table.launchWing(
+      best,
+      math.atan2(d.y, d.x),
+      PetKind.assistSpeed(config.petLevel),
+    );
+    return true;
+  }
+
+  /// 이번 수에 함께 날아간 내 돌 수(연출용).
+  int lastWing = 0;
+
+  /// 쏜 돌 [s] 에 가까운 같은 편 돌 [n] 개를 같은 방향으로 함께 날린다. 실제로 날린 수.
+  int _launchWing(Stone s, double angle, double speed, int n) {
+    final mates =
+        table.stones
+            .where(
+              (o) =>
+                  !o.out && !identical(o, s) && o.team == s.team && !o.phantom,
+            )
+            .toList()
+          ..sort(
+            (a, b) => (a.position - s.position).length.compareTo(
+              (b.position - s.position).length,
+            ),
+          );
+    final pick = mates.take(n).toList();
+    for (final o in pick) {
+      table.launchWing(o, angle, speed);
+    }
+    return pick.length;
+  }
 
   /// 목인항: 더미를 연달아 맞힌 수.
   int trainStreak = 0;

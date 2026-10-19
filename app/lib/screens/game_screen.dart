@@ -781,6 +781,8 @@ class _GameScreenState extends State<GameScreen> {
                             onTap: _openItems,
                           ),
                         ],
+                        if (widget.config.pet != null)
+                          _PetChip(key: const Key('pet'), match: _match),
                         Expanded(
                           child: _Fighter(
                             id: _foeId,
@@ -1024,6 +1026,76 @@ class _Result {
 }
 
 /// 둥근 아이콘 단추(일시정지 등).
+/// 판 위 영수: 얼굴 · 백호·금룡은 눌러서 다음 수 합공 켜기(남은 횟수).
+class _PetChip extends StatelessWidget {
+  const _PetChip({super.key, required this.match});
+  final Match match;
+
+  @override
+  Widget build(BuildContext context) {
+    final pet = match.config.pet!;
+    final active = match.volleysLeft > 0 || match.volleyArmed;
+    final armed = match.volleyArmed;
+    return Semantics(
+      button: active,
+      label: '${pet.label}${active ? ' 합공 ${match.volleysLeft}' : ''}',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: active
+            ? () {
+                Sound.play(match.volleyArmed ? 'ui_back' : 'inner', 0.8);
+                match.toggleVolley();
+              }
+            : null,
+        child: Container(
+          width: 52,
+          height: 52,
+          margin: const EdgeInsets.only(left: 6, right: 4),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: armed ? const Color(0xCCFFB04A) : Colors.black54,
+            border: Border.all(
+              color: armed ? Colors.white : Palette.gold.withValues(alpha: 0.6),
+              width: armed ? 3 : 1.5,
+            ),
+          ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned.fill(
+                child: Padding(
+                  padding: const EdgeInsets.all(3),
+                  child: Image.asset(Art.icon(pet.art)),
+                ),
+              ),
+              if (active)
+                Positioned(
+                  right: -4,
+                  bottom: -4,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5),
+                    decoration: BoxDecoration(
+                      color: armed ? Colors.white : Palette.red,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      armed ? '합공!' : '${match.volleysLeft}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: armed ? Palette.red : Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _RoundIcon extends StatelessWidget {
   const _RoundIcon({
     super.key,
