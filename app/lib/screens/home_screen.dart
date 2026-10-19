@@ -22,16 +22,12 @@ import 'arena_screen.dart';
 import 'campaign_screen.dart';
 import 'codex_screen.dart';
 import 'crash_report_dialog.dart';
-import 'credits_screen.dart';
 import 'daily_screen.dart';
-import 'depot_screen.dart';
 import 'free_play_screen.dart';
 import 'hero_pick_screen.dart';
 import 'legendary_shop_screen.dart';
 import 'look_screen.dart';
-import 'odds_screen.dart';
-import 'puzzle_screen.dart';
-import 'rebirth_screen.dart';
+import 'more_sheet.dart';
 import 'settings_screen.dart';
 import 'shop_screen.dart';
 import 'stats_screen.dart';
@@ -188,63 +184,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _more() {
-    final p = _store.profile;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (c) => Padding(
-        padding: const EdgeInsets.all(12),
-        child: GlassPanel(
-          child: Wrap(
-            alignment: WrapAlignment.spaceEvenly,
-            spacing: 14,
-            runSpacing: 14,
-            children: [
-              IconTile(
-                icon: 'free',
-                label: '자유 대전',
-                onTap: () => _sheetGo(c, const FreePlayScreen()),
-              ),
-              IconTile(
-                icon: 'puzzle',
-                label: '묘수풀이',
-                onTap: () => _sheetGo(c, const PuzzleScreen()),
-              ),
-              IconTile(
-                icon: 'depot',
-                label: '보급소',
-                onTap: () => _sheetGo(c, const DepotScreen()),
-              ),
-              IconTile(
-                icon: 'look',
-                label: '꾸미기',
-                onTap: () => _sheetGo(c, const LookScreen()),
-              ),
-              if (p.canRebirth || p.rebirths > 0)
-                IconTile(
-                  icon: 'rebirth',
-                  label: '환생',
-                  badge: p.canRebirth,
-                  onTap: () => _sheetGo(c, const RebirthScreen()),
-                ),
-              IconTile(
-                icon: 'odds',
-                label: '확률',
-                onTap: () => _sheetGo(c, const OddsScreen()),
-              ),
-              IconTile(
-                icon: 'settings',
-                label: '설정',
-                onTap: () => _sheetGo(c, const SettingsScreen()),
-              ),
-              IconTile(
-                icon: 'mail',
-                label: '만든 이',
-                onTap: () => _sheetGo(c, const CreditsScreen()),
-              ),
-            ],
-          ),
-        ),
+      isScrollControlled: true,
+      builder: (c) => MoreSheet(
+        profile: _store.profile,
+        open: (screen) => _sheetGo(c, screen),
       ),
     );
   }

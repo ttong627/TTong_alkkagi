@@ -1,0 +1,67 @@
+{
+  "_설명": "2026-10-19 형 「나머지 기능에서도 그래픽을 다 바꿔주고 코덱스를 이용한 이미지 제작해서 다 적용」 — 배경 7 · 대전장 바닥 6 · 아이콘 31 을 캐릭터(wuxia_cast.json)와 같은 손그림 무협 화풍으로. 뜻(무엇을 그린 그림인지)은 예전 그림 그대로.",
+  "kinds": {
+    "bg": {
+      "ratio": "9:16",
+      "style": "Vertical background painting for a Korean wuxia mobile game, same art direction as premium hand-painted anime cel-shaded wuxia character art: rich painterly East Asian landscape, layered atmospheric perspective, ink-wash mountains and mist, warm cinematic light, detailed but calm. The lower 60% of the image must stay low-contrast and uncluttered because game menus and characters are drawn on top of it. No people, no characters, no animals in the foreground, no text, no letters, no calligraphy, no signature, no watermark, no frame, no UI."
+    },
+    "floor": {
+      "ratio": "1:1",
+      "style": "Seamless top-down game board surface texture seen exactly from directly above (orthographic, no perspective, no horizon), even soft lighting with no strong shadows, hand-painted wuxia game art style matching premium anime cel-shaded illustration. Medium-low contrast so small round black and white playing stones stay clearly readable on top of it. Fill the whole square edge to edge. No objects standing on it, no stones, no people, no text, no letters, no symbols, no border, no frame, no vignette."
+    },
+    "icon": {
+      "ratio": "1:1",
+      "style": "Single game UI icon for a Korean wuxia mobile game, premium hand-painted anime cel shading with clean confident dark ink outline, rich warm colors, soft highlight from the upper left, bold simple silhouette that stays readable when shown as small as 24 pixels, the object centered and filling about 80% of the image, background is ONE flat solid pure green color (#00FF00) with nothing else in it — no ground, no cast shadow, no glow outside the object, no text, no letters, no numbers unless asked, no signature, no watermark, no frame."
+    }
+  },
+  "items": [
+    {"id": "bg_lobby", "kind": "bg", "desc": "The home village gate of the wuxia world at dusk: a red-pillared wooden pavilion gate with tiled roof and two glowing paper lanterns at the bottom center, misty purple-blue mountains behind, a large pale full moon in a violet-orange evening sky, pine trees at the sides."},
+    {"id": "bg_dustyYard", "kind": "bg", "desc": "Chapter 1 'Dusty village yard': a humble mountain village at the foot of a mountain in warm late-afternoon sun, thatched-roof huts, a dirt path, dry grass and drifting dust, soft golden hills behind."},
+    {"id": "bg_oilyTable", "kind": "bg", "desc": "Chapter 2 'Tongtong inn': interior of a lively wuxia inn at night, warm lantern light, wooden beams, hanging red lanterns, shelves of wine jars, steam from a kitchen, polished round wooden tables in the distance."},
+    {"id": "bg_turtleMarket", "kind": "bg", "desc": "Chapter 3 'Turtle market': a busy old stone-paved market street seen from above at a slight angle, colorful cloth awnings, stalls with goods, a stone turtle statue, warm daylight, banners without writing."},
+    {"id": "bg_kubiForest", "kind": "bg", "desc": "Chapter 4 'Kubi mountain bandit camp forest path': deep green bamboo forest on a mountain, tall bamboo stalks framing both sides, misty green ridges behind, floating fireflies, a wooden bandit palisade barely visible in the mist."},
+    {"id": "bg_logicMarble", "kind": "bg", "desc": "Chapter 5 'Logic academy': a serene Confucian academy hall of white marble and blue-grey tiles on a mountainside, scholar pavilions, pine trees, cool clear morning light with drifting clouds."},
+    {"id": "bg_murimIce", "kind": "bg", "desc": "Chapter 6 'Murim alliance headquarters, the grand tournament': a majestic snowy mountain-top fortress of the martial-arts alliance with grand tiled roofs and banners without writing, frozen lake below, blue-white icy light, falling snow, aurora-like qi glow in the sky."},
+
+    {"id": "floor_dustyYard", "kind": "floor", "desc": "Packed brown dirt ground of a village yard with fine dust, a few tiny pebbles and sparse little grass tufts, rough and dry."},
+    {"id": "floor_oilyTable", "kind": "floor", "desc": "Glossy dark-honey lacquered wooden tabletop of an inn with fine wood grain, a few faint glistening oil sheens, warm reflections."},
+    {"id": "floor_turtleMarket", "kind": "floor", "desc": "Old grey-beige square flagstone pavement of a market street, worn stone slabs with thin mortar lines, subtle moss in a few cracks."},
+    {"id": "floor_kubiForest", "kind": "floor", "desc": "Forest path of soft dark earth covered with scattered fallen bamboo and maple leaves in green, yellow and red, a little moss."},
+    {"id": "floor_logicMarble", "kind": "floor", "desc": "Polished pale white-and-grey veined marble floor slab, smooth and clean, soft cool sheen."},
+    {"id": "floor_murimIce", "kind": "floor", "desc": "Frozen lake ice surface, pale blue-white clear ice with fine frost patterns, faint cracks and trapped bubbles, cold sheen."},
+
+    {"id": "arena", "kind": "icon", "desc": "A golden tournament trophy cup with two handles and a star on it (the duel arena)."},
+    {"id": "attendance", "kind": "icon", "desc": "A small wuxia bamboo-slip calendar / scroll calendar with a red seal stamp mark (daily attendance)."},
+    {"id": "campaign", "kind": "icon", "desc": "Green misty mountain peaks with a small red banner flag on the top and a dotted red path climbing up (the story journey)."},
+    {"id": "chest", "kind": "icon", "desc": "A closed wooden treasure chest with golden metal bands and lock plate."},
+    {"id": "codex", "kind": "icon", "desc": "An open old martial-arts manual book with stitched binding and faint ink diagrams (the collection book)."},
+    {"id": "coin", "kind": "icon", "desc": "A round gold East Asian coin with a square hole in the middle (currency)."},
+    {"id": "dan", "kind": "icon", "desc": "A glossy round red elixir pill (dan) with a soft red glow inside the outline only."},
+    {"id": "depot", "kind": "icon", "desc": "A stack of wooden supply crates with a small blue flag on top (the storehouse)."},
+    {"id": "free", "kind": "icon", "desc": "Two round flat playing stones, one white and one black, overlapping slightly (free play)."},
+    {"id": "legend", "kind": "icon", "desc": "A special ornate treasure chest glowing with golden light and little sparkles (the legendary dealer)."},
+    {"id": "lock", "kind": "icon", "desc": "A sturdy bronze padlock, closed."},
+    {"id": "look", "kind": "icon", "desc": "An ornate bronze hand mirror with a round polished glass (appearance / looks)."},
+    {"id": "mail", "kind": "icon", "desc": "A folded paper letter envelope sealed with a red wax seal (mail)."},
+    {"id": "medal", "kind": "icon", "desc": "A gold medal with a star in the middle hanging from a red and blue ribbon."},
+    {"id": "mission", "kind": "icon", "desc": "A small wooden board or paper list with three lines and green check marks (missions / quests)."},
+    {"id": "naegong", "kind": "icon", "desc": "A glowing black-and-white yin-yang taiji symbol with a soft blue qi aura inside the outline (inner energy)."},
+    {"id": "odds", "kind": "icon", "desc": "Two ivory dice with red and black pips tumbling (drop chances)."},
+    {"id": "puzzle", "kind": "icon", "desc": "A purple jigsaw puzzle piece with a small white playing stone on it (stone puzzles)."},
+    {"id": "rank", "kind": "icon", "desc": "A three-step winners podium, the tallest middle step gold with the number 1 on it, the others silver and bronze."},
+    {"id": "rebirth", "kind": "icon", "desc": "A golden-orange phoenix-like flame bud rising, warm glow inside the outline (rebirth)."},
+    {"id": "settings", "kind": "icon", "desc": "A steel-grey mechanical gear cog."},
+    {"id": "shop", "kind": "icon", "desc": "A red cloth money pouch tied with a golden cord, with a gold coin emblem on it (the general store)."},
+    {"id": "silver", "kind": "icon", "desc": "A shiny silver sycee ingot (boat-shaped silver money)."},
+    {"id": "stamina", "kind": "icon", "desc": "A bright blue spirit flame (vital energy / stamina)."},
+    {"id": "star", "kind": "icon", "desc": "A plump bright golden five-pointed star."},
+    {"id": "star_empty", "kind": "icon", "desc": "A plump five-pointed star in dark brown-grey, dull and unlit (an empty rating star)."},
+    {"id": "stats", "kind": "icon", "desc": "A clenched martial artist's fist wrapped with cloth, with small orange power marks (strength stats)."},
+    {"id": "token", "kind": "icon", "desc": "A red and gold heraldic shield-shaped clan token with a gold star in the middle."},
+    {"id": "tp", "kind": "icon", "desc": "A rolled-open paper scroll on wooden rods with a gold star painted on it (training points)."},
+    {"id": "training", "kind": "icon", "desc": "A wooden wing chun training dummy (mok-in-jang) with arms sticking out, with small orange impact marks."},
+    {"id": "wander", "kind": "icon", "desc": "An antique brass compass with a red and white needle (wandering the martial world)."},
+    {"id": "weather", "kind": "icon", "desc": "A swirling grey-blue storm cloud with a few rain streaks and a small lightning bolt (heavenly weather)."},
+    {"id": "terrain", "kind": "icon", "desc": "A small rocky outcrop with a gnarled pine tree growing on it and a little bamboo shoot beside it (terrain features on the board)."}
+  ]
+}
