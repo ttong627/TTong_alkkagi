@@ -169,7 +169,7 @@ jobs:
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: TTong.alkkagi
+          packageName: ttong.alkkagi
           releaseFiles: ${{ runner.temp }}/out/tanji-murim-${{ env.BUILD_NUMBER }}.aab
           track: ${{ inputs.play_track }}
           status: ${{ inputs.play_status }}
