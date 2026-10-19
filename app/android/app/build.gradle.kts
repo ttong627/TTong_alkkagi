@@ -47,11 +47,16 @@ android {
     // 두 가지 판(2026-10-11 형 요청 「자동 업데이트」):
     //  - sideload: 휴대폰 시험판. 켤 때 새 판을 받아 스스로 업데이트한다(인터넷·설치 권한).
     //  - play: 플레이 스토어 판. 스토어가 업데이트하므로 업데이트 기능·인터넷 권한이 없다.
-    // 둘 다 앱 ID 가 같아 지금 깔린 시험판 위로 그대로 업데이트된다.
+    // 시험판(sideload)은 앱 ID `TTong.alkkagi` 그대로 — 깔린 시험판 위로 업데이트된다.
+    // 플레이 판은 `ttong.alkkagi`: 2026-10-19 플레이 콘솔이 대문자로 시작하는 패키지 이름을 받지 않아
+    // (「소문자로 시작해야 합니다」) 소문자로 만들었다. 두 판은 폰에 따로 깔린다. 코틀린 namespace 는 그대로.
     flavorDimensions += "channel"
     productFlavors {
         create("sideload") { dimension = "channel" }
-        create("play") { dimension = "channel" }
+        create("play") {
+            dimension = "channel"
+            applicationId = "ttong.alkkagi"
+        }
     }
 
     buildTypes {
