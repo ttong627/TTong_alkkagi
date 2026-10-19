@@ -191,10 +191,130 @@ class BattleFx {
     }
   }
 
-  /// 한 수가 끝났을 때: 일타쌍피(설계서 §16.7) — 한 수에 상대 돌 2개 이상.
+  /// 대사 고르기(연출만 — 판 결과와 무관하니 씨앗 없이).
+  final _quipRand = math.Random();
+  String _pick(List<String> xs) => xs[_quipRand.nextInt(xs.length)];
+
+  /// 목인항 한 수: 연타가 길수록 글자·흔들림·소리가 커진다. 5·10·20·30 연타는 큰 장면.
+  void _trainingHit(Match m) {
+    final n = m.trainStreak;
+    if (n == 0) {
+      _text(const Offset(0, -4), '빗나감…', const Color(0xFFB0A8A0), size: 20);
+      return;
+    }
+    final k = math.min(n, 12);
+    const tiers = [
+      Color(0xFFFFFFFF),
+      Color(0xFFFFE08A),
+      Color(0xFFFFB04A),
+      Color(0xFFFF6B4A),
+      Color(0xFFE85AFF),
+    ];
+    final c = tiers[math.min(4, (n - 1) ~/ 3)];
+    final big = n % 10 == 0 || n == 5;
+    _text(
+      const Offset(0, -4),
+      n == 1 ? '1타!' : '$n연타${big ? '!!' : '!'}',
+      c,
+      size: 24 + k * 2.0 + (big ? 10 : 0),
+    );
+    _shake = math.max(_shake, 3 + k * 0.9 + (big ? 8 : 0));
+    _rings.add(_Ring(const Offset(0, -6), 0.5, 4 + k * 0.5, 0.4, c));
+    if (big) {
+      _flash = math.max(_flash, 0.4);
+      _flashColor = c;
+      _burst(const Offset(0, -6), c, 30 + k * 2, 22);
+      _slow(0.4, 0.35);
+      Sound.play(n >= 10 ? 'finisher' : 'jingle_reward', 0.8);
+    } else if (n >= 3) {
+      Sound.play('clash_beat', math.min(1, 0.4 + k * 0.05));
+    }
+    if (n == 3) Sound.play('star');
+  }
+
+  /// 떨어지는 상대 돌의 비명(2026-10-20 형 「묘한 중독성이랑 은근히 웃기도 재미가」).
+  static const fallLines = [
+    '으악~',
+    '엄마야!',
+    '다음 생엔 바둑알로…',
+    '살려줘~',
+    '날 잊지 마…',
+    '히익!',
+    '먼저 갈게~',
+    '이건 반칙이야!',
+  ];
+
+  /// 회전 기둥에 맞고 엇나갈 때.
+  static const pillarLines = ['팽그르르!', '엇나갔다!', '기둥 맞고 휘청~', '어디로 튈지 몰라!'];
+
+  /// 담장에 맞고 되튈 때.
+  static const fenceLines = ['쿵! 되튕김', '담장 반동!', '벽 타고 돌아온다!'];
+
+  /// 내가 헛손질했을 때 상대의 놀림.
+  static const missLines = [
+    '헛손질~',
+    '바람만 갈랐구나',
+    '어디를 보는 게냐',
+    '허공 베기 달인',
+    '눈 감고 쳤느냐?',
+  ];
+
+  /// 한 수가 끝났을 때: 뽀록·아슬아슬 → 연타 → 대사 → 일타쌍피(설계서 §16.7).
   void onTurnEnd(Match m) {
-    if (m.lastKnocked < 2) return;
+    if (m.config.training) {
+      _trainingHit(m);
+      return;
+    }
     final mine = m.lastShooter == 0;
+    var line = -4.6;
+    void say(String s, Color c, {double size = 24}) {
+      _text(Offset(0, line), s, c, size: size);
+      line += 2.4;
+    }
+
+    const lucky = Color(0xFFFFD86A), sore = Color(0xFFFF6B6B);
+    for (final e in m.luckEvents) {
+      final at = Offset(e.x, e.y);
+      final byMe = e.team == m.lastShooter;
+      if (e.tipped) {
+        final d = at.distance;
+        falls.add(
+          FallingStone(
+            at,
+            d > 0 ? at / d * 14 : const Offset(0, 14),
+            e.team,
+            e.stone.material,
+            e.stone.shape,
+          ),
+        );
+        Sound.play('out_thud');
+        if (!byMe) {
+          say(mine ? '뽀록! 기우뚱 떨어졌다' : '뽀록이라니… 열받네!', mine ? lucky : sore);
+        } else {
+          say(mine ? '아이고, 미끄러졌다!' : '자멸이로다~', mine ? sore : lucky);
+        }
+        _shake = math.max(_shake, 6);
+      } else if (!byMe) {
+        say(mine ? '버텼다?! 얄밉다…' : '휴~ 구사일생!', mine ? sore : lucky);
+      }
+    }
+    if (m.lastFluke > 0 && !m.luckEvents.any((e) => e.tipped)) {
+      say(mine ? '어부지리! 뽀록이다' : '어부지리라니…', mine ? lucky : sore);
+    }
+    if (mine && m.combo >= 2) {
+      say(
+        '연타 ×${m.combo}! 엽전 +${Match.comboCoin * m.combo}',
+        innerColor,
+        size: 28,
+      );
+      Sound.play('coin');
+    }
+    if (m.lastKnocked > 0 && m.lastKnocked < 2) {
+      say(_pick(fallLines), mine ? Colors.white : sore, size: 22);
+    } else if (mine && m.lastMissed && m.config.mode == MatchMode.vsAi) {
+      say(_pick(missLines), sore, size: 22);
+    }
+    if (m.lastKnocked < 2) return;
     final c = mine ? innerColor : const Color(0xFFFF6B6B);
     final name = switch (m.lastKnocked) {
       2 => '일타쌍피!',
@@ -218,9 +338,25 @@ class BattleFx {
   }
 
   /// 물리 한 스텝 뒤: 충돌·무공·장외를 보고 연출을 붙인다.
+  /// 이번 수에 이미 보여 준 박살 수(연쇄 글자를 한 번씩).
+  int _shatterShown = 0;
+
   void onStep(Match m, Set<int> wasOut) {
     final t = m.table;
     final shooterId = t.shooter?.id ?? -1;
+    if (t.shattered.length < _shatterShown) _shatterShown = 0;
+    for (final b in t.shattered.skip(_shatterShown)) {
+      if (b.chain > 0) {
+        _text(
+          Offset(b.x, b.y - 3.2),
+          b.chain == 1 ? '연쇄 박살!' : '연쇄 ${b.chain + 1}단 박살!!',
+          const Color(0xFFFF9A3C),
+          size: 34,
+        );
+        _slow(0.35, 0.5);
+      }
+    }
+    _shatterShown = t.shattered.length;
     var sounds = 0;
     for (final i in t.impacts) {
       // 재질별 충돌음: 쏜 돌이 맞힌 돌(아니면 먼저 적힌 돌)의 재질. 한 걸음에 둘까지.
@@ -368,6 +504,19 @@ class BattleFx {
           const c = Color(0xFF5FE08A);
           _rings.add(_Ring(at, 0.3, 2.5, 0.3, c));
           _text(at.translate(0, -2), '청죽!', c, size: 22);
+        case phys.TerrainFx.pillar:
+          Sound.play('hit_hyeoncheol');
+          const c = Color(0xFFFFC857);
+          _rings.add(_Ring(at, 0.4, 3, 0.35, c));
+          _burst(at, c, 12, 14);
+          _shake = math.max(_shake, 6);
+          _text(at.translate(0, -2), _pick(pillarLines), c, size: 22);
+        case phys.TerrainFx.fence:
+          Sound.play('hit_wood');
+          const c = Color(0xFFE8C48A);
+          _rings.add(_Ring(at, 0.3, 2.2, 0.3, c));
+          _shake = math.max(_shake, 4);
+          _text(at.translate(0, -2), _pick(fenceLines), c, size: 20);
       }
     }
     for (final (name, x, y) in m.artEvents) {

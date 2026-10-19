@@ -219,6 +219,12 @@ class Table {
   bool _inner = false;
   double _curl = 0;
   bool _firstHit = false;
+
+  /// 이번 수가 회심이라 정면으로 맞힌 상대 돌을 박살 내나([shoot] 의 `shatter`).
+  bool _shatter = false;
+
+  /// 이번 수에 박살난 돌(연출용 · 연쇄면 [Shatter.chain] 이 1 이상).
+  final shattered = <Shatter>[];
   int _swordQiLeft = 0;
   int _absorbLeft = 0;
   Vector2? _absorbAt;
@@ -338,15 +344,51 @@ class Table {
   }
 
   /// 지물을 놓는다(나뭇가지·조약돌·청죽·경종·블랙홀·지뢰석).
+  /// 판이 움직인 시간(초) — 회전 기둥의 자세가 이 시간을 따른다. AI·궤적 미리 보기 판은 진짜 판의 값으로 맞춘다.
+  double clock = 0;
+
+  /// 회전 기둥에 맞은 돌을 엇나가게 하는 운(판마다 다름 — 미리 보기와 꼭 같지 않다).
+  late final math.Random _kick = math.Random(windSeed * 31 + 7);
+
+  /// 지물의 지금 자리·각도(회전 기둥은 움직인 자리).
+  (double, double, double) poseOf(Feature f) {
+    final b = _featureBodies[f];
+    if (b == null || f.kind != FeatureKind.pillar) return (f.x, f.y, f.angle);
+    final p = b.position;
+    return (p.x, p.y, b.angle);
+  }
+
   void addFeature(Feature f) {
     features.add(f);
+    final pillar = f.kind == FeatureKind.pillar;
+    final (px, py, pa) = f.poseAt(clock);
     final body = world.createBody(
-      BodyDef(type: BodyType.static, position: Vector2(f.x, f.y)),
+      BodyDef(
+        type: pillar ? BodyType.kinematic : BodyType.static,
+        position: Vector2(px, py),
+      ),
     );
-    final geometry = f.kind == FeatureKind.branch
-        ? Polygon.box(f.size, TerrainConstants.branchHalfThickness)
+    if (pillar) {
+      body.setTransform(Vector2(px, py), Rot.fromAngle(pa));
+    }
+    final bar = f.kind == FeatureKind.branch || f.kind == FeatureKind.fence;
+    final geometry = bar
+        ? Polygon.box(
+            f.size,
+            f.kind == FeatureKind.fence
+                ? TerrainConstants.fenceHalfThickness
+                : TerrainConstants.branchHalfThickness,
+          )
+        : pillar
+        ? Polygon([
+            for (var k = 0; k < f.sides.clamp(3, Polygon.maxVertices); k++)
+              Vector2(
+                math.cos(k * 2 * math.pi / f.sides.clamp(3, 8)) * f.size,
+                math.sin(k * 2 * math.pi / f.sides.clamp(3, 8)) * f.size,
+              ),
+          ])
         : Circle(radius: f.size);
-    if (f.kind == FeatureKind.branch) {
+    if (bar) {
       body.setTransform(Vector2(f.x, f.y), Rot.fromAngle(f.angle));
     }
     final restitution = switch (f.kind) {
@@ -355,6 +397,9 @@ class Table {
       FeatureKind.bamboo => TerrainConstants.bambooRestitution,
       FeatureKind.gong => 0.6,
       FeatureKind.blackHole || FeatureKind.mine => 0.2,
+      FeatureKind.fence => TerrainConstants.fenceRestitution,
+      FeatureKind.rock => 0.6,
+      FeatureKind.pillar => TerrainConstants.pillarRestitution,
     };
     body.createShape(
       geometry,
@@ -392,8 +437,11 @@ class Table {
     double spinScale = 1,
     double impactScale = 1,
     double innerSpeed = TechniqueConstants.innerSpeed,
+    bool shatter = false,
   }) {
     if (stone.out) throw StateError('장외된 돌은 쏠 수 없다');
+    _shatter = shatter;
+    shattered.clear();
     // 숫자가 아닌 값(NaN·무한대)은 엔진에 넣지 않는다 — 들어가면 판 전체가 깨진다(2026-10-14 점검).
     if (!angle.isFinite) angle = 0;
     if (!speed.isFinite) speed = 0;
@@ -470,7 +518,9 @@ class Table {
     _beforeStep(shooter);
     terrainEvents.clear();
     _terrainBefore();
+    _movePillars();
     world.step(PhysicsConstants.step);
+    clock += PhysicsConstants.step;
     _turnSteps++;
     _collectImpacts();
     _terrainAfter();
@@ -613,6 +663,21 @@ class Table {
     }
   }
 
+  /// 회전 기둥: 이번 스텝의 도는 빠르기와 오가는 빠르기(물리가 자리를 옮긴다 · 맞은 돌에 힘이 제대로 실린다).
+  void _movePillars() {
+    for (final f in features) {
+      if (f.kind != FeatureKind.pillar) continue;
+      final b = _featureBodies[f];
+      if (b == null) continue;
+      b.angularVelocity = f.spin;
+      final v = f.swing * f.swingRate * math.cos(f.swingRate * clock);
+      b.linearVelocity = Vector2(
+        math.cos(f.swingAngle) * v,
+        math.sin(f.swingAngle) * v,
+      );
+    }
+  }
+
   /// 한 스텝 뒤: 지물에 부딪힌 돌(경종·지뢰석·청죽)과 혹한.
   void _terrainAfter() {
     // 터진 지뢰석은 반복이 끝난 뒤 치운다 — 같은 스텝의 다음 충돌이 치운 모양을 읽던 것(2026-10-14 점검).
@@ -653,7 +718,37 @@ class Table {
           terrainEvents.add(
             TerrainEvent(TerrainFx.bamboo, h.point.x, h.point.y),
           );
-        case FeatureKind.branch || FeatureKind.pebble || FeatureKind.blackHole:
+        case FeatureKind.fence:
+          // 빠르게 맞고 되튄 것만(살짝 스친 것은 조용히).
+          if (h.approachSpeed > 20) {
+            terrainEvents.add(
+              TerrainEvent(TerrainFx.fence, h.point.x, h.point.y),
+            );
+          }
+        case FeatureKind.pillar:
+          // 엇나가게: 방향 ±0.6 라디안 · 세기 0.85~1.4 배(같은 수라도 매번 다르게).
+          final v = st.velocity;
+          if (v.length > 2) {
+            final a =
+                (_kick.nextDouble() * 2 - 1) * TerrainConstants.pillarKickAngle;
+            final k =
+                TerrainConstants.pillarKickMin +
+                _kick.nextDouble() *
+                    (TerrainConstants.pillarKickMax -
+                        TerrainConstants.pillarKickMin);
+            final c = math.cos(a), sn = math.sin(a);
+            st.body.linearVelocity = Vector2(
+              (v.x * c - v.y * sn) * k,
+              (v.x * sn + v.y * c) * k,
+            );
+            terrainEvents.add(
+              TerrainEvent(TerrainFx.pillar, h.point.x, h.point.y),
+            );
+          }
+        case FeatureKind.branch ||
+            FeatureKind.pebble ||
+            FeatureKind.blackHole ||
+            FeatureKind.rock:
           break;
       }
     }
@@ -813,6 +908,21 @@ class Table {
             break;
         }
       }
+      // 회심 + 정면(쏜 방향과 맞은 돌 쪽이 거의 같음) → 맞은 상대 돌이 그 자리에서 박살(2026-10-20 형
+      // 「정타와 크리티컬이 겹치면 돌이 박살나고 다른돌에 튕겨 맞아서 같이 파괴」).
+      if (_shatter &&
+          other.team <= 1 &&
+          other.team != shooter.team &&
+          !other.airborne &&
+          pre.length >= PhysicsConstants.shatterSpeed) {
+        final to = other.position - shooter.position;
+        final cos = to.length == 0
+            ? 0.0
+            : (to.x * pre.x + to.y * pre.y) / (to.length * pre.length);
+        if (cos >= PhysicsConstants.shatterHeadOn) {
+          _blast(other, pre.normalized(), 0, shooter);
+        }
+      }
     }
     if (_inner &&
         _technique == Technique.clone &&
@@ -839,6 +949,38 @@ class Table {
     }
   }
 
+  /// 돌 [s] 가 박살: 판에서 빠지고, 조각이 둘레 돌을 밀어낸다. 바싹 붙어 있던 같은 편 돌은
+  /// 조각에 맞아 같이 박살(연쇄 · [PhysicsConstants.shatterChainMax] 단계까지).
+  void _blast(Stone s, Vector2 dir, int chain, Stone shooter) {
+    final p = s.position.clone();
+    tipOff(s);
+    shattered.add(Shatter(p.x, p.y, s.team, s.material, s.shape, chain));
+    const r = PhysicsConstants.stoneRadius;
+    final next = <Stone>[];
+    for (final o in stones) {
+      if (o.out || identical(o, shooter) || o.airborne || o.phantom) continue;
+      final d = o.position - p;
+      final len = d.length;
+      if (len > PhysicsConstants.shatterRadius) continue;
+      if (chain < PhysicsConstants.shatterChainMax &&
+          o.team == s.team &&
+          len <= 2 * r + PhysicsConstants.shatterChainGap) {
+        next.add(o);
+        continue;
+      }
+      final n = len > 0.01 ? (d..scale(1 / len)) : dir.clone();
+      final push = (n..scale(0.7)) + (dir.clone()..scale(0.3));
+      push.scale(
+        PhysicsConstants.shatterPush *
+            (1 - len / PhysicsConstants.shatterRadius),
+      );
+      o.body.linearVelocity = o.velocity + push;
+    }
+    for (final o in next) {
+      if (!o.out) _blast(o, dir, chain + 1, shooter);
+    }
+  }
+
   /// 분신으로 생긴 돌은 한 수가 끝나면 사라진다(맨 뒤에만 붙는다).
   void _clearPhantoms() {
     while (stones.isNotEmpty && stones.last.phantom) {
@@ -860,6 +1002,15 @@ class Table {
 
   /// 화면이 [step]으로 한 수를 끝낸 뒤 다음 수를 받을 수 있게 한다.
   void endTurn() => _status = TurnStatus.idle;
+
+  /// 판 가장자리에 아슬아슬하게 선 돌을 판 밖으로 떨어뜨린다(게임 판의 「뽀록」 · 2026-10-20).
+  /// 멈춘 뒤에만 부른다 — 물리 계산(AI·궤적 미리 보기)에는 끼지 않는다.
+  void tipOff(Stone s) {
+    if (s.out || _disposed) return;
+    s.out = true;
+    s.body.linearVelocity = Vector2.zero();
+    s.body.isEnabled = false;
+  }
 
   /// 떠 있는 돌은 바닥 마찰을 받지 않고, [PhysicsConstants.clearHeight] 보다 높으면
   /// 다른 돌과 부딪히지 않는다(위로 넘어간다). [ghost] 가 null 이면 바닥에 붙은 돌로 되돌린다.
@@ -919,4 +1070,24 @@ class Table {
     _disposed = true;
     world.destroy();
   }
+}
+
+/// 박살난 돌 하나(연출용).
+class Shatter {
+  const Shatter(
+    this.x,
+    this.y,
+    this.team,
+    this.material,
+    this.shape,
+    this.chain,
+  );
+  final double x;
+  final double y;
+  final int team;
+  final StoneMaterial material;
+  final StoneShape shape;
+
+  /// 0 = 쏜 돌이 맞힌 돌, 1 이상 = 조각에 맞아 같이 부서진 돌.
+  final int chain;
 }

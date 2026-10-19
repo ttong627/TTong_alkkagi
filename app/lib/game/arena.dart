@@ -466,3 +466,147 @@ void _iceFire(Canvas c, Offset o, double s) {
     );
   }
 }
+
+/// 대전장마다 기본으로 놓는 담장(판 바깥 가장자리)과 장애물(판 가운데 띠).
+///
+/// 2026-10-20 형 「판의 여기 저기에 장애물도 있고 튕겨서 다시 맞는 경우의 수와 경기장 바깥의 벽이나 담에 맞아서
+/// 다시 들어와서 공격할 수 있는 부분도 … 모두 단순 장외 처리만 하지말고」. 담장이 없는 칸으로만 장외가 된다.
+/// 돌이 처음 서는 줄(±12cm 안팎)을 비켜 장애물은 가운데 띠에만 둔다.
+List<Feature> arenaLayout(Arena a, {bool obstacles = true}) {
+  final h = a.half;
+  const t = TerrainConstants.fenceHalfThickness,
+      l = TerrainConstants.fenceHalfLength;
+  final out = <Feature>[];
+  // 네모 판 한 변(왼쪽 −1 · 오른쪽 +1)에 y 구간 [from, to] 를 막는 담장.
+  void side(int sx, double from, double to) {
+    for (var y = from + l; y <= to - l + 0.01; y += 2 * l) {
+      out.add(Feature(FeatureKind.fence, sx * (h + t), y, angle: math.pi / 2));
+    }
+  }
+
+  // 위(−1)·아래(+1) 변에 x 구간을 막는 담장.
+  void edge(int sy, double from, double to) {
+    for (var x = from + l; x <= to - l + 0.01; x += 2 * l) {
+      out.add(Feature(FeatureKind.fence, x, sy * (h + t)));
+    }
+  }
+
+  // 둥근 판: 각도 [deg] 쪽 가장자리에 접하는 담장 [n] 토막.
+  void arc(double deg, int n) {
+    final r = h + t;
+    final step = 2 * l / r;
+    for (var k = 0; k < n; k++) {
+      final a = deg * math.pi / 180 + (k - (n - 1) / 2) * step;
+      out.add(
+        Feature(
+          FeatureKind.fence,
+          math.cos(a) * r,
+          math.sin(a) * r,
+          angle: a + math.pi / 2,
+        ),
+      );
+    }
+  }
+
+  switch (a) {
+    case Arena.dustyYard:
+      // 마을 공터: 양옆 울타리, 가운데만 트였다.
+      side(-1, -h, -5);
+      side(-1, 5, h);
+      side(1, -h, -5);
+      side(1, 5, h);
+      if (obstacles) {
+        out.add(Feature(FeatureKind.rock, -h * 0.45, 0));
+        out.add(Feature(FeatureKind.rock, h * 0.45, 0));
+        // 가운데 천천히 도는 네모 기둥.
+        out.add(const Feature(FeatureKind.pillar, 0, 0, sides: 4, spin: 0.9));
+      }
+    case Arena.oilyTable:
+      // 객잔 원탁: 비스듬한 네 귀퉁이에 난간.
+      for (final d in const [45.0, 135.0, 225.0, 315.0]) {
+        arc(d, 2);
+      }
+      if (obstacles) {
+        out.add(Feature(FeatureKind.rock, -h * 0.35, 0));
+        out.add(Feature(FeatureKind.rock, h * 0.35, 0));
+        // 객잔: 빙글빙글 빠른 세모 기둥.
+        out.add(const Feature(FeatureKind.pillar, 0, 0, sides: 3, spin: -2.4));
+      }
+    case Arena.turtleMarket:
+      // 장터 골목: 양옆이 막힌 담벼락 — 벽을 타고 들어오는 수가 많다.
+      side(-1, -h, h);
+      side(1, -h, h);
+      if (obstacles) {
+        // 장터: 좌우로 오가는 육각 기둥.
+        out.add(
+          const Feature(
+            FeatureKind.pillar,
+            0,
+            0,
+            sides: 6,
+            spin: 0.6,
+            swing: 8,
+            swingRate: 1.4,
+          ),
+        );
+        out.add(Feature(FeatureKind.rock, -h * 0.5, -2));
+        out.add(Feature(FeatureKind.rock, h * 0.5, 2));
+      }
+    case Arena.kubiForest:
+      // 숲길: 왼쪽은 바위 벽, 가운데 쓰러진 나뭇가지 둘.
+      side(-1, -h, h);
+      if (obstacles) {
+        out.add(Feature(FeatureKind.branch, -h * 0.35, -1.5, angle: 0.4));
+        out.add(Feature(FeatureKind.branch, h * 0.4, 1.5, angle: -0.5));
+        // 숲: 비스듬히 오가는 오각 기둥.
+        out.add(
+          const Feature(
+            FeatureKind.pillar,
+            0,
+            0,
+            sides: 5,
+            spin: 1.2,
+            swing: 4,
+            swingAngle: 0.8,
+            swingRate: 1.1,
+          ),
+        );
+      }
+    case Arena.logicMarble:
+      // 학당: 네 모서리 기둥(모서리 쪽만 막힘).
+      side(-1, -h, -h + 2 * l);
+      side(-1, h - 2 * l, h);
+      side(1, -h, -h + 2 * l);
+      side(1, h - 2 * l, h);
+      edge(-1, -h, -h + 2 * l);
+      edge(-1, h - 2 * l, h);
+      edge(1, -h, -h + 2 * l);
+      edge(1, h - 2 * l, h);
+      if (obstacles) {
+        out.add(Feature(FeatureKind.bamboo, 0, 0));
+        // 학당: 서로 반대로 도는 작은 세모 기둥 둘.
+        out.add(Feature(FeatureKind.pillar, -h * 0.5, 0, sides: 3, spin: 1.6));
+        out.add(Feature(FeatureKind.pillar, h * 0.5, 0, sides: 3, spin: -1.6));
+      }
+    case Arena.murimIce:
+      // 빙판: 좌우 얼음 벽 조금 · 가운데 경종.
+      arc(0, 3);
+      arc(180, 3);
+      if (obstacles) {
+        out.add(Feature(FeatureKind.gong, 0, -h * 0.25));
+        // 빙판: 좌우로 크게 미끄러지는 팔각 기둥.
+        out.add(
+          const Feature(
+            FeatureKind.pillar,
+            0,
+            2,
+            sides: 8,
+            spin: 0.4,
+            swing: 10,
+            swingRate: 0.9,
+          ),
+        );
+      }
+  }
+  return out;
+}

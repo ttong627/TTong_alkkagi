@@ -147,6 +147,39 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
     if (!match.isMoving) _acc = 0;
   }
 
+  /// 돌 표정 고르기: 쏜 돌은 힘줌, 맞아 튕기는 돌은 어질어질, 내가 돌을 고르면 상대 돌은 겁먹음, 나머지는 깜빡깜빡.
+  void _face(
+    Canvas canvas,
+    phys.Stone s,
+    Offset at,
+    double r,
+    phys.Stone? pick,
+  ) {
+    if (s.team > 1) return; // 백성 돌·보주는 얼굴 없음.
+    final moving = match.isMoving;
+    final speed = s.velocity.length;
+    final StoneMood mood;
+    if (moving && identical(s, match.table.shooter) && speed > 3) {
+      mood = StoneMood.fierce;
+    } else if (moving && speed > 6) {
+      mood = StoneMood.dizzy;
+    } else if (!moving && pick != null && s.team != pick.team) {
+      mood = StoneMood.scared;
+    } else {
+      mood = StoneMood.calm;
+    }
+    final phase = (fx.clock + s.id * 0.73) % 3.7;
+    paintStoneFace(
+      canvas,
+      at,
+      r,
+      s.team,
+      mood,
+      blink: phase < 0.12 ? 1 : 0,
+      t: fx.clock,
+    );
+  }
+
   Offset _toScreen(double x, double y) =>
       Offset(_origin.dx + x * _scale, _origin.dy + y * _scale);
 
@@ -179,7 +212,7 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
       );
     }
     for (final f in match.table.features) {
-      paintFeature(canvas, f, _toScreen, _scale);
+      paintFeature(canvas, f, _toScreen, _scale, pose: match.table.poseOf(f));
     }
     fx.paintUnder(canvas, match, _toScreen, _scale);
     final pick = canTouch() ? selected() : null;
@@ -197,6 +230,7 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
         ring: canTouch() && match.canShoot(s),
         selected: identical(s, pick),
       );
+      _face(canvas, s, _toScreen(s.position.x, s.position.y), r * _scale, pick);
       if (match.isGeneral(s)) {
         paintGeneralMark(
           canvas,
@@ -217,6 +251,13 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
         s.team,
         s.material,
         shape: s.shape,
+      );
+      _face(
+        canvas,
+        s,
+        ground.translate(0, -s.z * _scale),
+        r * _scale * (1 + s.z * 0.08),
+        pick,
       );
       if (match.isGeneral(s)) {
         paintGeneralMark(
@@ -258,6 +299,7 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
         Paint()..color = Color.fromRGBO(255, 255, 255, 1 - k),
       );
       paintTopStone(canvas, at, rr, f.team, f.material, shape: f.shape);
+      if (f.team <= 1) paintStoneFace(canvas, at, rr, f.team, StoneMood.eek);
       canvas.restore();
     }
     fx.paintOver(canvas, Size(size.x, size.y), _toScreen, _scale);

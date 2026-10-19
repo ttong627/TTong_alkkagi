@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../audio/sound.dart';
+import '../game/arena.dart';
 import '../game/match.dart';
 import '../progress/drills.dart';
 import '../progress/profile.dart';
@@ -134,6 +135,7 @@ class _TrainingScreenState extends State<TrainingScreen>
   /// 단계를 깼다: 보상 창 → 다음 단계로.
   Future<void> _cleared(DrillStep step) async {
     Sound.play('unlock');
+    Sound.play('jingle_levelup');
     final r = step.reward;
     await showDialog<void>(
       context: context,
@@ -307,6 +309,8 @@ class _TrainingScreenState extends State<TrainingScreen>
       config: MatchConfig(
         mode: MatchMode.practice,
         training: true,
+        // 단계마다 수련터가 바뀐다(바닥·판·배경 음악 · 2026-10-20 형 「단계별 임펙트 효과와 느낌」).
+        arena: trainingArena(_drill),
         opponentName: '목각 더미',
         myMaterial: p.material,
         myShape: p.shape,
@@ -323,3 +327,12 @@ class _TrainingScreenState extends State<TrainingScreen>
     );
   }
 }
+
+/// 수련 단계 → 수련터(두 단계마다 바뀜): 공터 → 숲 → 장터 → 학당 → 빙판.
+Arena trainingArena(int drill) => const [
+  Arena.dustyYard,
+  Arena.kubiForest,
+  Arena.turtleMarket,
+  Arena.logicMarble,
+  Arena.murimIce,
+][(drill ~/ 2).clamp(0, 4)];

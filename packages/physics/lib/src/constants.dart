@@ -74,4 +74,18 @@ abstract final class PhysicsConstants {
 
   /// 내 편 돌로 친 상대 돌의 더 밀림 상한(등급 × 무게 보정을 곱한 값).
   static const double maxStrikeBoost = 2.2;
+
+  /// 박살(회심 + 정면): 쏜 돌이 이보다 빠르게(cm/s) 와야 한다.
+  static const double shatterSpeed = 45;
+
+  /// 박살(회심 + 정면): 쏜 방향과 맞은 돌 쪽 사이 각의 코사인이 이 이상(약 25도 안).
+  static const double shatterHeadOn = 0.9;
+
+  /// 박살 조각이 밀어내는 반경(cm)과 바로 옆 돌에 주는 빠르기(cm/s, 멀수록 줄어듦).
+  static const double shatterRadius = 7;
+  static const double shatterPush = 70;
+
+  /// 연쇄 박살: 부서진 돌과 이만큼(cm) 안으로 붙어 있던 같은 편 돌 · 최대 단계.
+  static const double shatterChainGap = 0.6;
+  static const int shatterChainMax = 2;
 }

@@ -247,6 +247,17 @@ void main() {
       'game_oily',
       settleMs: 2600,
     );
+    // 대전장마다 담장·장애물(2026-10-20).
+    for (final a in Arena.values) {
+      await _shot(
+        t,
+        GameScreen(
+          config: MatchConfig(mode: MatchMode.vsAi, arena: a),
+          title: a.label,
+        ),
+        'arena_${a.name}',
+      );
+    }
     await t.pumpWidget(const SizedBox());
     await t.pump(const Duration(seconds: 2));
   }, skip: !on);

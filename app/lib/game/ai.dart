@@ -47,6 +47,7 @@ class _Request {
     this.martial = 0,
     this.weather = 0,
     this.features = const [],
+    this.clock = 0,
     this.rule = 0,
     this.generals = const {},
     this.jewel,
@@ -76,8 +77,12 @@ class _Request {
   final Map<int, int> generals;
   final int? jewel;
 
-  /// (종류, x, y, 각도).
-  final List<(int, double, double, double)> features;
+  /// (종류, x, y, 각도, 회전 기둥: 모서리 수 · 도는 빠르기 · 오가는 폭 · 방향 · 빠르기).
+  final List<(int, double, double, double, int, double, double, double, double)>
+  features;
+
+  /// 판이 움직인 시간(회전 기둥 자세).
+  final double clock;
   final List<StoneData> stones;
   final int team;
   final int difficulty;
@@ -170,8 +175,20 @@ _Request _requestFor(
     martial: match.config.opponentMartial.index,
     weather: match.config.weather.index,
     features: [
-      for (final f in match.table.features) (f.kind.index, f.x, f.y, f.angle),
+      for (final f in match.table.features)
+        (
+          f.kind.index,
+          f.x,
+          f.y,
+          f.angle,
+          f.sides,
+          f.spin,
+          f.swing,
+          f.swingAngle,
+          f.swingRate,
+        ),
     ],
+    clock: match.table.clock,
     rule: match.rule.index,
     generals: generals,
     jewel: jewel,
@@ -261,9 +278,20 @@ AiShot _plan(_Request r) {
                 technique: inner ? martial : Technique.none,
                 weather: Weather.values[r.weather],
                 features: [
-                  for (final (k, x, y, a) in r.features)
-                    Feature(FeatureKind.values[k], x, y, angle: a),
+                  for (final (k, x, y, a, n, sp, sw, swa, swr) in r.features)
+                    Feature(
+                      FeatureKind.values[k],
+                      x,
+                      y,
+                      angle: a,
+                      sides: n,
+                      spin: sp,
+                      swing: sw,
+                      swingAngle: swa,
+                      swingRate: swr,
+                    ),
                 ],
+                clock: r.clock,
                 rule: rule,
                 generals: r.generals,
                 jewel: r.jewel,
@@ -364,6 +392,7 @@ double scoreShot(
   Technique technique = Technique.none,
   Weather weather = Weather.clear,
   List<Feature> features = const [],
+  double clock = 0,
   MatchRule rule = MatchRule.annihilate,
   Map<int, int> generals = const {},
   int? jewel,
@@ -374,6 +403,7 @@ double scoreShot(
     weather: weather,
     half: arena.half,
   );
+  t.clock = clock;
   try {
     for (final f in features) {
       t.addFeature(f);
