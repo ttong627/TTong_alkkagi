@@ -1,6 +1,7 @@
 // SVG 그림을 크롬으로 그려 PNG 로 내보낸다.
 // 쓰기: node app/tool/art/render.mjs [출력폴더] [--sheet 미리보기.png] [--only 이름,…]
 // 크롬: 설치된 playwright(전역) — PLAYWRIGHT_BROWSERS_PATH 의 chromium.
+// ⚠️2026-10-19 부터 앱의 배경·바닥·아이콘은 코덱스 그림(gen_world.py) — 이 SVG 그림으로 assets 를 덮어쓰지 않는다.
 import { createRequire } from 'node:module';
 import { mkdirSync, writeFileSync, unlinkSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';

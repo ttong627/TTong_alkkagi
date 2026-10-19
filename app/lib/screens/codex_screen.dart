@@ -98,13 +98,13 @@ class CodexScreen extends StatelessWidget {
             for (final w in Weather.values.skip(1))
               entry(
                 p.codex.contains('천기:${w.name}'),
-                const Icon(Icons.cloud, size: 36),
+                Image.asset(Art.icon('weather'), width: 36),
                 w.label,
               ),
             for (final f in FeatureKind.values)
               entry(
                 p.codex.contains('지물:${f.name}'),
-                const Icon(Icons.landscape, size: 36),
+                Image.asset(Art.icon('terrain'), width: 36),
                 f.label,
               ),
           ]),
