@@ -67,4 +67,11 @@ abstract final class PhysicsConstants {
   /// 튕겨 판 밖으로 나갔다(비껴 맞힐 때 · 무거운 돌을 맞힐 때). 회전으로 더 나가는 몫은 따로 더한다.
   /// `Table.settle` 이 켜진 게임 판에서만. [가정 — 실기기로 맞춘다]
   static const double shooterRecoilKeep = 0.45;
+
+  /// 내 편([Table.favoredTeam]) 쏜 돌이 처음 부딪힌 순간 남는 빠르기 비율 — 등급 버팀(`hitKeep`)을 더 곱한다
+  /// (2026-10-19 형 「내 돌은 너무 많이 움직이는데 튀기는 부분도 강하고」).
+  static const double favoredRecoilKeep = 0.3;
+
+  /// 내 편 돌로 친 상대 돌의 더 밀림 상한(등급 × 무게 보정을 곱한 값).
+  static const double maxStrikeBoost = 2.2;
 }

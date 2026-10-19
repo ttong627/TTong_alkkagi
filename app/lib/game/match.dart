@@ -435,6 +435,8 @@ class Match extends ChangeNotifier {
         half: config.layout == null
             ? config.arena.half
             : PhysicsConstants.halfBoard,
+        // 둘이 하기는 두 편 공평(사람 대 AI 판만 내 편을 우대 · 2026-10-19).
+        favoredTeam: config.mode == MatchMode.twoPlayer ? null : 0,
       ) {
     for (final f in config.features) {
       table.addFeature(f);

@@ -138,6 +138,7 @@ class Table {
     this.windSeed = 0,
     this.settle = true,
     this.half = PhysicsConstants.halfBoard,
+    this.favoredTeam = 0,
   }) : _floorFactor = weather == Weather.nightRain
            ? floorFactor * 0.5
            : floorFactor,
@@ -155,6 +156,9 @@ class Table {
 
   /// 판 가운데에서 가장자리까지(cm). 경기장마다 크기가 다르다(2026-10-14 형 「경기장 크기를 다양하게」).
   final double half;
+
+  /// 등급 밀림에서 우대하는 편(사람 = 편 0). null 이면 두 편 공평(둘이 하기 — 등급 차이만 본다).
+  final int? favoredTeam;
 
   /// 바닥 감속 배수(대전장마다 다름). 1 이면 재질 × 모양 그대로.
   /// 흙바닥은 크게(잘 멈춤), 기름·얼음 바닥은 작게(잘 미끄러짐) 준다. 야우면 절반.
@@ -699,10 +703,45 @@ class Table {
     final shooter = _shooter;
     if (!settle || shooter == null || identical(s, shooter)) return;
     if (!_held.add(s.id)) return;
-    var k = s.material.pushedBy(shooter.material);
+    var k = _pushOf(s, shooter, direct: identical(by, shooter));
     if (!identical(by, shooter) && k > 1) k = 1;
     if (k != 1) s.body.linearVelocity = s.velocity..scale(k);
   }
+
+  /// 우대 편([favoredTeam])이 있으면 등급 차이 대신 편으로 본다(2026-10-19 형 「반대로 적용 해야 해 —
+  /// 내돌은 강해질수록 움직임이 작아 져야하고 상대방 돌은 내 돌과 부딪혔을때 더 많이 움직여야 해」):
+  /// - 내 돌: 누가 쳐도 내 등급만큼 덜 밀린다([StoneMaterial.hitKeep]). 무거운 상대 돌에 직접 맞으면
+  ///   무게 차이 몫도 빼서 같은 무게에 맞은 만큼만.
+  /// - 내 쏜 돌이 직접 맞힌 상대 돌: 내 등급만큼 더 밀린다([StoneMaterial.strikeBoost]). 상대가 더 무거우면
+  ///   같은 무게를 친 만큼까지 채운다(무거운 보스 돌이 꿈쩍 않던 것).
+  /// - 그 밖(상대가 자기 돌·백성 돌을 침): 그대로.
+  double _pushOf(Stone s, Stone shooter, {required bool direct}) {
+    final hero = favoredTeam;
+    if (hero == null) return s.material.pushedBy(shooter.material);
+    // 같은 무게끼리 부딪혔을 때와 견준 맞은 돌 빠르기: 2·쏜 무게 / (쏜 무게 + 맞은 무게).
+    final weight = 2 * shooter.mass / (shooter.mass + s.mass);
+    if (s.team == hero) {
+      final even = direct && shooter.team != hero && weight > 1
+          ? 1 / weight
+          : 1.0;
+      return s.material.hitKeep * even * _glide(s);
+    }
+    if (direct && shooter.team == hero && s.team <= 1) {
+      final even = weight < 1 ? 1 / weight : 1.0;
+      return math.min(
+        shooter.material.strikeBoost * even,
+        PhysicsConstants.maxStrikeBoost,
+      );
+    }
+    return 1;
+  }
+
+  /// 내 편 돌이 맞거나 튕길 때 곱하는 미끄럼 보정: 청옥보다 덜 서는(감속이 작은) 재질은 그만큼 덜 내보내
+  /// 청옥보다 멀리 가지 않게 한다 — 금강석(7단)·빙백한옥이 1단 청옥보다 더 멀리 밀려나던 것(2026-10-19).
+  double _glide(Stone s) => math.min(
+    1,
+    dampingOf(s.material, s.shape) / dampingOf(StoneMaterial.cheongok, s.shape),
+  );
 
   Impact? _impactOf(Stone s) {
     for (final i in impacts) {
@@ -724,9 +763,12 @@ class Table {
       _refreshDamping([shooter]);
       if (settle && !shooter.airborne) {
         shooter.body.linearVelocity = shooter.velocity
-          // 좋은 돌일수록 덜 튕긴다(등급 · 2026-10-14).
+          // 좋은 돌일수록 덜 튕긴다(등급 · 2026-10-14). 내 편은 더 덜(2026-10-19).
           ..scale(
-            PhysicsConstants.shooterRecoilKeep * shooter.material.hitKeep,
+            (shooter.team == favoredTeam
+                    ? PhysicsConstants.favoredRecoilKeep * _glide(shooter)
+                    : PhysicsConstants.shooterRecoilKeep) *
+                shooter.material.hitKeep,
           );
       }
       if (_impactScale != 1) {
