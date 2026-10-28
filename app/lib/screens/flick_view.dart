@@ -55,6 +55,22 @@ class FlickView extends StatefulWidget {
   final void Function(FlickShot shot, StrikeMode mode) onShot;
   final VoidCallback onCancel;
 
+  /// 손끝 판(작은 지도 30% · 바닥 · 아래 안내 글 78) 크기 → (돌 가운데, 돌 반지름, 가득 당김 길이).
+  ///
+  /// 2026-10-28 형 「당길 창이 작아 세게 못 당겨 · 튕기기도 좌우는 좁아서 못 튕겨」: 돌이 너비의 56%
+  /// (반지름 0.28)라 돌 옆에 손이 달릴 자리가 거의 없었다 → 반지름 0.19 · 가득 당김 = 돌에서 화면 끝까지
+  /// 가장 짧은 거리의 90%(어느 쪽으로 당겨도 100% 가 나온다).
+  static (Offset, double, double) layout(Size pad) {
+    final w = pad.width, h = pad.height;
+    final miniH = h * 0.3;
+    const textH = 78.0;
+    final floorH = h - miniH - textH;
+    final r = math.min(w * 0.19, floorH * 0.24);
+    final c = Offset(w / 2, miniH + floorH * 0.5);
+    final room = math.min(w / 2, math.min(c.dy, h - c.dy));
+    return (c, r, room * 0.9);
+  }
+
   @override
   State<FlickView> createState() => _FlickViewState();
 }
@@ -85,6 +101,12 @@ class _FlickViewState extends State<FlickView>
   /// 당겨 쏘기(설정 「조작 방식」): 잡은 돌과 지금 손끝.
   PullReader? _pull;
   Offset? _pullAt;
+
+  /// 쏜 뒤 날아가는 연출 길이(초 · 2026-10-28 0.32 → 0.42 — 흔들림·충격 고리·섬광이 보이게).
+  static const double launchSeconds = 0.42;
+
+  /// 가득 당김 길이([FlickView.layout]).
+  double? _reach;
   bool get _pullMode => Settings.instance.pull;
   bool _down = false;
   double _power = 0;
@@ -219,7 +241,7 @@ class _FlickViewState extends State<FlickView>
     }
     _particles.removeWhere((p) => p.life <= 0);
     if (_launch != null) {
-      _launch = math.min(1, _launch! + dt / 0.32);
+      _launch = math.min(1, _launch! + dt / launchSeconds);
       if (_launch! >= 1 && _shot != null) {
         final shot = _shot!;
         _shot = null;
@@ -243,7 +265,7 @@ class _FlickViewState extends State<FlickView>
     final disc = _disc;
     if (_launch != null || disc == null) return;
     if (_pullMode) {
-      final pull = _pull = PullReader(disc);
+      final pull = _pull = PullReader(disc, reach: _reach);
       if (!pull.down(e.localPosition)) {
         setState(() => _hint = '돌을 눌러 잡고 뒤로 당기세요');
         _pull = null;
@@ -615,12 +637,11 @@ class _FlickViewState extends State<FlickView>
             Expanded(
               child: LayoutBuilder(
                 builder: (context, box) {
-                  final w = box.maxWidth, h = box.maxHeight;
-                  final miniH = h * 0.3;
-                  const textH = 78.0;
-                  final floorH = h - miniH - textH;
-                  final r = math.min(w * 0.28, floorH * 0.3);
-                  final c = Offset(w / 2, miniH + floorH * 0.5);
+                  final (c, r, reach) = FlickView.layout(
+                    Size(box.maxWidth, box.maxHeight),
+                  );
+                  _reach = reach;
+                  final miniH = box.maxHeight * 0.3;
                   _dpr = MediaQuery.devicePixelRatioOf(context);
                   if (_disc == null ||
                       _disc!.center != c ||
@@ -831,7 +852,7 @@ class _PullPainter extends CustomPainter {
       Paint()..color = const Color(0xCCFFF2C0),
     );
     // 세기 눈금: 화면 오른쪽 끝 세로 막대(큰 돌이어도 화면 안).
-    final bh = math.min(r * 2.4, size.height * 0.5);
+    final bh = math.min(r * 3.4, size.height * 0.5);
     final bar = Rect.fromLTWH(size.width - 30, c.dy - bh / 2, 18, bh);
     canvas.drawRRect(
       RRect.fromRectAndRadius(bar, const Radius.circular(9)),
@@ -995,6 +1016,12 @@ class _FloorPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final rect = Rect.fromLTRB(0, top, size.width, size.height);
     canvas.clipRect(rect);
+    // 2026-10-28 형 「당겼다 던지거나 튕길 때 화면 전환과 액션이 조금만 더」: 치는 순간 세기만큼 흔들린다.
+    final l0 = launch ?? 0;
+    if (launch != null && l0 < 0.3) {
+      final k = disc.radius * 0.09 * (0.4 + power) * (1 - l0 / 0.3);
+      canvas.translate(math.sin(l0 * 97) * k, math.cos(l0 * 71) * k);
+    }
     final arena = match.config.arena;
     canvas.drawRect(rect, Paint()..color = arena.outside);
 
@@ -1043,6 +1070,39 @@ class _FloorPainter extends CustomPainter {
         (l * l * size.longestSide);
     final c = disc.center + shift;
     final r = disc.radius * (1 - 0.4 * l);
+    if (launch != null) {
+      // 떠난 자리에서 퍼지는 충격 고리 두 겹.
+      for (final (d, w) in [(0.0, 0.14), (0.12, 0.08)]) {
+        final t = ((l - d) / 0.7).clamp(0.0, 1.0);
+        if (t <= 0 || t >= 1) continue;
+        canvas.drawCircle(
+          disc.center,
+          disc.radius * (1 + t * (2.4 + power * 2)),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = disc.radius * w * (1 - t)
+            ..color = Color.lerp(
+              qi,
+              Colors.white,
+              0.4,
+            )!.withValues(alpha: (1 - t) * 0.85),
+        );
+      }
+      // 돌 뒤로 길게 남는 기 꼬리.
+      if ((c - disc.center).distance > 1) {
+        canvas.drawLine(
+          disc.center,
+          c,
+          Paint()
+            ..shader = LinearGradient(
+              colors: [qi.withValues(alpha: 0), qi.withValues(alpha: 0.7)],
+            ).createShader(Rect.fromPoints(disc.center, c))
+            ..strokeWidth = r * 1.4
+            ..strokeCap = StrokeCap.round
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+        );
+      }
+    }
     final glowR = r * (1.5 + power * 0.9);
     canvas.drawCircle(
       c,
@@ -1066,6 +1126,19 @@ class _FloorPainter extends CustomPainter {
         Paint()
           ..color = p.color.withValues(alpha: al * 0.9)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+      );
+    }
+    // 끝 무렵 섬광: 판 화면으로 넘어가는 이음매.
+    if (launch != null && l > 0.72) {
+      final f = (l - 0.72) / 0.28;
+      canvas.drawRect(
+        rect.inflate(disc.radius),
+        Paint()
+          ..color = Color.lerp(
+            qi,
+            Colors.white,
+            0.75,
+          )!.withValues(alpha: f * (0.35 + power * 0.35)),
       );
     }
   }

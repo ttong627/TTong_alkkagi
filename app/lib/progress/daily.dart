@@ -113,11 +113,14 @@ const missionPool = [
   Mission(Deed.inner, 2, Reward(tp: 15, coins: 50, bag: {'mat:silk': 1})),
 ];
 
-/// 셋 다 끝내면 덤.
-const missionBonus = Reward(silver: 1);
+/// 하루 임무 수(2026-10-28 형 「일일 퀘스트 숫자도 조금만 더」: 3 → 5 · 일 종류가 6가지라 서로 다른 일 다섯).
+const int missionsPerDay = 5;
+
+/// 다 끝내면 덤(다섯으로 늘며 엽전 100 을 더함).
+const missionBonus = Reward(silver: 1, coins: 100);
 
 abstract final class Missions {
-  /// [day](yyyymmdd)의 임무 셋: 날짜를 씨앗으로 섞어 서로 다른 일 셋.
+  /// [day](yyyymmdd)의 임무 [missionsPerDay] 개: 날짜를 씨앗으로 섞어 서로 다른 일.
   static List<Mission> of(String day) {
     final order = [...missionPool]
       ..shuffle(math.Random(int.tryParse(day) ?? 0));
@@ -125,7 +128,7 @@ abstract final class Missions {
     for (final m in order) {
       if (picked.any((x) => x.deed == m.deed)) continue;
       picked.add(m);
-      if (picked.length == 3) break;
+      if (picked.length == missionsPerDay) break;
     }
     return picked;
   }
@@ -178,11 +181,11 @@ abstract final class Missions {
     return ms[i].reward;
   }
 
-  /// 셋 다 받은 날 덤(한 번).
+  /// 다 받은 날 덤(한 번).
   static Reward? claimBonus(Profile p, String day) {
     day = _eff(p, day);
     if (p.missionDay != day ||
-        p.missionClaimed.length < 3 ||
+        p.missionClaimed.length < missionsPerDay ||
         p.missionClaimed.contains(99)) {
       return null;
     }
@@ -198,7 +201,7 @@ abstract final class Missions {
     for (var i = 0; i < ms.length; i++) {
       if (done(p, ms[i], day) && !claimed(p, i, day)) return true;
     }
-    return p.missionDay == day && p.missionClaimed.length == 3;
+    return p.missionDay == day && p.missionClaimed.length == missionsPerDay;
   }
 }
 

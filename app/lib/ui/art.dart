@@ -35,6 +35,7 @@ abstract final class Art {
     '로직' => 'logic',
     '무림맹주' || '맹주' => 'maengju',
     '사부' => 'sabu',
+    '부두목 흑풍' || '흑풍' => 'budumok',
     _ => null,
   };
 
@@ -56,6 +57,7 @@ abstract final class Art {
     'logic',
     'maengju',
     'sabu',
+    'budumok',
   ];
 
   static const iconNames = [

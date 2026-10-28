@@ -29,18 +29,18 @@ void main() {
   });
 
   group('일일 임무', () {
-    test('날마다 셋 · 다 하면 받기 · 셋 다 받으면 덤 · 날이 바뀌면 새로', () {
+    test('날마다 다섯(형 10-28) · 다 하면 받기 · 다 받으면 덤 · 날이 바뀌면 새로', () {
       final p = Profile();
       const day = '20261011';
       final ms = Missions.of(day);
-      expect(ms.length, 3);
-      expect(ms.map((m) => m.deed).toSet().length, 3, reason: '같은 임무 둘 없음');
+      expect(ms.length, 5);
+      expect(ms.map((m) => m.deed).toSet().length, 5, reason: '같은 임무 둘 없음');
       expect(Missions.claim(p, 0, day), isNull, reason: '아직 안 함');
       for (final m in ms) {
         Missions.record(p, m.deed, day, m.goal);
       }
       final before = p.coins + p.silver + p.trainingPoints;
-      for (var i = 0; i < 3; i++) {
+      for (var i = 0; i < 5; i++) {
         expect(Missions.claim(p, i, day), isNotNull);
         expect(Missions.claim(p, i, day), isNull, reason: '두 번 안 됨');
       }

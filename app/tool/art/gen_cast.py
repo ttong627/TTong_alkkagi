@@ -53,6 +53,7 @@ def main() -> int:
     ap.add_argument("--poses", default="idle,attack")
     ap.add_argument("--redo", action="store_true", help="이미 있는 그림도 다시")
     ap.add_argument("--push", action="store_true", help="끝나면 브랜치 art/wuxia-cast 로 올림")
+    ap.add_argument("--model", default="gpt-6-sol")
     a = ap.parse_args()
 
     spec = json.loads((HERE / "wuxia_cast.json").read_text(encoding="utf-8"))
@@ -61,6 +62,9 @@ def main() -> int:
     engines = [e for e in a.engines.split(",") if e]
     poses = [p for p in a.poses.split(",") if p]
     tt = load_tt()
+    # 공용 설정의 기본 모델은 구독 계정에서 거부된다(gen_world.py 와 같은 처리) — 이 실행에서만 바꾼다.
+    base = tt.codex_cmd
+    tt.codex_cmd = lambda: base() + ["-c", f'model="{a.model}"']
 
     log = []
     for eng in engines:

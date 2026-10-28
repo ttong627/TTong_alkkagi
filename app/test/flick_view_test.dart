@@ -42,7 +42,7 @@ void main() {
       Offset(0, -pad.height * 0.85),
       3000,
     );
-    // 날아가는 연출(0.32초)이 끝나야 쏜다.
+    // 날아가는 연출(0.42초)이 끝나야 쏜다.
     for (var i = 0; i < 30; i++) {
       await tester.pump(const Duration(milliseconds: 16));
     }
@@ -89,11 +89,9 @@ void main() {
   testWidgets('검지로 튕기기: 돌 앞에서 손이 떠나도 그 빠르기로 날아가 맞힌다(위쪽 타격)', (tester) async {
     final (m, shots) = await open(tester);
     final pad = tester.getRect(find.byKey(const Key('flick-pad')));
-    // 화면과 같은 배치 계산: 위 30% 작은 지도, 아래 78 안내 글, 가운데 바닥에 돌.
-    final h = pad.height, w = pad.width;
-    final miniH = h * 0.3, floorH = h - miniH - 78;
-    final r = math.min(w * 0.28, floorH * 0.3);
-    final c = Offset(pad.left + w / 2, pad.top + miniH + floorH * 0.5);
+    // 화면과 같은 배치 계산(FlickView.layout).
+    final (at, r, _) = FlickView.layout(pad.size);
+    final c = pad.topLeft + at;
     // 돌 아래 2.5R 에서 시작해 돌 가장자리 1R 앞(가운데에서 2R)에서 손을 뗀다 — 60ms.
     await tester.timedDragFrom(
       Offset(c.dx, c.dy + r * 2.5),
