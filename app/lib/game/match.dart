@@ -284,7 +284,7 @@ class MatchConfig {
     this.aiErrorScale = 1,
     this.aiPowerScale = 1,
     this.aiBlunder = 0,
-    this.edgeTipChance = 0.35,
+    this.edgeTipChance = 0.45,
     this.ultimateWing = 0,
     this.pet,
     this.petLevel = 1,
@@ -295,6 +295,7 @@ class MatchConfig {
 
   /// 판 가장자리에 아슬아슬하게 멈춘 돌이 기우뚱 떨어질 확률(0 이면 끔 · 2026-10-20 형 「가끔 뽀록이라하는
   /// 재수 좋게 처리되는 부분이랑 열받는 부분도」). 이번 수에 움직인 돌만 · 묘수풀이·목인항에는 없다.
+  /// 2026-10-28 형 「뽀록 발생 확률도 좀더」: 0.35 → 0.45 · 걸친 폭 반지름 0.4 → 0.6([edgeLuckBand]).
   final double edgeTipChance;
 
   /// 어기어석 때 함께 날아가는 내 돌 수(내공 경지 · 2026-10-20 형 「내 내공이 올라가면 어기어석으로 공격할때
@@ -984,6 +985,9 @@ class Match extends ChangeNotifier {
   /// 쏘기 직전 판 위에 있던 돌.
   final _aliveIds = <int>{};
 
+  /// 판 끝에서 이 거리(돌 반지름 배수) 안에 서면 「걸쳤다」고 본다.
+  static const double edgeLuckBand = 0.6;
+
   /// 멈춘 뒤: 이번 수에 움직인 돌이 가장자리에 걸쳐 섰으면 확률로 떨어뜨린다(뽀록), 아니면 「아슬아슬」.
   void _edgeLuck() {
     luckEvents.clear();
@@ -996,7 +1000,10 @@ class Match extends ChangeNotifier {
       if (s.out || s.team > 1 || s.airborne) continue;
       if (!identical(s, shooter) && !touchedThisTurn.contains(s.id)) continue;
       final p = s.position;
-      if (table.boundary.edgeDistance(p.x, p.y, table.half) > r * 0.4) continue;
+      if (table.boundary.edgeDistance(p.x, p.y, table.half) >
+          r * edgeLuckBand) {
+        continue;
+      }
       final tip = _rand.nextDouble() < config.edgeTipChance;
       if (tip) table.tipOff(s);
       luckEvents.add(LuckEvent(tip, s, p.x, p.y));

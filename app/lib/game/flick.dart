@@ -519,8 +519,16 @@ class StrikeReader {
 /// - 회심: 세기를 [sweetLo]~[sweetHi] 에 맞추고 놓으면(눈금의 금빛 구간). 튕기기의 「한가운데 · 알맞은 세기」와 비슷한 어려움.
 /// - 위아래 타격점은 늘 가운데(손끝 넓이를 쓰지 않는다).
 class PullReader {
-  PullReader(this.disc);
+  /// [reach] = 가득(내공 100%) 당긴 길이(화면 길이). 없으면 돌 반지름 × [fullPull].
+  /// 2026-10-28 형 「당길 수 있는 창이 작아 세게 못 당겨 · 특히 좌우」: 돌이 화면 너비의 절반을 차지해
+  /// 좌우로는 반지름 1.8배밖에 못 당겼다(가득 = 3.6배) → 화면이 [reach] 를 화면에 남은 거리로 준다.
+  PullReader(this.disc, {double? reach})
+    : reach = math.max(
+        reach ?? disc.radius * fullPull,
+        disc.radius * minPull * 2,
+      );
   final StoneDisc disc;
+  final double reach;
 
   /// 누를 수 있는 곳: 돌 반지름의 이 배 안.
   static const double grab = 1.6;
@@ -551,9 +559,9 @@ class PullReader {
     final now = _now;
     if (!_held || now == null) return null;
     final pull = disc.center - now;
-    final d = pull.distance / disc.radius;
-    if (d < minPull) return null;
-    final power = ((d - minPull) / (fullPull - minPull)).clamp(0.0, 1.0);
+    final d = pull.distance, lo = disc.radius * minPull;
+    if (d < lo) return null;
+    final power = ((d - lo) / (reach - lo)).clamp(0.0, 1.0);
     return (math.atan2(pull.dy, pull.dx), power);
   }
 

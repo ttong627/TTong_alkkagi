@@ -11,15 +11,18 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   setUpAll(initializePhysics);
 
-  test('장 6개 · 장마다 7~9단계 · 4단계(9단계 장은 7단계도) 중간 보스 · 마지막은 그 장 보스', () {
+  // 2026-10-28 형 「스테이지도 3라운드 정도 더 추가 · 중간 보스 부두목까지」: 장마다 3단계 더(10~12).
+  test('장 6개 · 장마다 10~12단계 · 4단계(12단계 장은 7단계도) 중간 보스 · 보스 세 단계 앞 부두목 · 마지막은 그 장 보스', () {
     expect(courses.length, 6);
     for (final c in courses) {
       final n = c.steps.length;
-      expect(n, inInclusiveRange(7, 9), reason: '${c.chapter}장');
+      expect(n, inInclusiveRange(10, 12), reason: '${c.chapter}장');
       expect(c.steps[3].kind, StepKind.mid, reason: '${c.chapter}장 4단계');
-      if (n == 9) {
+      if (n == 12) {
         expect(c.steps[6].kind, StepKind.mid, reason: '${c.chapter}장 7단계');
       }
+      expect(c.steps[n - 4].kind, StepKind.mid);
+      expect(c.steps[n - 4].foe, budumok, reason: '${c.chapter}장 부두목');
       expect(c.steps.last.kind, StepKind.boss);
       expect(c.steps.last.stageId, c.boss.id);
       // 중간 보스 사이는 3~4단계.
@@ -63,11 +66,11 @@ void main() {
     final p = Profile();
     final c = courses[3]; // 4장(용비늘도 나오는 장)
     final r1 = CourseRules.finish(p, c, 0, won: true);
-    expect(r1.coins, (15 + 5 * 4) * 2);
+    expect(r1.coins, (30 + 10 * 4) * 2);
     expect(r1.bag.values.fold(0, (a, b) => a + b), 1);
     expect(p.done, contains(c.idOf(0)));
     final again = CourseRules.finish(p, c, 0, won: true);
-    expect(again.coins, (15 + 5 * 4) ~/ 2);
+    expect(again.coins, (30 + 10 * 4) ~/ 2);
     expect(again.bag, isEmpty);
     final mid = CourseRules.finish(p, c, 3, won: true);
     expect(mid.bag.keys.where((k) => k.startsWith('item:')), hasLength(1));

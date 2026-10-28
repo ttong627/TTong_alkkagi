@@ -119,19 +119,19 @@ void main() {
     test('이기면 보상(처음 ×2·은자 5), 1장은 문파 각성, 장을 깨면 캐릭터', () {
       final p = Profile();
       final r1 = Campaign.finish(p, campaign[0], won: true);
-      expect(r1.coins, (30 + 10) * 2);
+      expect(r1.coins, (60 + 20) * 2);
       expect(r1.silver, 5);
       expect(r1.awaken, isTrue);
       // 다시 깨면 처음 값의 절반의 절반(기본의 반 — 1장 되풀이로 엽전을 벌지 않게 · 2026-10-11).
       final again = Campaign.finish(p, campaign[0], won: true);
-      expect(again.coins, 20);
+      expect(again.coins, 40);
       expect(again.first, isFalse);
       final c2 = campaign.firstWhere((s) => s.id == 'c2');
       expect(Campaign.finish(p, c2, won: true).hero, Fighter.banDal);
       // 숙적: 처음 이기면 징표 2, 다시 이기면 징표 없음.
       final r = campaign.firstWhere((s) => s.id == 'r1');
       final tokens = p.tokens;
-      expect(Campaign.finish(p, r, won: true).coins, 100);
+      expect(Campaign.finish(p, r, won: true).coins, 200);
       expect(p.tokens, tokens + 2);
       Campaign.finish(p, r, won: true);
       expect(p.tokens, tokens + 2, reason: '숙적 되풀이로 징표를 벌지 않는다');
@@ -198,10 +198,10 @@ void main() {
       final c3 = campaign.firstWhere((s) => s.id == 'c3');
       final win = Campaign.finish(p, c3, won: true, civiliansLost: 2);
       expect(win.fine, 20);
-      expect(win.coins, 120 - 20); // 3장 = 30 + 3×10 = 60, 처음 깬 판 ×2 = 120
-      expect(p.coins, 15 + 100);
-      final lose = Campaign.finish(p, c3, won: false, civiliansLost: 20);
-      expect(lose.fine, 200);
+      expect(win.coins, 240 - 20); // 3장 = 60 + 3×20 = 120, 처음 깬 판 ×2 = 240
+      expect(p.coins, 15 + 220);
+      final lose = Campaign.finish(p, c3, won: false, civiliansLost: 30);
+      expect(lose.fine, 300);
       expect(p.coins, 0);
     });
 

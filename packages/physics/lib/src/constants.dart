@@ -75,6 +75,9 @@ abstract final class PhysicsConstants {
   /// 내 편 돌로 친 상대 돌의 더 밀림 상한(등급 × 무게 보정을 곱한 값).
   static const double maxStrikeBoost = 2.2;
 
+  /// 내 수에 밀려난 상대 돌이 다른 상대 돌을 칠 때 더 밀림(한 돌에 한 번 · 멀티샷이 잘 나게 · 2026-10-28).
+  static const double chainCarry = 1.2;
+
   /// 박살(회심 + 정면): 쏜 돌이 이보다 빠르게(cm/s) 와야 한다.
   static const double shatterSpeed = 45;
 

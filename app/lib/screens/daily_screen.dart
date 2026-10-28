@@ -176,7 +176,8 @@ class _DailyScreenState extends State<DailyScreen>
     // 받기·세기가 쓰는 날과 같은 날의 임무를 보여 준다(시계를 되돌리면 화면과 실제 임무가 달랐다 · 2026-10-11 점검).
     final day = Missions.effectiveDay(p, today);
     final ms = Missions.of(day);
-    final allDone = p.missionDay == day && p.missionClaimed.length >= 3;
+    final allDone =
+        p.missionDay == day && p.missionClaimed.length >= missionsPerDay;
     return ListView(
       padding: const EdgeInsets.all(14),
       children: [
@@ -202,7 +203,7 @@ class _DailyScreenState extends State<DailyScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      '셋 다 하면 덤!',
+                      '다 하면 덤!',
                       style: TextStyle(fontFamily: titleFont, fontSize: 17),
                     ),
                     const SizedBox(height: 3),
@@ -220,9 +221,9 @@ class _DailyScreenState extends State<DailyScreen>
                 claimed: p.missionClaimed.contains(99),
                 ready: allDone,
                 now: p.missionDay == day
-                    ? p.missionClaimed.where((i) => i < 3).length
+                    ? p.missionClaimed.where((i) => i < missionsPerDay).length
                     : 0,
-                goal: 3,
+                goal: missionsPerDay,
                 onClaim: () => _got(Missions.claimBonus(p, day)),
               ),
             ],

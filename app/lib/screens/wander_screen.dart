@@ -19,7 +19,7 @@ import '../ui/kit.dart';
 import '../ui/theme.dart';
 
 // 칸마다 받는 몫(화면 설명과 실제 지급이 같은 값을 쓰게 한 곳에 둔다).
-const _battleCoins = 80;
+const _battleCoins = 120;
 const _villageStamina = 8.0;
 const _villageCoins = 20;
 const _mysteryCoins = 10;

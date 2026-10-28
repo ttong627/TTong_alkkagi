@@ -99,13 +99,10 @@ void main() {
         ),
       );
       await tester.pump(const Duration(milliseconds: 50));
-      // 돌 자리: FlickView 와 같은 셈(작은 지도 30% · 글 78).
+      // 돌 자리: FlickView 와 같은 셈.
       final pad = tester.getRect(find.byKey(const Key('flick-pad')));
-      final miniH = pad.height * 0.3;
-      final floorH = pad.height - miniH - 78;
-      final r = math.min(pad.width * 0.28, floorH * 0.3);
-      final c = pad.topLeft + Offset(pad.width / 2, miniH + floorH * 0.5);
-      return (m, shots, c, r);
+      final (at, r, _) = FlickView.layout(pad.size);
+      return (m, shots, pad.topLeft + at, r);
     }
 
     testWidgets('돌을 잡고 아래로 당겼다 놓으면 위로 쏜다', (tester) async {
@@ -125,6 +122,33 @@ void main() {
       expect(shots, hasLength(1));
       expect(shots.single.angle, closeTo(-math.pi / 2, 0.02));
       expect(shots.single.power, greaterThan(0.5));
+      m.dispose();
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('좌우로 당겨도 화면 안에서 내공 100% 가 나온다(형 10-28 「좌우로 세게 못 당겨」)', (
+      tester,
+    ) async {
+      final (m, shots, c, _) = await open(tester);
+      final pad = tester.getRect(find.byKey(const Key('flick-pad')));
+      final g = await tester.startGesture(c);
+      // 화면 왼쪽 끝 4 앞까지 열 번에 나눠 끈다.
+      final to = Offset(pad.left + 4, c.dy);
+      for (var i = 1; i <= 10; i++) {
+        await g.moveTo(Offset.lerp(c, to, i / 10)!);
+        await tester.pump(const Duration(milliseconds: 30));
+      }
+      await g.up();
+      for (var i = 0; i < 30; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(shots, hasLength(1));
+      expect(
+        shots.single.angle.abs(),
+        closeTo(0, 0.02),
+        reason: '왼쪽으로 당기면 오른쪽으로',
+      );
+      expect(shots.single.power, 1);
       m.dispose();
       await tester.pumpWidget(const SizedBox());
     });

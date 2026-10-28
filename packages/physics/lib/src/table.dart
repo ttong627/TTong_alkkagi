@@ -821,7 +821,7 @@ class Table {
     if (!settle || shooter == null || identical(s, shooter)) return;
     if (!_held.add(s.id)) return;
     var k = _pushOf(s, shooter, direct: identical(by, shooter));
-    if (!identical(by, shooter) && k > 1) k = 1;
+    if (favoredTeam == null && !identical(by, shooter) && k > 1) k = 1;
     if (k != 1) s.body.linearVelocity = s.velocity..scale(k);
   }
 
@@ -851,6 +851,10 @@ class Table {
         shooter.material.strikeBoost * even,
         PhysicsConstants.maxStrikeBoost,
       );
+    }
+    // 내 수에 밀려난 상대 돌이 다른 상대 돌을 쳤다(멀티샷 · 2026-10-28 형 「멀티 샷 확률 좀 더」).
+    if (shooter.team == hero && s.team == 1 - hero) {
+      return PhysicsConstants.chainCarry;
     }
     return 1;
   }

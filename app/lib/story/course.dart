@@ -10,7 +10,8 @@ import 'chapters.dart';
 /// 강호행 단계별 코스(2026-10-14 형 「단계별 코스에 졸개나 중간 단계를 7~9단계로 구성하고
 /// 3, 4단계마다 중간보스 등장, 마지막 단계에서 보스 등장으로 구성해줘」).
 ///
-/// 장마다 7~9단계: 졸개 판들 사이 4단계(9단계 장은 7단계에도)에 중간 보스, 마지막 단계에 그 장의 보스.
+/// 장마다 10~12단계: 졸개 판들 사이 4단계(12단계 장은 7단계에도)에 중간 보스, 보스 세 단계 앞에 부두목 흑풍,
+/// 마지막 단계에 그 장의 보스(2026-10-28 장마다 3단계 더 — 새 단계는 보스 앞에 붙여 예전 단계 id 가 그대로다).
 /// 숙적 묵현은 다음 장의 중간 보스로 나온다(3·5·6장) — 예전 판 순서(장 → 숙적 → 다음 장)와 같다.
 enum StepKind {
   minion('졸개'),
@@ -70,12 +71,19 @@ class Course {
   String idOf(int i) => steps[i].stageId ?? 'k${chapter}s${i + 1}';
 }
 
+/// 흑풍채 부두목(2026-10-28 형 「스테이지 3라운드 정도 더 · 중간 보스 부두목까지」): 장마다 보스 세 단계 앞
+/// 마지막 중간 보스로 나와, 장이 갈수록 좋은 돌·많은 돌로 다시 막아선다. 그림 = 코덱스(tool/art · budumok).
+const budumok = '부두목 흑풍';
+
 const courses = [
   Course(1, '마을 장난꾼', [
     CourseStep.minion(3),
     CourseStep.minion(4),
     CourseStep.minion(4),
     CourseStep.mid('나무꾼 강쇠', 5, StoneMaterial.wood),
+    CourseStep.minion(5),
+    CourseStep.minion(5),
+    CourseStep.mid(budumok, 5, StoneMaterial.wood),
     CourseStep.minion(5),
     CourseStep.minion(5),
     CourseStep.stage('c1'),
@@ -88,6 +96,9 @@ const courses = [
     CourseStep.minion(5),
     CourseStep.minion(6),
     CourseStep.minion(6),
+    CourseStep.mid(budumok, 6, StoneMaterial.obsidian),
+    CourseStep.minion(6),
+    CourseStep.minion(6),
     CourseStep.stage('c2'),
   ]),
   Course(3, '장터 건달', [
@@ -96,6 +107,9 @@ const courses = [
     CourseStep.minion(5),
     CourseStep.stage('r1', mid: true),
     CourseStep.minion(5),
+    CourseStep.minion(6),
+    CourseStep.minion(6),
+    CourseStep.mid(budumok, 6, StoneMaterial.obsidian),
     CourseStep.minion(6),
     CourseStep.minion(6),
     CourseStep.stage('c3'),
@@ -109,6 +123,9 @@ const courses = [
     CourseStep.minion(6),
     CourseStep.mid('날쌘 칼잡이', 7, StoneMaterial.diamond),
     CourseStep.minion(7),
+    CourseStep.mid(budumok, 7, StoneMaterial.granite),
+    CourseStep.minion(7),
+    CourseStep.minion(7),
     CourseStep.stage('c4'),
   ]),
   Course(5, '학당 문도', [
@@ -117,6 +134,9 @@ const courses = [
     CourseStep.minion(6),
     CourseStep.stage('r2', mid: true),
     CourseStep.minion(6),
+    CourseStep.minion(7),
+    CourseStep.minion(7),
+    CourseStep.mid(budumok, 7, StoneMaterial.diamond),
     CourseStep.minion(7),
     CourseStep.minion(7),
     CourseStep.stage('c5'),
@@ -129,6 +149,9 @@ const courses = [
     CourseStep.minion(7),
     CourseStep.minion(7),
     CourseStep.stage('r3', mid: true),
+    CourseStep.minion(8),
+    CourseStep.mid(budumok, 8, StoneMaterial.jageum),
+    CourseStep.minion(8),
     CourseStep.minion(8),
     CourseStep.stage('c6'),
   ]),
@@ -209,7 +232,8 @@ abstract final class CourseRules {
     if (!won) return const daily.Reward();
     final first = !p.done.contains(id);
     final mid = s.kind == StepKind.mid;
-    final base = mid ? 40 + 10 * c.chapter : 15 + 5 * c.chapter;
+    // 2026-10-28 형 「돈이 너무 안 모여」: 2배(값은 10배로 올렸는데 보상은 그대로였다).
+    final base = mid ? 80 + 20 * c.chapter : 30 + 10 * c.chapter;
     final coins = first ? base * 2 : base ~/ 2;
     const mats = [Mat.ore, Mat.herb, Mat.jade, Mat.silk];
     final m = mats[(c.chapter + i) % mats.length];
