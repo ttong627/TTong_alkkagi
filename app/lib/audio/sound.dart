@@ -213,7 +213,13 @@ abstract final class Sound {
     Arena.pirateDeck => 'bgm_oilyTable',
     Arena.lavaCave => 'bgm_murimIce',
     Arena.heavenTemple => 'bgm_logicMarble',
-    _ => 'bgm_${a.name}',
+    // 제 곡이 있는 대전장 — 새 대전장을 더하면 여기서 컴파일이 멈춰 곡을 정하게 한다.
+    Arena.dustyYard ||
+    Arena.oilyTable ||
+    Arena.turtleMarket ||
+    Arena.kubiForest ||
+    Arena.logicMarble ||
+    Arena.murimIce => 'bgm_${a.name}',
   };
 
   /// 로비 음악.

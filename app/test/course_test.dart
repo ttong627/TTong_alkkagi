@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+
+import 'package:alkkagi/game/arena.dart';
 import 'package:alkkagi/game/match.dart';
 import 'package:alkkagi/progress/profile.dart';
 import 'package:alkkagi/progress/quests.dart';
@@ -73,10 +76,43 @@ void main() {
       );
     }
     final r = CourseRules.finish(p, c, 0, won: true);
-    expect(r.coins, (100 + 20 * 10) * 2);
+    expect(r.coins, (80 + 10 * 10) * 2);
+    expect(r.coins, lessThan(campaign.last.coins(first: true)));
     expect(r.bag.keys.where((k) => k.startsWith('item:')), hasLength(1));
     expect(p.done, contains('k10s1'));
     expect(p.done, isNot(contains('c1')), reason: '재대결은 1장 보스를 깬 것으로 치지 않는다');
+  });
+
+  test('재대결은 내 돌 그대로(2장 「돌 빌려주기」를 대사 없이 쓰지 않는다)', () {
+    final p = Profile()
+      ..naegong = 9999
+      ..materials.add(StoneMaterial.uncheol)
+      ..material = StoneMaterial.uncheol;
+    final c = courses.last;
+    final c2 = c.steps.indexWhere((s) => s.rematchOf == 'c2');
+    expect(
+      Campaign.configFor(p, c.steps[c2].rematch!).myMaterial,
+      StoneMaterial.hyeoncheol,
+    );
+    expect(CourseRules.configFor(p, c, c2).myMaterial, StoneMaterial.uncheol);
+  });
+
+  test('투기장·강호유랑 무작위 대전장: 7~10장 대전장은 그 장을 깬 뒤에만', () {
+    final p = Profile();
+    final rand = math.Random(3);
+    final seen = {for (var i = 0; i < 400; i++) Campaign.randomArena(p, rand)};
+    expect(seen.length, 6);
+    expect(seen.any((a) => a.index >= Arena.sandCanyon.index), isFalse);
+    p.done.add('c7');
+    final more = {for (var i = 0; i < 400; i++) Campaign.randomArena(p, rand)};
+    expect(more, contains(Arena.sandCanyon));
+    expect(more, isNot(contains(Arena.heavenTemple)));
+  });
+
+  test('이야기 판을 치면 대전장 기본 장애물도 도감에 오른다', () {
+    final p = Profile();
+    Campaign.finish(p, campaign.firstWhere((s) => s.id == 'c9'), won: false);
+    expect(p.codex, containsAll(['지물:lavaPit', '지물:pillar', '지물:fence']));
   });
 
   test('10장 문: 9장 보스를 깨야 열리고, 재대결도 차례대로', () {

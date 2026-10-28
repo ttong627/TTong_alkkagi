@@ -5,7 +5,6 @@ import 'package:alkkagi_physics/alkkagi_physics.dart';
 import 'package:flutter/material.dart';
 
 import '../audio/sound.dart';
-import '../game/arena.dart';
 import '../game/match.dart';
 import '../progress/modes.dart';
 import '../progress/profile.dart';
@@ -86,7 +85,7 @@ class _WanderScreenState extends State<WanderScreen> {
       case WanderNode.battle:
         final cfg = Campaign.playerConfig(
           p,
-          arena: Arena.values[_rand.nextInt(Arena.values.length)],
+          arena: Campaign.randomArena(p, _rand),
           difficulty: p.wanderRow < 3
               ? Difficulty.normal
               : (p.done.contains('c5') ? Difficulty.hard : Difficulty.skilled),

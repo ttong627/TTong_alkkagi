@@ -129,12 +129,8 @@ abstract final class Art {
   static ui.Image? fxImage(String name) => _fx[name];
 
   /// 앱 시작 때 대전장 바닥·장애물·효과 그림을 읽는다. 실패해도 게임은 코드로 그린 것으로 간다.
+  /// 작은 장애물·효과 그림을 먼저(큰 바닥 10장을 읽는 동안 판이 열려도 빠지지 않게).
   static Future<void> preload() async {
-    for (final a in Arena.values) {
-      try {
-        _floors[a] = await _decode(floor(a), 768);
-      } catch (_) {}
-    }
     for (final k in obstacleKinds) {
       try {
         _obstacles[k] = await _decode(obstacle(k), 192);
@@ -143,6 +139,11 @@ abstract final class Art {
     for (final n in fxNames) {
       try {
         _fx[n] = await _decode(fx(n), 256);
+      } catch (_) {}
+    }
+    for (final a in Arena.values) {
+      try {
+        _floors[a] = await _decode(floor(a), 768);
       } catch (_) {}
     }
   }

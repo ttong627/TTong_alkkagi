@@ -286,6 +286,7 @@ abstract final class CourseRules {
         easy: easy,
         aiErrorScale: t.errorScale * rematchError,
         bossQi: ((t.bossQi ?? st.bossQi) + rematchQi).clamp(0, maxQi),
+        keepMyStone: true,
       );
     }
     final boss = c.boss;
@@ -323,8 +324,9 @@ abstract final class CourseRules {
     final rematch = s.rematchOf != null;
     final mid = s.kind == StepKind.mid || rematch;
     // 2026-10-28 형 「돈이 너무 안 모여」: 2배(값은 10배로 올렸는데 보상은 그대로였다).
+    // 재대결은 이야기 판(알까기 신 처음 520)보다 작게 — 쉬운 1장 재대결을 되풀이해 벌던 구멍(점검).
     final base = rematch
-        ? 100 + 20 * c.chapter
+        ? 80 + 10 * c.chapter
         : (mid ? 80 + 20 * c.chapter : 30 + 10 * c.chapter);
     final coins = first ? base * 2 : base ~/ 2;
     const mats = [Mat.ore, Mat.herb, Mat.jade, Mat.silk];
