@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:alkkagi_physics/alkkagi_physics.dart';
 
 import '../game/arena.dart';
@@ -8,6 +10,18 @@ import 'chapters.dart';
 
 /// 강호행 진행 규칙(설계서 §7.3·§16.1·§16.4). 화면과 떨어진 순수한 계산.
 abstract final class Campaign {
+  /// 투기장·강호유랑의 무작위 대전장: 처음 여섯 곳 + 그 장을 깬 7~10장 대전장(2026-10-28 점검 —
+  /// 1장도 못 깬 사람이 용암굴·탄신전을 먼저 만나 용암 구멍에 빠지던 것).
+  static Arena randomArena(Profile p, math.Random rand) {
+    final open = [
+      for (final a in Arena.values)
+        if (a.index < Arena.sandCanyon.index ||
+            campaign.any((s) => s.arena == a && p.done.contains(s.id)))
+          a,
+    ];
+    return open[rand.nextInt(open.length)];
+  }
+
   /// [i] 번째 판이 막힌 까닭. 열려 있으면 null.
   static String? lockReason(Profile p, int i) {
     final s = campaign[i];
@@ -51,6 +65,7 @@ abstract final class Campaign {
     AiStyle? aiStyle,
     int? bossQi,
     StoneMaterial? bossMaterial,
+    bool keepMyStone = false,
   }) {
     final t = tune(s, easy: easy);
     return playerConfig(
@@ -61,7 +76,8 @@ abstract final class Campaign {
       aiPowerScale: aiPowerScale ?? t.powerScale,
       aiBlunder: aiBlunder ?? t.blunder,
       opponentMaterial: bossMaterial ?? t.bossMaterial ?? s.material,
-      myMaterial: t.myMaterial,
+      // 재대결([keepMyStone])은 이야기 판의 돌 빌려주기를 쓰지 않는다 — 대사 없이 내 돌이 바뀌던 것(점검).
+      myMaterial: keepMyStone ? null : t.myMaterial,
       opponentShape: s.shape,
       opponentMartial: rivalMartial(s, p.rebirths),
       aiStyle: aiStyle ?? s.style,
@@ -108,6 +124,16 @@ abstract final class Campaign {
       bossMaterial: StoneMaterial.cheongok,
       note: ('무림맹주', '흥, 현철까지 꺼낼 것도 없다. 청옥 돌로 상대해 주마!'),
     ),
+    // 7~10장(2026-10-28) — 가상 대전(PROG=1 · 보통 사람 손 · 80판) 실측: 7장 53 · 8장 53 · 9장 46 · 10장 35%.
+    'c7': AiTune(errorScale: 16),
+    'c8': AiTune(errorScale: 5),
+    'c9': AiTune(errorScale: 4),
+    'c10': AiTune(
+      errorScale: 8,
+      blunder: 0.3,
+      myMaterial: StoneMaterial.cheongok,
+      note: ('알까기 신', '이 전각에서는 모든 돌이 처음의 청옥으로 돌아간다. 손끝만 남는 것이지.'),
+    ),
   };
 
   /// 보통 — 실측(보통 사람 손): 65 · 43 · 58 · 50 · 50 · 58 · 87 · 28 · 28%(예전 53 · 8 · 61 · 18 · 42 · 31 · 43 · 0 · 0%).
@@ -129,6 +155,16 @@ abstract final class Campaign {
       bossQi: 2,
       bossMaterial: StoneMaterial.cheongok,
       note: ('무림맹주', '흥, 현철까지 꺼낼 것도 없다. 청옥 돌로 상대해 주마!'),
+    ),
+    // 7~10장(2026-10-28) 실측(80판): 7장 30 · 8장 43 · 9장 29 · 10장 24%.
+    // 알까기 신은 손 오차를 1.2배까지 줄여도 내 무거운 돌(현철)에 85% 넘게 졌다 → 탄신전에선 내 돌도 처음의 청옥으로.
+    'c7': AiTune(errorScale: 8),
+    'c8': AiTune(errorScale: 3.5),
+    'c9': AiTune(errorScale: 2.2),
+    'c10': AiTune(
+      errorScale: 5,
+      myMaterial: StoneMaterial.cheongok,
+      note: ('알까기 신', '이 전각에서는 모든 돌이 처음의 청옥으로 돌아간다. 손끝만 남는 것이지.'),
     ),
   };
 
@@ -231,7 +267,8 @@ abstract final class Campaign {
   }) {
     p.codex.add('고수:${s.boss}');
     if (s.weather != Weather.clear) p.codex.add('천기:${s.weather.name}');
-    for (final f in s.features) {
+    // 그 판에 적은 지물 + 대전장 기본 장애물(담장·기둥·새 장애물 — 도감 칸이 늘 「?」로 남던 것 · 점검).
+    for (final f in [...s.features, ...arenaLayout(s.arena)]) {
       p.codex.add('지물:${f.kind.name}');
     }
     final fine = civiliansLost * civilianPenalty;

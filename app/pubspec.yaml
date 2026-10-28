@@ -67,6 +67,8 @@ flutter:
     - assets/images/chars/
     - assets/images/scenes/
     - assets/images/icons/
+    - assets/images/obstacles/
+    - assets/images/fx/
     - assets/licenses/
 
   # 글꼴(SIL Open Font License · assets/licenses 에 원문): 제목 Black Han Sans, 본문 도현, 보충 Noto Sans KR.

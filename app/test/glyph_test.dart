@@ -38,10 +38,11 @@ void main() {
     }
   });
 
-  test('맺음: 촌장과 묵현이 돌아와 이야기를 끝맺는다', () {
+  test('맺음: 촌장과 묵현이 돌아와 이야기를 끝맺는다 · 알까기 신(10장) 뒤', () {
     final who = epilogue.map((l) => l.$1).toSet();
     expect(who, containsAll(['촌장', '묵현']));
     expect(epilogue.last.$2, contains('끝'));
+    expect(epilogue.first.$2, contains('알까기 신'));
   });
 
   testWidgets('강호행 맨 위에 기명석 — 깬 장만큼 문양 수', (t) async {

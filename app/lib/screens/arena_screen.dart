@@ -4,7 +4,6 @@ import 'dart:math' as math;
 import 'package:alkkagi_physics/alkkagi_physics.dart';
 import 'package:flutter/material.dart';
 
-import '../game/arena.dart';
 import '../game/match.dart';
 import '../progress/modes.dart';
 import '../progress/profile.dart';
@@ -118,7 +117,7 @@ class _ArenaScreenState extends State<ArenaScreen> {
         : (_streak < 4 ? Difficulty.normal : Difficulty.hard);
     final cfg = Campaign.playerConfig(
       p,
-      arena: Arena.values[_rand.nextInt(Arena.values.length)],
+      arena: Campaign.randomArena(p, _rand),
       difficulty: diff,
       opponentMaterial:
           StoneMaterial.values[_rand.nextInt(StoneMaterial.values.length)],

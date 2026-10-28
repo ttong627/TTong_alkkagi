@@ -9,6 +9,7 @@ import 'board_paint.dart';
 import 'fx_colors.dart';
 import 'match.dart';
 import 'pets.dart';
+import '../ui/art.dart';
 import '../ui/theme.dart';
 
 /// 부딪힌 빠르기(cm/s)에 따른 연출 단계.
@@ -49,6 +50,7 @@ class BattleFx {
   final _glow = <int, (Color, double)>{};
   final _streaks = <_Streak>[];
   final _glints = <_Ring>[];
+  final _sprites = <_Sprite>[];
 
   /// 판 밖으로 떨어지는 돌(그리기는 BoardGame — 돌 그림을 안다).
   final falls = <FallingStone>[];
@@ -94,6 +96,14 @@ class BattleFx {
 
   void _text(Offset at, String s, Color c, {double size = 26}) =>
       _texts.add(_Text(at, s, c, size));
+
+  /// 효과 그림 한 번(코덱스 · 2026-10-28 형 「효과 이미지 … 좀더 다양하게」): [size] cm 까지 커지며 사라진다.
+  void _pop(String name, Offset at, double size, {double dur = 0.55}) {
+    if (Art.fxImage(name) == null) return;
+    _sprites.add(
+      _Sprite(name, at, size, dur, (_rand.nextDouble() - 0.5) * 1.2),
+    );
+  }
 
   void _burst(Offset at, Color c, int n, double speed, {double size = 0.25}) {
     for (var i = 0; i < n; i++) {
@@ -173,6 +183,7 @@ class BattleFx {
       _text(at.translate(0, -2.5), '회심!', innerColor, size: 34);
       _rings.add(_Ring(at, 0.5, 4, 0.35, innerColor));
       _burst(at, innerColor, 24, 20);
+      _pop('critical', at, 7);
       _flash = 0.35;
       _flashColor = innerColor;
       Buzz.burst();
@@ -194,6 +205,7 @@ class BattleFx {
         _glow[s.id] = (c, 2.5);
         _rings.add(_Ring(at, 0.5, 5, 0.4, c));
         _burst(at, c, 30, 25);
+        _pop('qi', at, 6);
         _text(
           at.translate(0, -2.5),
           m.lastMode == StrikeMode.absorb ? '흡성탄지' : '내공 · ${martial.label}',
@@ -205,6 +217,7 @@ class BattleFx {
         _glow[s.id] = (ultimateColor, 4);
         _rings.add(_Ring(at, 1, 10, 0.6, ultimateColor));
         _burst(at, ultimateColor, 40, 30);
+        _pop('qi', at, 9, dur: 0.7);
         _text(at.translate(0, -2.5), '어기어석!', ultimateColor, size: 34);
         if (m.lastWing > 0) {
           _text(
@@ -318,6 +331,7 @@ class BattleFx {
         );
         Sound.play('out_thud');
         if (!byMe) {
+          if (mine) _pop('lucky', at, 6, dur: 0.7);
           say(mine ? '뽀록! 기우뚱 떨어졌다' : '뽀록이라니… 열받네!', mine ? lucky : sore);
         } else {
           say(mine ? '아이고, 미끄러졌다!' : '자멸이로다~', mine ? sore : lucky);
@@ -328,9 +342,11 @@ class BattleFx {
       }
     }
     if (m.lastFluke > 0 && !m.luckEvents.any((e) => e.tipped)) {
+      if (mine) _pop('lucky', const Offset(0, -3), 8, dur: 0.7);
       say(mine ? '어부지리! 뽀록이다' : '어부지리라니…', mine ? lucky : sore);
     }
     if (mine && m.combo >= 2) {
+      _pop('combo', Offset.zero, 10 + m.combo.clamp(2, 6) * 1.5, dur: 0.7);
       say(
         '연타 ×${m.combo}! 엽전 +${Match.comboCoin * m.combo}',
         innerColor,
@@ -351,6 +367,7 @@ class BattleFx {
       _ => '일타다피!',
     };
     _text(const Offset(0, -3), name, c, size: 40);
+    _pop('critical', Offset.zero, 12 + m.lastKnocked * 2, dur: 0.7);
     Sound.play('clash');
     if (mine && m.config.mode == MatchMode.vsAi) {
       _text(
@@ -546,6 +563,27 @@ class BattleFx {
           _rings.add(_Ring(at, 0.3, 2.2, 0.3, c));
           _shake = math.max(_shake, 4);
           _text(at.translate(0, -2), _pick(fenceLines), c, size: 20);
+        case phys.TerrainFx.barrel:
+          Sound.play('hit_wood');
+          const c = Color(0xFFD9A066);
+          _rings.add(_Ring(at, 0.4, 3, 0.35, c));
+          _burst(at, c, 10, 12);
+          _shake = math.max(_shake, 6);
+          _text(at.translate(0, -2), '술통 반동!', c, size: 22);
+        case phys.TerrainFx.cloud:
+          Sound.play('whoosh');
+          const c = Color(0xFFFFF2C0);
+          _rings.add(_Ring(at, 0.4, 3.5, 0.4, c));
+          _burst(at, Colors.white, 14, 10, size: 0.4);
+          _text(at.translate(0, -2), '구름 쿠션!', c, size: 22);
+        case phys.TerrainFx.lava:
+          Sound.play('terrain_mine', 0.7);
+          const c = Color(0xFFFF5A1E);
+          _burst(at, c, 30, 25, size: 0.35);
+          _pop('knockout', at, 5);
+          _rings.add(_Ring(at, 0.5, 3.5, 0.45, c));
+          _shake = math.max(_shake, 10);
+          _text(at.translate(0, -2), '용암에 빠졌다!', c, size: 26);
       }
     }
     for (final (name, x, y) in m.artEvents) {
@@ -584,6 +622,7 @@ class BattleFx {
         }
         _text(at, '장외!', const Color(0xFFFF6B5B), size: 24);
         _burst(at, const Color(0xFFC9A57A), 20, 15, size: 0.35);
+        _pop('knockout', at, 5);
         _shake = math.max(_shake, 5);
         // 판 밖으로 떨어지며 작아지는 돌(장외가 눈에 보이게).
         falls.add(
@@ -633,6 +672,7 @@ class BattleFx {
       );
     }
     _text(at.translate(0, -2.2), '박살!', const Color(0xFFFFB04A), size: 38);
+    _pop('shatter', at, 8);
     _rings.add(_Ring(at, 0.3, 5, 0.4, Colors.white));
     _burst(at, edge, 30, 25, size: 0.3);
     _streak(at, 0, math.pi, 18, 40, const Color(0xFFFFE9A8), len: 1.8);
@@ -665,6 +705,10 @@ class BattleFx {
     for (final g in _glints) {
       g.t += dt;
     }
+    for (final sp in _sprites) {
+      sp.t += dt;
+    }
+    _sprites.removeWhere((sp) => sp.t >= sp.dur);
     _glints.removeWhere((g) => g.t >= g.dur);
     for (final f in falls) {
       f.pos += f.vel * dt;
@@ -790,6 +834,28 @@ class BattleFx {
           ..strokeWidth = math.max(1.2, scale * 0.12)
           ..color = s.edge.withValues(alpha: a),
       );
+    }
+    for (final sp in _sprites) {
+      final img = Art.fxImage(sp.name);
+      if (img == null) continue;
+      // 확 커졌다가(앞 25%) 천천히 커지며 옅어진다 · 살짝 돈다.
+      final k = (sp.t / sp.dur).clamp(0.0, 1.0);
+      final grow = k < 0.25 ? 0.35 + k / 0.25 * 0.65 : 1 + (k - 0.25) * 0.3;
+      final half = sp.size * scale * grow / 2;
+      final c = at(sp.at.dx, sp.at.dy);
+      canvas
+        ..save()
+        ..translate(c.dx, c.dy)
+        ..rotate(sp.spin * k);
+      canvas.drawImageRect(
+        img,
+        Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()),
+        Rect.fromCenter(center: Offset.zero, width: half * 2, height: half * 2),
+        Paint()
+          ..filterQuality = FilterQuality.medium
+          ..color = Colors.white.withValues(alpha: k < 0.6 ? 1 : (1 - k) / 0.4),
+      );
+      canvas.restore();
     }
     for (final r in _rings) {
       final k = r.t / r.dur;
@@ -954,6 +1020,17 @@ class _Part {
   double life;
   final double size;
   final Color color;
+}
+
+/// 효과 그림 하나([BattleFx._pop]).
+class _Sprite {
+  _Sprite(this.name, this.at, this.size, this.dur, this.spin);
+  final String name;
+  final Offset at;
+  final double size;
+  final double dur;
+  final double spin;
+  double t = 0;
 }
 
 class _Ring {

@@ -50,7 +50,23 @@ enum FeatureKind {
 
   /// 회전 기둥(2026-10-20 형 「다각형 기둥 … 회전한다던지 장소를 움직이면서 돌을 다시 쳐 내는데 여러 가지
   /// 랜덤 요소와 방향 강도를 다르게」): 돌이 움직이는 동안 돌고(·오가며) 맞은 돌을 엇나간 방향·세기로 쳐 낸다.
-  pillar('회전 기둥');
+  pillar('회전 기둥'),
+
+  // 2026-10-28 형 「장애물도 좀더 다양하게」(7~10장).
+  /// 유사(모래 늪 · 7장): 부딪히지 않는 구역. 지나가는 돌이 크게 느려진다.
+  quicksand('유사'),
+
+  /// 술통(8장): 둥근 나무통. 반발 1.1 — 맞으면 더 세게 튕겨 낸다.
+  barrel('술통'),
+
+  /// 소용돌이(8·10장): 부딪히지 않는 구역. 지나가는 돌을 옆으로 휘게 한다.
+  whirlpool('소용돌이'),
+
+  /// 용암 구멍(9장): 둘레에서 살짝 끌리고, 한가운데에 닿으면 장외.
+  lavaPit('용암 구멍'),
+
+  /// 구름 쿠션(10장): 반발 1.3 으로 크게 튕겨 낸다.
+  cloud('구름');
 
   const FeatureKind(this.label);
   final String label;
@@ -103,7 +119,19 @@ class Feature {
     FeatureKind.fence => TerrainConstants.fenceHalfLength,
     FeatureKind.rock => 1.5,
     FeatureKind.pillar => 1.7,
+    FeatureKind.quicksand => TerrainConstants.quicksandRadius,
+    FeatureKind.barrel => 1.3,
+    FeatureKind.whirlpool => TerrainConstants.whirlRadius,
+    FeatureKind.lavaPit => 1.4,
+    FeatureKind.cloud => 1.4,
   };
+
+  /// 부딪히지 않고 구역으로만 작용하는 지물(블랙홀·유사·소용돌이·용암 구멍).
+  bool get isZone =>
+      kind == FeatureKind.blackHole ||
+      kind == FeatureKind.quicksand ||
+      kind == FeatureKind.whirlpool ||
+      kind == FeatureKind.lavaPit;
 }
 
 /// 지형 수치.
@@ -127,6 +155,24 @@ abstract final class TerrainConstants {
   static const double mineRadius = 5;
   static const double minePush = 60;
 
+  /// 유사: 반지름(cm) · 안에서 움직이는 돌의 빠르기가 1초에 줄어드는 몫(e^-drag).
+  static const double quicksandRadius = 3.5;
+  static const double quicksandDrag = 3;
+
+  /// 소용돌이: 반지름(cm) · 안에서 돌의 나아가는 방향을 반시계로 돌리는 빠르기(라디안/초 · 가운데에서 가장 셈)
+  /// · 가운데로 끄는 가속(cm/s²). 옆으로 밀기만 하면 들어갈 때와 나올 때가 서로 지워져 휘지 않았다.
+  static const double whirlRadius = 6;
+  static const double whirlTurn = 2.4;
+  static const double whirlPull = 12;
+
+  /// 용암 구멍: 끌어당기는 반지름 · 가속 · 이 거리 안에 들면 장외.
+  static const double lavaRadius = 3.2;
+  static const double lavaPull = 40;
+  static const double lavaSwallow = 1.1;
+
+  static const double barrelRestitution = 1.1;
+  static const double cloudRestitution = 1.3;
+
   /// 광풍: 바람 가속(cm/s²)과 방향이 바뀌는 간격(스텝).
   static const double galeAccel = 12;
   static const int galeSteps = 300;
@@ -137,7 +183,18 @@ abstract final class TerrainConstants {
 }
 
 /// 지형이 일으킨 일(연출용).
-enum TerrainFx { gong, swallow, mine, frostStop, bamboo, fence, pillar }
+enum TerrainFx {
+  gong,
+  swallow,
+  mine,
+  frostStop,
+  bamboo,
+  fence,
+  pillar,
+  barrel,
+  cloud,
+  lava,
+}
 
 class TerrainEvent {
   const TerrainEvent(this.fx, this.x, this.y);

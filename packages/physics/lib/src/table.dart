@@ -403,6 +403,11 @@ class Table {
       FeatureKind.fence => TerrainConstants.fenceRestitution,
       FeatureKind.rock => 0.6,
       FeatureKind.pillar => TerrainConstants.pillarRestitution,
+      FeatureKind.barrel => TerrainConstants.barrelRestitution,
+      FeatureKind.cloud => TerrainConstants.cloudRestitution,
+      FeatureKind.quicksand ||
+      FeatureKind.whirlpool ||
+      FeatureKind.lavaPit => 0.2,
     };
     body.createShape(
       geometry,
@@ -410,8 +415,8 @@ class Table {
         material: SurfaceMaterial(friction: 0.2, restitution: restitution),
         enableContactEvents: true,
         enableHitEvents: true,
-        // 블랙홀은 부딪히지 않고 빨아들이기만 한다.
-        filter: f.kind == FeatureKind.blackHole ? Filter(maskBits: 0) : null,
+        // 구역 지물(블랙홀·유사·소용돌이·용암)은 부딪히지 않고 둘레에만 작용한다.
+        filter: f.isZone ? Filter(maskBits: 0) : null,
       ),
     );
     body.userData = f;
@@ -665,7 +670,10 @@ class Table {
       }
     }
     for (final f in features) {
-      if (f.kind != FeatureKind.blackHole) continue;
+      if (f.kind != FeatureKind.blackHole) {
+        if (f.isZone) _zoneStep(f, dt);
+        continue;
+      }
       final c = Vector2(f.x, f.y);
       for (final s in stones) {
         if (s.out || s.airborne) continue;
@@ -681,6 +689,46 @@ class Table {
         }
         d.scale(TerrainConstants.holePull * dt / len);
         s.body.linearVelocity = s.velocity + d;
+      }
+    }
+  }
+
+  /// 유사·소용돌이·용암 구멍 한 스텝(움직이는 돌만 · 떠서 나는 돌은 넘어간다).
+  void _zoneStep(Feature f, double dt) {
+    final c = Vector2(f.x, f.y);
+    for (final s in stones) {
+      if (s.out || s.airborne) continue;
+      final d = c - s.position;
+      final len = d.length;
+      if (f.kind == FeatureKind.lavaPit &&
+          len <= TerrainConstants.lavaSwallow) {
+        s.out = true;
+        s.body.linearVelocity = Vector2.zero();
+        s.body.isEnabled = false;
+        terrainEvents.add(TerrainEvent(TerrainFx.lava, f.x, f.y));
+        continue;
+      }
+      if (s.velocity.length <= PhysicsConstants.restSpeed) continue;
+      switch (f.kind) {
+        case FeatureKind.quicksand:
+          if (len > TerrainConstants.quicksandRadius) continue;
+          s.body.linearVelocity =
+              s.velocity * math.exp(-TerrainConstants.quicksandDrag * dt);
+        case FeatureKind.whirlpool:
+          if (len > TerrainConstants.whirlRadius || len < 0.01) continue;
+          // 나아가는 방향을 반시계로 조금씩 돌리고(가운데에 가까울수록 세게), 가운데로 살짝 끈다.
+          final k = 1 - len / TerrainConstants.whirlRadius * 0.6;
+          final a = TerrainConstants.whirlTurn * k * dt;
+          final v = s.velocity, c = math.cos(a), sn = math.sin(a);
+          s.body.linearVelocity =
+              Vector2(v.x * c - v.y * sn, v.x * sn + v.y * c) +
+              d * (TerrainConstants.whirlPull * k * dt / len);
+        case FeatureKind.lavaPit:
+          if (len > TerrainConstants.lavaRadius) continue;
+          s.body.linearVelocity =
+              s.velocity + d * (TerrainConstants.lavaPull * dt / len);
+        default:
+          break;
       }
     }
   }
@@ -767,10 +815,25 @@ class Table {
               TerrainEvent(TerrainFx.pillar, h.point.x, h.point.y),
             );
           }
+        case FeatureKind.barrel || FeatureKind.cloud:
+          if (h.approachSpeed > 10) {
+            terrainEvents.add(
+              TerrainEvent(
+                f.kind == FeatureKind.barrel
+                    ? TerrainFx.barrel
+                    : TerrainFx.cloud,
+                h.point.x,
+                h.point.y,
+              ),
+            );
+          }
         case FeatureKind.branch ||
             FeatureKind.pebble ||
             FeatureKind.blackHole ||
-            FeatureKind.rock:
+            FeatureKind.rock ||
+            FeatureKind.quicksand ||
+            FeatureKind.whirlpool ||
+            FeatureKind.lavaPit:
           break;
       }
     }

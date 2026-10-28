@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart' show Colors;
 
 import 'match.dart';
+import '../ui/art.dart';
 
 import 'package:alkkagi_physics/alkkagi_physics.dart';
 
@@ -624,6 +625,13 @@ void paintFeature(
   final c = at(f.x, f.y);
   final r = f.size * scale;
   switch (f.kind) {
+    // 새 장애물(2026-10-28)은 코덱스 그림을 위에서 본 모양으로 그린다. 그림이 없으면 색 동그라미.
+    case FeatureKind.quicksand ||
+        FeatureKind.barrel ||
+        FeatureKind.whirlpool ||
+        FeatureKind.lavaPit ||
+        FeatureKind.cloud:
+      _paintObstacle(canvas, f.kind, c, r, scale);
     case FeatureKind.pillar:
       // 회전 기둥: 지금 자리·각도로 다각형 돌기둥(금빛 테 · 가운데 소용돌이 · 2026-10-20).
       final (px, py, pa) = pose ?? (f.x, f.y, f.angle);
@@ -854,6 +862,53 @@ void paintFeature(
         p,
       );
   }
+}
+
+/// 새 장애물 한 개: 그림이 있으면 그림(구역 지물은 구역 크기 · 부딪히는 지물은 살짝 크게), 없으면 색 동그라미.
+void _paintObstacle(
+  Canvas canvas,
+  FeatureKind k,
+  Offset c,
+  double r,
+  double scale,
+) {
+  final zone = k == FeatureKind.quicksand || k == FeatureKind.whirlpool;
+  // 용암 구멍은 끌어당기는 둘레까지 붉게 번진다(가까이 가면 위험한 것이 보이게).
+  if (k == FeatureKind.lavaPit) {
+    final rr = TerrainConstants.lavaRadius * scale;
+    canvas.drawCircle(
+      c,
+      rr,
+      Paint()
+        ..shader = Gradient.radial(c, rr, const [
+          Color(0x88FF5A1E),
+          Color(0x00FF5A1E),
+        ]),
+    );
+  }
+  final img = Art.obstacleImage(k);
+  final draw = zone ? r : r * 1.15;
+  if (img != null) {
+    canvas.drawImageRect(
+      img,
+      Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()),
+      Rect.fromCircle(center: c, radius: draw),
+      Paint()..filterQuality = FilterQuality.medium,
+    );
+    return;
+  }
+  final (inner, outer) = switch (k) {
+    FeatureKind.quicksand => (const Color(0xCC8A5A20), const Color(0x33D9A85A)),
+    FeatureKind.barrel => (const Color(0xFF8A5A2E), const Color(0xFF4A2E14)),
+    FeatureKind.whirlpool => (const Color(0xAA8FD3EE), const Color(0x228FD3EE)),
+    FeatureKind.lavaPit => (const Color(0xFFFFB03A), const Color(0xFF2A1410)),
+    _ => (const Color(0xFFFFFFFF), const Color(0xFFE8D9A0)),
+  };
+  canvas.drawCircle(
+    c,
+    draw,
+    Paint()..shader = Gradient.radial(c, draw, [inner, outer]),
+  );
 }
 
 /// 날씨 그림(설계서 §9.3). 야우: 내 돌 둘레 10cm 만 밝고 상대 돌은 실루엣 · 광풍: 바람 줄 · 혹한: 서리.

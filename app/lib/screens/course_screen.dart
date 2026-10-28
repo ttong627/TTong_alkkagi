@@ -34,6 +34,7 @@ class _CourseScreenState extends State<CourseScreen> {
       final st = campaign.firstWhere((x) => x.id == id);
       return st.rival != null ? '숙적 ${st.boss}' : st.boss;
     }
+    if (s.rematch case final st?) return '환영 · ${st.boss}';
     return s.foe ?? c.minion;
   }
 
@@ -47,20 +48,22 @@ class _CourseScreenState extends State<CourseScreen> {
     if (mounted) setState(() {});
   }
 
-  /// 졸개·중간 보스 한 판.
+  /// 졸개·중간 보스·재대결 한 판.
   Future<void> _playStep(int i) async {
     final p = _store.profile;
     final s = c.steps[i];
     await showPrologueOnce(context);
     if (!mounted) return;
-    if (s.kind == StepKind.mid) Sound.play('jingle_chapter');
+    if (s.kind != StepKind.minion) Sound.play('jingle_chapter');
+    final again = s.rematch;
     final won = await Navigator.of(context).push<bool>(
       gameRoute(
         GameScreen(
           config: CourseRules.configFor(p, c, i, easy: p.easyMode),
           title: '${c.chapter}장 ${i + 1}단계 · ${_foe(i)}',
-          boss: s.kind == StepKind.mid,
+          boss: s.kind != StepKind.minion,
           stageId: c.idOf(i),
+          quips: again?.quips ?? const [],
         ),
       ),
     );

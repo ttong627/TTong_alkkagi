@@ -28,17 +28,29 @@ class CourseStep {
     : kind = StepKind.minion,
       foe = null,
       material = null,
-      stageId = null;
+      stageId = null,
+      rematchOf = null;
   const CourseStep.mid(this.foe, this.stones, this.material)
     : kind = StepKind.mid,
-      stageId = null;
+      stageId = null,
+      rematchOf = null;
 
   /// 장 보스이거나 숙적(이야기 대사가 있는 판 · [campaign] 의 id).
   const CourseStep.stage(this.stageId, {bool mid = false})
     : kind = mid ? StepKind.mid : StepKind.boss,
       foe = null,
       stones = stonesPerTeam,
-      material = null;
+      material = null,
+      rematchOf = null;
+
+  /// 10장 보스 재대결(2026-10-28 형 「10단계는 보스로만 구성」): 앞 장 보스가 그 대전장에서 더 강해져 다시 나온다.
+  /// 이야기 판을 다시 치는 것이 아니라 새 단계(진행 id 는 k10s…)다.
+  const CourseStep.rematch(this.rematchOf)
+    : kind = StepKind.boss,
+      foe = null,
+      stones = stonesPerTeam,
+      material = null,
+      stageId = null;
 
   final StepKind kind;
 
@@ -53,6 +65,13 @@ class CourseStep {
 
   /// 이야기 판 id(c1 · r1 …).
   final String? stageId;
+
+  /// 재대결하는 이야기 판 id(10장).
+  final String? rematchOf;
+
+  /// 재대결 상대 판.
+  Stage? get rematch =>
+      rematchOf == null ? null : campaign.firstWhere((x) => x.id == rematchOf);
 }
 
 /// 장 하나의 코스.
@@ -155,6 +174,60 @@ const courses = [
     CourseStep.minion(8),
     CourseStep.stage('c6'),
   ]),
+  // 2026-10-28 형 「새로운 이야기도 지금 6개에서 10개로」.
+  Course(7, '사막 도적', [
+    CourseStep.minion(6),
+    CourseStep.minion(6),
+    CourseStep.minion(7),
+    CourseStep.mid('모래 전갈 사갈', 7, StoneMaterial.diamond),
+    CourseStep.minion(7),
+    CourseStep.minion(7),
+    CourseStep.minion(7),
+    CourseStep.mid(budumok, 8, StoneMaterial.jageum),
+    CourseStep.minion(8),
+    CourseStep.minion(8),
+    CourseStep.stage('c7'),
+  ]),
+  Course(8, '해적 졸개', [
+    CourseStep.minion(6),
+    CourseStep.minion(7),
+    CourseStep.minion(7),
+    CourseStep.mid('갑판장 외눈', 7, StoneMaterial.hyeoncheol),
+    CourseStep.minion(7),
+    CourseStep.minion(8),
+    CourseStep.minion(8),
+    CourseStep.mid(budumok, 8, StoneMaterial.jageum),
+    CourseStep.minion(8),
+    CourseStep.minion(8),
+    CourseStep.stage('c8'),
+  ]),
+  Course(9, '불꽃 시종', [
+    CourseStep.minion(7),
+    CourseStep.minion(7),
+    CourseStep.minion(7),
+    CourseStep.mid('화동 염귀', 8, StoneMaterial.obsidian),
+    CourseStep.minion(8),
+    CourseStep.minion(8),
+    CourseStep.mid('용암 거인 석괴', 8, StoneMaterial.uncheol),
+    CourseStep.minion(8),
+    CourseStep.mid(budumok, 8, StoneMaterial.uncheol),
+    CourseStep.minion(8),
+    CourseStep.minion(8),
+    CourseStep.stage('c9'),
+  ]),
+  // 10장: 보스만 10단계 — 지나온 아홉 장의 보스가 차례로 더 강해져 나오고, 마지막에 알까기 신.
+  Course(10, '천상의 환영', [
+    CourseStep.rematch('c1'),
+    CourseStep.rematch('c2'),
+    CourseStep.rematch('c3'),
+    CourseStep.rematch('c4'),
+    CourseStep.rematch('c5'),
+    CourseStep.rematch('c6'),
+    CourseStep.rematch('c7'),
+    CourseStep.rematch('c8'),
+    CourseStep.rematch('c9'),
+    CourseStep.stage('c10'),
+  ]),
 ];
 
 /// 코스 진행 규칙(화면과 떨어진 순수한 계산).
@@ -193,7 +266,11 @@ abstract final class CourseRules {
           .where(p.done.contains)
           .length;
 
-  /// 졸개·중간 보스 판 설정(이야기 판은 [Campaign.configFor]).
+  /// 재대결 보스의 손 오차 배수(이야기 판 값에 곱함 — 처음보다 강해져 돌아온다) · 더하는 시작 내공.
+  static const double rematchError = 0.7;
+  static const int rematchQi = 1;
+
+  /// 졸개·중간 보스·재대결 판 설정(이야기 판은 [Campaign.configFor]).
   static MatchConfig configFor(
     Profile p,
     Course c,
@@ -201,11 +278,24 @@ abstract final class CourseRules {
     bool easy = false,
   }) {
     final s = c.steps[i];
+    if (s.rematch case final st?) {
+      final t = Campaign.tune(st, easy: easy);
+      return Campaign.configFor(
+        p,
+        st,
+        easy: easy,
+        aiErrorScale: t.errorScale * rematchError,
+        bossQi: ((t.bossQi ?? st.bossQi) + rematchQi).clamp(0, maxQi),
+        keepMyStone: true,
+      );
+    }
     final boss = c.boss;
     final mid = s.kind == StepKind.mid;
-    // 졸개는 고수보다 손이 서툴다(뒤 장일수록 조금씩 낫다). 쉬움이면 더.
+    // 졸개는 고수보다 손이 서툴다(뒤 장일수록 조금씩 낫다 · 7장부터는 더 줄지 않는다). 쉬움이면 더.
     final err =
-        (mid ? 1.6 : 2.4) * (easy ? 1.5 : 1) * (1 - 0.05 * (c.chapter - 1));
+        (mid ? 1.6 : 2.4) *
+        (easy ? 1.5 : 1) *
+        (1 - 0.05 * (c.chapter - 1)).clamp(0.7, 1.0);
     return Campaign.playerConfig(
       p,
       arena: boss.arena,
@@ -225,15 +315,19 @@ abstract final class CourseRules {
     );
   }
 
-  /// 졸개·중간 보스를 이겼다 — 엽전(처음 ×2) · 처음이면 재료(중간 보스는 재료 2 + 아이템 1).
+  /// 졸개·중간 보스·재대결을 이겼다 — 엽전(처음 ×2) · 처음이면 재료(중간 보스·재대결은 재료 2 + 아이템 1).
   static daily.Reward finish(Profile p, Course c, int i, {required bool won}) {
     final s = c.steps[i];
     final id = c.idOf(i);
     if (!won) return const daily.Reward();
     final first = !p.done.contains(id);
-    final mid = s.kind == StepKind.mid;
+    final rematch = s.rematchOf != null;
+    final mid = s.kind == StepKind.mid || rematch;
     // 2026-10-28 형 「돈이 너무 안 모여」: 2배(값은 10배로 올렸는데 보상은 그대로였다).
-    final base = mid ? 80 + 20 * c.chapter : 30 + 10 * c.chapter;
+    // 재대결은 이야기 판(알까기 신 처음 520)보다 작게 — 쉬운 1장 재대결을 되풀이해 벌던 구멍(점검).
+    final base = rematch
+        ? 80 + 10 * c.chapter
+        : (mid ? 80 + 20 * c.chapter : 30 + 10 * c.chapter);
     final coins = first ? base * 2 : base ~/ 2;
     const mats = [Mat.ore, Mat.herb, Mat.jade, Mat.silk];
     final m = mats[(c.chapter + i) % mats.length];
