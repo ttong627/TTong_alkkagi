@@ -39,7 +39,7 @@ except Exception:
     pass
 
 # 앱에 넣는 크기(예전 그림과 같게).
-SIZE = {"bg": (1080, 1920), "floor": (1024, 1024), "icon": (320, 320)}
+SIZE = {"bg": (1080, 1920), "floor": (1024, 1024), "icon": (320, 320), "obstacle": (256, 256), "fx": (384, 384)}
 
 
 def spec() -> dict:
@@ -136,6 +136,12 @@ def apply(a) -> int:
             dest = ASSETS / "icons" / f"{it['id']}.webp"
             size = (480, 480) if it["kind"] == "pet" else SIZE["icon"]
             icon(im, size).save(dest, "WEBP", quality=90, method=6)
+        elif it["kind"] in ("obstacle", "fx"):
+            # 2026-10-28 장애물·효과 그림: 초록을 지우고 정사각형으로(판 위에 돌려 그린다).
+            folder = ASSETS / ("obstacles" if it["kind"] == "obstacle" else "fx")
+            folder.mkdir(exist_ok=True)
+            dest = folder / f"{it['id']}.webp"
+            icon(im, SIZE[it["kind"]]).save(dest, "WEBP", quality=88, method=6)
         else:
             dest = ASSETS / "scenes" / f"{it['id']}.webp"
             cover(im.convert("RGB"), SIZE[it["kind"]]).save(dest, "WEBP", quality=82, method=6)

@@ -280,6 +280,13 @@ final achievements = <Achievement>[
     const Reward(tokens: 3),
     (p) => p.done.contains('c6') ? 1 : 0,
   ),
+  Achievement(
+    'ch10',
+    '알까기 신을 넘다',
+    1,
+    const Reward(tokens: 5, silver: 5),
+    (p) => p.done.contains('c10') ? 1 : 0,
+  ),
   // 강호행 9판 × 별 3 = 27 이 만점(예전 목표 30 은 이룰 수 없었다 — 2026-10-11).
   Achievement('stars9', '별 9개', 9, const Reward(tp: 30), (p) => p.totalStars),
   Achievement(

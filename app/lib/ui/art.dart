@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
+import 'package:alkkagi_physics/alkkagi_physics.dart';
 import 'package:flutter/services.dart';
 
 import '../game/arena.dart';
@@ -36,6 +37,10 @@ abstract final class Art {
     '무림맹주' || '맹주' => 'maengju',
     '사부' => 'sabu',
     '부두목 흑풍' || '흑풍' => 'budumok',
+    '사막왕' => 'sawang',
+    '해적왕' => 'haejeok',
+    '염마녀' => 'hongryeon',
+    '알까기 신' => 'tansin',
     _ => null,
   };
 
@@ -58,6 +63,32 @@ abstract final class Art {
     'maengju',
     'sabu',
     'budumok',
+    'sawang',
+    'haejeok',
+    'hongryeon',
+    'tansin',
+  ];
+
+  /// 장애물 그림(코덱스 · 위에서 본 모양 · 2026-10-28). 없으면 코드로 그린다.
+  static String obstacle(FeatureKind k) =>
+      'assets/images/obstacles/ob_${k.name}.webp';
+  static const obstacleKinds = [
+    FeatureKind.quicksand,
+    FeatureKind.barrel,
+    FeatureKind.whirlpool,
+    FeatureKind.lavaPit,
+    FeatureKind.cloud,
+  ];
+
+  /// 효과 그림(코덱스 · 2026-10-28 형 「효과 이미지 … 좀더 다양하게」).
+  static String fx(String name) => 'assets/images/fx/fx_$name.webp';
+  static const fxNames = [
+    'critical',
+    'shatter',
+    'knockout',
+    'combo',
+    'lucky',
+    'qi',
   ];
 
   static const iconNames = [
@@ -87,15 +118,31 @@ abstract final class Art {
   // 판 크기(폰 너비)에 맞춰 768px 로 줄여 읽는다(1024² 원본 6장 25MB → 14MB).
   // 대전장 배경은 Image.asset 이 따로 읽으므로 여기서 또 읽지 않는다(예전엔 50MB 를 그냥 들고 있었다 · 2026-10-11 점검).
   static final _floors = <Arena, ui.Image>{};
+  static final _obstacles = <FeatureKind, ui.Image>{};
+  static final _fx = <String, ui.Image>{};
 
   /// 대전장 바닥 그림(아직 못 읽었으면 null — 그때는 코드로 그린 바닥을 쓴다).
   static ui.Image? floorImage(Arena a) => _floors[a];
 
-  /// 앱 시작 때 대전장 바닥을 읽는다. 실패해도 게임은 코드로 그린 바닥으로 간다.
+  /// 장애물·효과 그림(아직 못 읽었으면 null — 그때는 코드로 그린 것만 나온다).
+  static ui.Image? obstacleImage(FeatureKind k) => _obstacles[k];
+  static ui.Image? fxImage(String name) => _fx[name];
+
+  /// 앱 시작 때 대전장 바닥·장애물·효과 그림을 읽는다. 실패해도 게임은 코드로 그린 것으로 간다.
   static Future<void> preload() async {
     for (final a in Arena.values) {
       try {
         _floors[a] = await _decode(floor(a), 768);
+      } catch (_) {}
+    }
+    for (final k in obstacleKinds) {
+      try {
+        _obstacles[k] = await _decode(obstacle(k), 192);
+      } catch (_) {}
+    }
+    for (final n in fxNames) {
+      try {
+        _fx[n] = await _decode(fx(n), 256);
       } catch (_) {}
     }
   }

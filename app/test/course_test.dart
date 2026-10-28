@@ -1,6 +1,7 @@
 import 'package:alkkagi/game/match.dart';
 import 'package:alkkagi/progress/profile.dart';
 import 'package:alkkagi/progress/quests.dart';
+import 'package:alkkagi/story/campaign.dart';
 import 'package:alkkagi/story/chapters.dart';
 import 'package:alkkagi/story/course.dart';
 import 'package:alkkagi_physics/alkkagi_physics.dart';
@@ -12,9 +13,9 @@ void main() {
   setUpAll(initializePhysics);
 
   // 2026-10-28 형 「스테이지도 3라운드 정도 더 추가 · 중간 보스 부두목까지」: 장마다 3단계 더(10~12).
-  test('장 6개 · 장마다 10~12단계 · 4단계(12단계 장은 7단계도) 중간 보스 · 보스 세 단계 앞 부두목 · 마지막은 그 장 보스', () {
-    expect(courses.length, 6);
-    for (final c in courses) {
+  test('장 10개 · 1~9장은 10~12단계 · 4단계(12단계 장은 7단계도) 중간 보스 · 보스 세 단계 앞 부두목 · 마지막은 그 장 보스', () {
+    expect(courses.length, 10);
+    for (final c in courses.where((c) => c.chapter < 10)) {
       final n = c.steps.length;
       expect(n, inInclusiveRange(10, 12), reason: '${c.chapter}장');
       expect(c.steps[3].kind, StepKind.mid, reason: '${c.chapter}장 4단계');
@@ -36,7 +37,65 @@ void main() {
     }
   });
 
-  test('이야기 판 9개(장 보스 6 · 숙적 3)가 코스에 한 번씩 · 예전 순서 그대로', () {
+  // 2026-10-28 형 「10단계는 보스로만 구성한 단계로 마지막은 알까기 신이 등장하도록」.
+  test('10장: 보스만 10단계 — 1~9장 보스 재대결이 차례로, 마지막은 알까기 신', () {
+    final c = courses.last;
+    expect(c.chapter, 10);
+    expect(c.steps, hasLength(10));
+    expect(c.steps.every((s) => s.kind == StepKind.boss), isTrue);
+    expect(
+      [for (final s in c.steps.take(9)) s.rematchOf],
+      [for (var k = 1; k <= 9; k++) 'c$k'],
+    );
+    expect(c.steps.last.stageId, 'c10');
+    expect(c.boss.boss, '알까기 신');
+    // 재대결 진행 id 는 이야기 판 id 와 겹치지 않는다(이미 깬 판으로 셈하지 않게).
+    for (var i = 0; i < 9; i++) {
+      expect(c.idOf(i), 'k10s${i + 1}');
+    }
+  });
+
+  test('재대결: 그 판 대전장·고수 돌 그대로 · 손 오차는 줄고 시작 내공은 하나 더 · 보상은 중간 보스보다 크다', () {
+    final p = Profile()..naegong = 9999;
+    final c = courses.last;
+    for (var i = 0; i < 9; i++) {
+      final st = c.steps[i].rematch!;
+      final cfg = CourseRules.configFor(p, c, i);
+      final story = Campaign.configFor(p, st);
+      expect(cfg.arena, st.arena);
+      expect(cfg.opponentName, st.boss);
+      expect(cfg.opponentMaterial, story.opponentMaterial);
+      expect(cfg.aiErrorScale, lessThan(story.aiErrorScale));
+      expect(
+        cfg.opponentStartQi,
+        (story.opponentStartQi + 1).clamp(0, maxQi),
+        reason: st.id,
+      );
+    }
+    final r = CourseRules.finish(p, c, 0, won: true);
+    expect(r.coins, (100 + 20 * 10) * 2);
+    expect(r.bag.keys.where((k) => k.startsWith('item:')), hasLength(1));
+    expect(p.done, contains('k10s1'));
+    expect(p.done, isNot(contains('c1')), reason: '재대결은 1장 보스를 깬 것으로 치지 않는다');
+  });
+
+  test('10장 문: 9장 보스를 깨야 열리고, 재대결도 차례대로', () {
+    final p = Profile()..naegong = 9999;
+    final c = courses.last;
+    expect(CourseRules.lockReason(p, c, 0), contains('9장'));
+    p.done.add('c9');
+    expect(CourseRules.lockReason(p, c, 0), isNull);
+    expect(CourseRules.lockReason(p, c, 1), isNotNull);
+    expect(
+      CourseRules.lockReason(p, c, 9),
+      contains('9단계'),
+      reason: '알까기 신은 재대결 아홉을 다 넘어야',
+    );
+    p.done.addAll([for (var i = 0; i < 9; i++) c.idOf(i)]);
+    expect(CourseRules.lockReason(p, c, 9), isNull);
+  });
+
+  test('이야기 판 13개(장 보스 10 · 숙적 3)가 코스에 한 번씩 · 예전 순서 그대로', () {
     final ids = [
       for (final c in courses)
         for (final s in c.steps) ?s.stageId,

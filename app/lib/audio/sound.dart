@@ -205,8 +205,16 @@ abstract final class Sound {
   }
 
   /// 대전장 배경 음악(장마다 다름). null 이면 끈다.
-  static void music(Arena? arena) =>
-      track(arena == null ? null : 'bgm_${arena.name}');
+  static void music(Arena? arena) => track(arena == null ? null : bgmOf(arena));
+
+  /// 대전장의 배경 음악 이름. 7~10장 새 대전장(2026-10-28)은 제 곡이 생기기 전까지 분위기가 닮은 곡을 쓴다.
+  static String bgmOf(Arena a) => switch (a) {
+    Arena.sandCanyon => 'bgm_kubiForest',
+    Arena.pirateDeck => 'bgm_oilyTable',
+    Arena.lavaCave => 'bgm_murimIce',
+    Arena.heavenTemple => 'bgm_logicMarble',
+    _ => 'bgm_${a.name}',
+  };
 
   /// 로비 음악.
   static void lobby() => track('bgm_lobby');

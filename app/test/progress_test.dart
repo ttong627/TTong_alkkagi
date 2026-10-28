@@ -205,10 +205,26 @@ void main() {
       expect(p.coins, 0);
     });
 
-    test('강호행은 9판(6장 + 숙적 3)이고 id 가 겹치지 않는다', () {
-      expect(campaign.length, 9);
-      expect(campaign.map((s) => s.id).toSet().length, 9);
-      expect(campaign.where((s) => s.chapter != null).length, 6);
+    // 2026-10-28 형 「새로운 이야기도 지금 6개에서 10개로」.
+    test('강호행은 13판(10장 + 숙적 3)이고 id 가 겹치지 않는다 · 마지막은 알까기 신', () {
+      expect(campaign.length, 13);
+      expect(campaign.map((s) => s.id).toSet().length, 13);
+      expect(campaign.where((s) => s.chapter != null).length, 10);
+      expect(campaign.last.boss, '알까기 신');
+      expect(campaign.last.chapter, 10);
+      // 장 번호는 1~10 이 빠짐없이 차례로.
+      expect(
+        [for (final s in campaign) ?s.chapter],
+        [for (var i = 1; i <= 10; i++) i],
+      );
+      // 뒤 장일수록 내공 조건이 낮아지지 않는다.
+      for (var i = 1; i < campaign.length; i++) {
+        expect(
+          campaign[i].needStage,
+          greaterThanOrEqualTo(campaign[i - 1].needStage),
+          reason: campaign[i].id,
+        );
+      }
     });
   });
 

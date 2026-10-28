@@ -56,6 +56,40 @@ enum Arena {
     floorFactor: 0.6,
     boundary: Boundary.circle,
     half: 25,
+  ),
+
+  // 2026-10-28 형 「새로운 이야기도 6개에서 10개로 · 경기장 이미지 … 좀더 다양하게」.
+  sandCanyon(
+    '열사 협곡 모래판',
+    chapter: '7장 · 열사의 협곡',
+    feel: '모래라 빨리 멈춤 · 유사에 빠지면 더 느려짐',
+    floorFactor: 1.3,
+    boundary: Boundary.square,
+    half: 23,
+  ),
+  pirateDeck(
+    '흑룡선 갑판',
+    chapter: '8장 · 흑룡 해적선',
+    feel: '젖은 갑판이라 잘 미끄러짐 · 좁은 판',
+    floorFactor: 0.75,
+    boundary: Boundary.square,
+    half: 19,
+  ),
+  lavaCave(
+    '화염산 용암굴',
+    chapter: '9장 · 화염산',
+    feel: '뜨거운 현무암 · 용암 구멍은 장외',
+    floorFactor: 1.05,
+    boundary: Boundary.circle,
+    half: 23,
+  ),
+  heavenTemple(
+    '천상 탄신전',
+    chapter: '10장 · 천상 탄신전',
+    feel: '구름 옥바닥이라 아주 매끄러움 · 큰 둥근 판',
+    floorFactor: 0.7,
+    boundary: Boundary.circle,
+    half: 26,
   );
 
   const Arena(
@@ -92,6 +126,10 @@ enum Arena {
     Arena.kubiForest => const Color(0xFF1E2A1C),
     Arena.logicMarble => const Color(0xFF22222A),
     Arena.murimIce => const Color(0xFF141E2C),
+    Arena.sandCanyon => const Color(0xFF3E2414),
+    Arena.pirateDeck => const Color(0xFF0E1A26),
+    Arena.lavaCave => const Color(0xFF1E0C08),
+    Arena.heavenTemple => const Color(0xFF2A3350),
   };
 
   /// 돌 아래 바닥 대표 색(가까이 보기 화면 배경).
@@ -102,6 +140,10 @@ enum Arena {
     Arena.kubiForest => const Color(0xFF5E5A33),
     Arena.logicMarble => const Color(0xFFE6E2DA),
     Arena.murimIce => const Color(0xFFB9DCEB),
+    Arena.sandCanyon => const Color(0xFFC9934F),
+    Arena.pirateDeck => const Color(0xFF6B4A2E),
+    Arena.lavaCave => const Color(0xFF3A3230),
+    Arena.heavenTemple => const Color(0xFFE8EEE6),
   };
 }
 
@@ -190,6 +232,13 @@ void paintArena(
         _marble(canvas, center, rect, scale, rand);
       case Arena.murimIce:
         _ice(canvas, center, rect, scale, rand);
+      // 새 경기장은 그림이 없을 때 결 있는 흙·판자·현무암·옥 무늬로 대신 그린다.
+      case Arena.sandCanyon || Arena.lavaCave:
+        _dirt(canvas, rect, scale, rand);
+      case Arena.pirateDeck:
+        _paving(canvas, rect, scale, rand);
+      case Arena.heavenTemple:
+        _marble(canvas, center, rect, scale, rand);
     }
   }
   // 가장자리 그늘: 장외가 가까워지는 것을 느끼게 한다.
@@ -210,6 +259,10 @@ Color _rimColor(Arena a) => switch (a) {
   Arena.kubiForest => const Color(0xFF4A3A22),
   Arena.logicMarble => const Color(0xFFB08A3E),
   Arena.murimIce => const Color(0xFF6F8FA8),
+  Arena.sandCanyon => const Color(0xFF8A5A2C),
+  Arena.pirateDeck => const Color(0xFF3E2A18),
+  Arena.lavaCave => const Color(0xFF5A1E10),
+  Arena.heavenTemple => const Color(0xFFC9A24A),
 };
 
 Offset _rp(Rect r, math.Random rand) => Offset(
@@ -604,6 +657,65 @@ List<Feature> arenaLayout(Arena a, {bool obstacles = true}) {
             spin: 0.4,
             swing: 10,
             swingRate: 0.9,
+          ),
+        );
+      }
+    case Arena.sandCanyon:
+      // 협곡: 위아래 가장자리 일부가 바위 벽 · 유사 둘 · 가운데 좌우로 오가는 오각 기둥.
+      edge(-1, -h, -6);
+      edge(-1, 6, h);
+      edge(1, -h, -6);
+      edge(1, 6, h);
+      if (obstacles) {
+        out.add(Feature(FeatureKind.quicksand, -h * 0.42, 0));
+        out.add(Feature(FeatureKind.quicksand, h * 0.42, 0));
+        out.add(
+          const Feature(
+            FeatureKind.pillar,
+            0,
+            0,
+            sides: 5,
+            spin: 1.0,
+            swing: 5,
+            swingRate: 1.2,
+          ),
+        );
+      }
+    case Arena.pirateDeck:
+      // 갑판: 양옆 뱃전 난간이 막혀 있다 · 술통 셋 · 돛대(느리게 도는 팔각 기둥).
+      side(-1, -h, h);
+      side(1, -h, h);
+      if (obstacles) {
+        out.add(Feature(FeatureKind.barrel, -h * 0.5, -1.5));
+        out.add(Feature(FeatureKind.barrel, h * 0.5, 1.5));
+        out.add(const Feature(FeatureKind.pillar, 0, 0, sides: 8, spin: 0.5));
+      }
+    case Arena.lavaCave:
+      // 용암굴: 위아래에 현무암 벽 · 용암 구멍 둘 · 가운데 도는 육각 기둥.
+      arc(90, 3);
+      arc(270, 3);
+      if (obstacles) {
+        out.add(Feature(FeatureKind.lavaPit, -h * 0.45, 0));
+        out.add(Feature(FeatureKind.lavaPit, h * 0.45, 0));
+        out.add(const Feature(FeatureKind.pillar, 0, 0, sides: 6, spin: 1.3));
+      }
+    case Arena.heavenTemple:
+      // 탄신전: 좌우 구름 난간 조금 · 구름 쿠션 둘 · 가운데 소용돌이 · 소용돌이를 가로질러 오가는 네모 기둥.
+      arc(0, 2);
+      arc(180, 2);
+      if (obstacles) {
+        out.add(Feature(FeatureKind.cloud, -h * 0.45, -2));
+        out.add(Feature(FeatureKind.cloud, h * 0.45, 2));
+        out.add(const Feature(FeatureKind.whirlpool, 0, 0));
+        out.add(
+          const Feature(
+            FeatureKind.pillar,
+            0,
+            0,
+            sides: 4,
+            spin: -1.5,
+            swing: 7,
+            swingRate: 0.8,
           ),
         );
       }

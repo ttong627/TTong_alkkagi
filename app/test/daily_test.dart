@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:alkkagi/game/arena.dart';
 import 'package:alkkagi/progress/daily.dart';
 import 'package:alkkagi/progress/profile.dart';
+import 'package:alkkagi/story/chapters.dart';
 import 'package:alkkagi/ui/art.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -136,6 +137,9 @@ void main() {
       ...Art.iconNames.map(Art.icon),
       Art.background('lobby'),
       for (final a in Arena.values) ...[Art.arenaBackground(a), Art.floor(a)],
+      // 2026-10-28 장애물·효과 그림(코덱스).
+      ...Art.obstacleKinds.map(Art.obstacle),
+      ...Art.fxNames.map(Art.fx),
     ];
     for (final f in want) {
       final file = File(f);
@@ -146,7 +150,7 @@ void main() {
     for (final h in Fighter.values) {
       expect(Art.characterIds, contains(h.name), reason: h.label);
     }
-    for (final b in ['촌장', '통통', '묵현', '숨은 자객', '쿠비', '로직', '무림맹주']) {
+    for (final b in {for (final s in campaign) s.boss, '부두목 흑풍'}) {
       expect(Art.bossId(b), isNotNull, reason: b);
     }
   });

@@ -24,7 +24,7 @@ import 'dialogue_screen.dart';
 import 'encounter_flow.dart';
 import 'game_screen.dart';
 
-/// 강호행: 6장과 숙적전을 차례로 깬다(설계서 §9·§16.1).
+/// 강호행: 10장과 숙적전을 차례로 깬다(설계서 §9·§16.1 · 7~10장 2026-10-28).
 class CampaignScreen extends StatefulWidget {
   const CampaignScreen({super.key});
 
@@ -231,7 +231,7 @@ class _CampaignScreenState extends State<CampaignScreen> {
               onTap: open ? _seclusion : null,
             );
           }
-          // 2026-10-14 형 「단계별 코스」: 장마다 7~9단계 — 장 카드를 누르면 코스.
+          // 2026-10-14 형 「단계별 코스」: 장마다 10~12단계(10장은 보스만 10) — 장 카드를 누르면 코스.
           final c = courses[i];
           final s = c.boss;
           final lock = CourseRules.lockReason(p, c, 0);
@@ -512,7 +512,8 @@ Future<void> playStage(BuildContext context, int i) async {
     );
   }
   if (r.awaken && context.mounted) await awakenSchool(context);
-  if (r.first && s.id == 'c6' && context.mounted) {
+  // 맺음·만든 이: 마지막 장(10장 · 알까기 신)을 처음 깼을 때(2026-10-28 이야기가 10장으로 늘어 6장에서 옮김).
+  if (r.first && s.id == campaign.last.id && context.mounted) {
     await nav.push(
       gameRoute<bool>(
         const DialogueScreen(

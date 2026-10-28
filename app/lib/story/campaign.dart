@@ -108,6 +108,16 @@ abstract final class Campaign {
       bossMaterial: StoneMaterial.cheongok,
       note: ('무림맹주', '흥, 현철까지 꺼낼 것도 없다. 청옥 돌로 상대해 주마!'),
     ),
+    // 7~10장(2026-10-28) — 가상 대전(PROG=1 · 보통 사람 손 · 80판) 실측: 7장 53 · 8장 53 · 9장 46 · 10장 35%.
+    'c7': AiTune(errorScale: 16),
+    'c8': AiTune(errorScale: 5),
+    'c9': AiTune(errorScale: 4),
+    'c10': AiTune(
+      errorScale: 8,
+      blunder: 0.3,
+      myMaterial: StoneMaterial.cheongok,
+      note: ('알까기 신', '이 전각에서는 모든 돌이 처음의 청옥으로 돌아간다. 손끝만 남는 것이지.'),
+    ),
   };
 
   /// 보통 — 실측(보통 사람 손): 65 · 43 · 58 · 50 · 50 · 58 · 87 · 28 · 28%(예전 53 · 8 · 61 · 18 · 42 · 31 · 43 · 0 · 0%).
@@ -129,6 +139,16 @@ abstract final class Campaign {
       bossQi: 2,
       bossMaterial: StoneMaterial.cheongok,
       note: ('무림맹주', '흥, 현철까지 꺼낼 것도 없다. 청옥 돌로 상대해 주마!'),
+    ),
+    // 7~10장(2026-10-28) 실측(80판): 7장 30 · 8장 43 · 9장 29 · 10장 24%.
+    // 알까기 신은 손 오차를 1.2배까지 줄여도 내 무거운 돌(현철)에 85% 넘게 졌다 → 탄신전에선 내 돌도 처음의 청옥으로.
+    'c7': AiTune(errorScale: 8),
+    'c8': AiTune(errorScale: 3.5),
+    'c9': AiTune(errorScale: 2.2),
+    'c10': AiTune(
+      errorScale: 5,
+      myMaterial: StoneMaterial.cheongok,
+      note: ('알까기 신', '이 전각에서는 모든 돌이 처음의 청옥으로 돌아간다. 손끝만 남는 것이지.'),
     ),
   };
 

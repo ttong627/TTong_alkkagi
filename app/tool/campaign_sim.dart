@@ -108,7 +108,10 @@ void main() {
       if (prog) {
         // [가정] 그 판에 온 보통 사람의 진행: 세기 단계는 판마다 조금씩, 숙적2(r2)부터 현철 돌.
         final k = campaign.indexOf(s);
-        p.stats[Stat.power] = const [0, 2, 3, 5, 7, 8, 10, 12, 14][k];
+        // 7~10장(2026-10-28): 세기만 더 오른다(돌은 그대로 현철 — 사람에게 불리한 쪽으로 잰다).
+        p.stats[Stat.power] = const [
+          0, 2, 3, 5, 7, 8, 10, 12, 14, 16, 18, 20, 20, //
+        ][k];
         if (k >= 5) {
           p.materials.add(StoneMaterial.hyeoncheol);
           p.material = StoneMaterial.hyeoncheol;

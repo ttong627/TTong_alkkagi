@@ -752,7 +752,8 @@ class _GameScreenState extends State<GameScreen> {
                 motes: switch (widget.config.arena) {
                   Arena.kubiForest => Motes.fireflies,
                   Arena.murimIce => Motes.snow,
-                  Arena.oilyTable => Motes.embers,
+                  Arena.oilyTable || Arena.lavaCave => Motes.embers,
+                  Arena.heavenTemple => Motes.petals,
                   _ => Motes.none,
                 },
                 child: const SizedBox.shrink(),

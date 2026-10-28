@@ -1,6 +1,14 @@
 {
   "_설명": "2026-10-19 형 「나머지 기능에서도 그래픽을 다 바꿔주고 코덱스를 이용한 이미지 제작해서 다 적용」 — 배경 7 · 대전장 바닥 6 · 아이콘 31 을 캐릭터(wuxia_cast.json)와 같은 손그림 무협 화풍으로. 뜻(무엇을 그린 그림인지)은 예전 그림 그대로.",
   "kinds": {
+    "obstacle": {
+      "ratio": "1:1",
+      "style": "Single top-down game board obstacle sprite for a Korean wuxia mobile game, seen exactly from directly above (orthographic, no perspective, no horizon), premium hand-painted anime cel shading with clean dark ink outline, rich colors, soft highlight from the upper left, the object centered and filling about 85% of the image as a roughly round footprint, background is ONE flat solid pure green color (#00FF00) with nothing else in it — no ground, no cast shadow outside the object, no text, no letters, no signature, no watermark, no frame."
+    },
+    "fx": {
+      "ratio": "1:1",
+      "style": "Single game visual effect sprite for a Korean wuxia mobile game, bright glowing hand-painted anime effect with crisp shapes, radial composition centered in the image filling about 85%, vivid saturated colors with a hot white core, readable when shown small, background is ONE flat solid pure green color (#00FF00) with nothing else in it — the effect itself must contain no green, no text, no letters, no numbers, no characters, no stones, no signature, no watermark, no frame."
+    },
     "pet": {
       "ratio": "1:1",
       "style": "Cute and pretty mobile game pet character, kawaii chibi style (big round head, big sparkling eyes, rosy cheeks, tiny body), soft clean cel shading with smooth thick dark outlines, bright cheerful colors, glossy highlights, full body centered filling about 80% of the image, friendly pose, simple and readable at 64 pixels, background is ONE flat solid pure green color (#00FF00) with nothing else — no ground, no shadow, no text, no letters, no watermark."
@@ -89,6 +97,25 @@
     {"id": "pet_crane", "kind": "pet", "desc": "An elegant chibi white crane with a red crown, wings slightly spread, wearing a tiny scholar hat, one wing pointing forward as if aiming, gentle wise smile."},
     {"id": "pet_tiger", "kind": "pet", "desc": "A chibi white tiger cub with black stripes and bright blue eyes, fierce but cute expression, paw raised ready to strike, tiny golden bracelet, little fang showing."},
     {"id": "pet_dragon", "kind": "pet", "desc": "A chibi golden eastern dragon (long body, tiny horns, whiskers, small cloud puffs) curled happily, holding a glowing white go stone like a pearl, sparkling eyes, majestic but adorable."},
-    {"id": "pet", "kind": "icon", "desc": "A cute golden paw print inside a small round jade badge (pet companions menu icon)."}
+    {"id": "pet", "kind": "icon", "desc": "A cute golden paw print inside a small round jade badge (pet companions menu icon)."},
+    {"id": "bg_sandCanyon", "kind": "bg", "desc": "Chapter 7 'Scorching sand canyon': a vast red-gold desert canyon with towering wind-carved sandstone cliffs, a caravan road and a ruined fortress gate on the mesa, swirling sandstorm haze, blazing low sun."},
+    {"id": "bg_pirateDeck", "kind": "bg", "desc": "Chapter 8 'Black Dragon pirate ship': a huge Chinese junk pirate ship with dark red ribbed sails on a stormy night sea, lanterns swinging, waves crashing, lightning far away."},
+    {"id": "bg_lavaCave", "kind": "bg", "desc": "Chapter 9 'Flame mountain lava cavern': a giant volcanic cavern with rivers of glowing lava, black basalt pillars, a red stone shrine on a ledge, floating embers and heat shimmer."},
+    {"id": "bg_heavenTemple", "kind": "bg", "desc": "Chapter 10 'Heavenly temple of the Alkkagi god': a celestial golden temple floating above a sea of clouds at dawn, jade stairs, rainbow halos, cranes far away, sacred radiant light."},
+    {"id": "floor_sandCanyon", "kind": "floor", "desc": "Hard-packed desert sandstone ground with fine wind ripples of red-gold sand, a few tiny pebbles and cracks."},
+    {"id": "floor_pirateDeck", "kind": "floor", "desc": "Weathered dark wooden ship deck planks running straight, wet sheen from sea spray, iron nails, rope scuffs."},
+    {"id": "floor_lavaCave", "kind": "floor", "desc": "Cooled black volcanic basalt rock floor with thin glowing orange lava veins in the cracks, ash dust."},
+    {"id": "floor_heavenTemple", "kind": "floor", "desc": "Polished pale jade and white cloud-marble temple floor with soft golden inlaid lines and faint drifting cloud wisps."},
+    {"id": "ob_quicksand", "kind": "obstacle", "desc": "A round patch of swirling golden quicksand sinking in a spiral toward the center, darker in the middle, with a few sand grains."},
+    {"id": "ob_barrel", "kind": "obstacle", "desc": "A sturdy round wooden wine barrel seen from directly above: circular lid with iron hoops, wood planks and a cork plug."},
+    {"id": "ob_whirlpool", "kind": "obstacle", "desc": "A round swirling vortex of blue-white wind and cloud spinning in a spiral with bright streaks, seen from above."},
+    {"id": "ob_lavaPit", "kind": "obstacle", "desc": "A round pit of bubbling glowing orange-red lava surrounded by a rim of black cracked basalt, seen from above."},
+    {"id": "ob_cloud", "kind": "obstacle", "desc": "A puffy round soft white-gold cloud cushion with a gentle golden glow, seen from above."},
+    {"id": "fx_critical", "kind": "fx", "desc": "A radiant golden starburst impact: sharp golden light rays, a bright white flash core, small sparkles, like a perfect martial-arts strike."},
+    {"id": "fx_shatter", "kind": "fx", "desc": "A stone shattering explosion: jagged grey and white stone shards and dust flying outward in all directions from a bright core."},
+    {"id": "fx_knockout", "kind": "fx", "desc": "A puff of swirling dust and ink smoke with small motion streaks bursting outward, like something falling off a ledge."},
+    {"id": "fx_combo", "kind": "fx", "desc": "A blazing ring of red-orange flame qi with fiery streaks, like a burning combo aura."},
+    {"id": "fx_lucky", "kind": "fx", "desc": "A playful burst of four-leaf-like golden lucky sparkles and small gold coins confetti spiraling outward."},
+    {"id": "fx_qi", "kind": "fx", "desc": "A swirling sphere of blue-violet inner qi energy with flowing ribbon streams and a glowing white core."}
   ]
 }

@@ -13,7 +13,7 @@ void main() {
       for (final m in StoneMaterial.values) Sound.hitSound(m),
       for (final t in Technique.values)
         if (t != Technique.none) 'tech_${t.name}',
-      for (final a in Arena.values) 'bgm_${a.name}',
+      for (final a in Arena.values) Sound.bgmOf(a),
       'bgm_lobby',
       'bgm_boss',
     };
