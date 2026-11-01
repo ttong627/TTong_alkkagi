@@ -317,6 +317,7 @@ class _TrainingScreenState extends State<TrainingScreen>
         myTrail: p.trailOrNull,
         powerScale: p.maxSpeed / baseMaxSpeed,
         spinScale: p.spinScale,
+        critWidth: p.critWidth,
         trainingDummies: _d.dummies,
         myStartQi: _d.fullQi ? maxQi : 0,
       ),

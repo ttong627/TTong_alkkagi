@@ -58,6 +58,7 @@ class Puzzle {
     myTrail: base.myTrail,
     powerScale: base.powerScale,
     spinScale: base.spinScale,
+    critWidth: base.critWidth,
   );
 }
 

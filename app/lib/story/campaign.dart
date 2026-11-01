@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:alkkagi_physics/alkkagi_physics.dart';
 
 import '../game/arena.dart';
-import '../game/flick.dart';
 import '../game/match.dart';
 import '../progress/profile.dart';
 import 'chapters.dart';
@@ -233,9 +232,7 @@ abstract final class Campaign {
       ultimateWing: p.stage >= 7
           ? 3
           : (p.stage >= 5 ? 2 : (p.stage >= 3 ? 1 : 0)),
-      critWidth: h == Fighter.jeonggak
-          ? 0.1
-          : (p.perks.contains('집중 숙련') ? 0.09 : CriticalRule.maxOffset),
+      critWidth: p.critWidth,
       aimAssist: aimAssist,
       weather: weather,
       features: features,

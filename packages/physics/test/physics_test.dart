@@ -382,6 +382,44 @@ void main() {
       expect(pushed(StoneMaterial.diamond), lessThan(low));
     });
 
+    // 2026-11-01 형 「11단 천년온옥 … 돌과 모양에 따른 물리적 법칙 재점검」: 조각 돌(11~13단)이 3단 현철·
+    // 5단 반석·9단 운철보다 1.5~2배 더 밀렸다 → 등급 보장(아래 단 어느 돌보다 덜 밀림).
+    test('상대에게 맞은 내 돌: 모양마다 단이 높을수록 덜 밀린다(13종 · 상대 청옥·현철)', () {
+      double pushed(
+        StoneMaterial mine,
+        StoneShape shape,
+        StoneMaterial foeMat,
+      ) {
+        final t = Table(half: 400);
+        final me = t.addStone(0, 0, material: mine, shape: shape);
+        final foe = t.addStone(0, 6, team: 1, material: foeMat);
+        final start = me.position.clone();
+        t.shoot(foe, -math.pi / 2, 100, 0);
+        t.runTurn();
+        final d = (me.position - start).length;
+        t.dispose();
+        return d;
+      }
+
+      final byGrade = [...StoneMaterial.values]
+        ..sort((a, b) => a.grade - b.grade);
+      for (final foeMat in [c, StoneMaterial.hyeoncheol]) {
+        for (final shape in StoneShape.values) {
+          var prev = double.infinity;
+          for (final m in byGrade) {
+            final d = pushed(m, shape, foeMat);
+            expect(
+              d,
+              lessThan(prev * 1.02),
+              reason:
+                  '${foeMat.label}에 맞은 ${shape.label} ${m.grade}단 ${m.label}',
+            );
+            prev = math.min(prev, d);
+          }
+        }
+      }
+    });
+
     test('내 쏜 돌은 상대 쏜 돌보다 덜 튕긴다', () {
       final mine = kick(c, StoneMaterial.hyeoncheol).$2;
       final theirs = kick(

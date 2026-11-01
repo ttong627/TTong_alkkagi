@@ -17,12 +17,22 @@ import '../input/touch_feed.dart';
 import '../progress/settings.dart';
 import '../ui/ghost_hand.dart';
 
-/// 재질마다 기(氣) 빛깔.
-const _qiColors = {
-  phys.StoneMaterial.cheongok: Color(0xFF5FE0B0),
-  phys.StoneMaterial.wood: Color(0xFFFFB84D),
-  phys.StoneMaterial.hyeoncheol: Color(0xFF9FA8FF),
-  phys.StoneMaterial.ice: Color(0xFF8FE8FF),
+/// 재질마다 기(氣) 빛깔. 표(맵)가 아니라 빠짐없는 갈래 — 예전 표엔 처음 4종만 있어 4~13단 돌을
+/// 끼우면 확대 화면이 그 자리에서 꺼졌다(2026-11-01 형 「11단 천년온옥을 끼웠더니 화면이 안 나와」).
+Color _qiColor(phys.StoneMaterial m) => switch (m) {
+  phys.StoneMaterial.cheongok => const Color(0xFF5FE0B0),
+  phys.StoneMaterial.wood => const Color(0xFFFFB84D),
+  phys.StoneMaterial.hyeoncheol => const Color(0xFF9FA8FF),
+  phys.StoneMaterial.ice => const Color(0xFF8FE8FF),
+  phys.StoneMaterial.obsidian => const Color(0xFFB79CFF),
+  phys.StoneMaterial.granite => const Color(0xFFD8CFC0),
+  phys.StoneMaterial.diamond => const Color(0xFFE8FAFF),
+  phys.StoneMaterial.jageum => const Color(0xFFFFD25A),
+  phys.StoneMaterial.uncheol => const Color(0xFFFF7A3A),
+  phys.StoneMaterial.hancheol => const Color(0xFFBFE6FF),
+  phys.StoneMaterial.warmJade => const Color(0xFFFFE0C0),
+  phys.StoneMaterial.dragonScale => const Color(0xFFFFC640),
+  phys.StoneMaterial.taegeuk => const Color(0xFFF0F0FF),
 };
 
 /// 고른 돌 둘레의 대전장 바닥을 크게 내려다보며 손끝으로 돌을 치는 화면.
@@ -204,7 +214,7 @@ class _FlickViewState extends State<FlickView>
     super.dispose();
   }
 
-  Color get _qi => _qiColors[widget.stone.material]!;
+  Color get _qi => _qiColor(widget.stone.material);
 
   void _tick(Duration now) {
     final dt = math.min(0.05, (now - _last).inMicroseconds / 1e6);

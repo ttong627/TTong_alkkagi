@@ -886,6 +886,24 @@ class Table {
     var k = _pushOf(s, shooter, direct: identical(by, shooter));
     if (favoredTeam == null && !identical(by, shooter) && k > 1) k = 1;
     if (k != 1) s.body.linearVelocity = s.velocity..scale(k);
+    // 등급 보장이 걸린 돌만(청옥처럼 걸리지 않는 돌은 예전과 똑같이 — 보스 난이도 가상 대전이 그대로).
+    if (identical(by, shooter) &&
+        s.team == favoredTeam &&
+        _gradeFloor(s, shooter.mass, shooter.team != favoredTeam) < 1) {
+      _noPlowThrough(shooter, s);
+    }
+  }
+
+  /// 덜 밀린 내 돌([s])을 친 상대 돌이 뒤따라와 다시 밀어 버리지 않게, 맞은 쪽(두 중심을 잇는 선)으로는
+  /// 맞은 돌보다 빠르지 않게 한다 — 더 버틴 돌 앞에서 친 돌이 뚫고 나갈 수는 없다(2026-11-01 실측:
+  /// 납작한 빙백한옥이 두 번 맞아 5단 반석보다 1.5배 더 밀렸다).
+  void _noPlowThrough(Stone shooter, Stone s) {
+    final n = s.position - shooter.position;
+    final len = n.length;
+    if (len < 1e-6) return;
+    n.scale(1 / len);
+    final over = shooter.velocity.dot(n) - s.velocity.dot(n);
+    if (over > 0) shooter.body.linearVelocity = shooter.velocity - n * over;
   }
 
   /// 우대 편([favoredTeam])이 있으면 등급 차이 대신 편으로 본다(2026-10-19 형 「반대로 적용 해야 해 —
@@ -901,12 +919,15 @@ class Table {
     // 같은 무게끼리 부딪혔을 때와 견준 맞은 돌 빠르기: 2·쏜 무게 / (쏜 무게 + 맞은 무게).
     final weight = 2 * shooter.mass / (shooter.mass + s.mass);
     if (s.team == hero) {
-      final even = direct && shooter.team != hero && weight > 1
-          ? 1 / weight
-          : 1.0;
+      final enemy = direct && shooter.team != hero;
+      final even = enemy && weight > 1 ? 1 / weight : 1.0;
       // 영수 금강(수호): 상대 수에는 더 덜 밀린다.
       final guard = shooter.team != hero ? heroGuard : 1.0;
-      return s.material.hitKeep * even * _glide(s) * guard;
+      return s.material.hitKeep *
+          even *
+          _glide(s) *
+          guard *
+          _gradeFloor(s, shooter.mass, enemy);
     }
     if (direct && shooter.team == hero && s.team <= 1) {
       final even = weight < 1 ? 1 / weight : 1.0;
@@ -920,6 +941,42 @@ class Table {
       return PhysicsConstants.chainCarry;
     }
     return 1;
+  }
+
+  /// 등급 보장: 맞은 내 편 돌은 그보다 낮은 단의 어느 돌보다도 덜 밀린다(한 단에 [StoneMaterial.hitKeep] 4%).
+  ///
+  /// 2026-11-01 형 「돌과 모양에 따른 물리적 법칙 … 재점검」 실측: 조각 돌(11~13단)은 가벼워서 같은 수에
+  /// 3단 현철·5단 반석·9단 운철보다 1.5~2배 더 밀렸다(만물상 「단이 높을수록 … 덜 밀린다」와 반대).
+  /// 무거운 돌의 버팀은 그대로 두고, 아래 단보다 더 밀릴 돌만 그 단 아래 가장 잘 버티는 돌 수준으로 줄인다.
+  /// 밀려 가는 거리 ∝ 받은 빠르기(쏜 무게 ÷ (쏜 무게 + 맞은 무게)) × (1 ÷ 멈추는 감속 + 한 스텝) — [_driftOf]
+  /// (엔진 감속은 스텝마다 v ÷ (1 + 스텝 × 감속) 이라 멈출 때까지 간 거리가 v × (1/감속 + 스텝)).
+  double _gradeFloor(Stone s, double hitter, bool enemy) {
+    final own = _driftOf(s.material, s.shape, hitter, enemy);
+    var best = own;
+    for (final m in StoneMaterial.values) {
+      if (m.grade < s.material.grade) {
+        best = math.min(best, _driftOf(m, s.shape, hitter, enemy));
+      }
+    }
+    return own > 0 ? best / own : 1;
+  }
+
+  /// 등급 버팀([StoneMaterial.hitKeep])을 빼고 본, 맞은 내 편 돌이 밀려 가는 거리 지표([_pushOf] 와 같은 보정).
+  double _driftOf(
+    StoneMaterial m,
+    StoneShape shape,
+    double hitter,
+    bool enemy,
+  ) {
+    final mass = stoneMass(m, shape);
+    final took = hitter / (hitter + (enemy ? math.max(mass, hitter) : mass));
+    final glide = math.min(
+      1,
+      dampingOf(m, shape) / dampingOf(StoneMaterial.cheongok, shape),
+    );
+    return took *
+        glide *
+        (1 / (dampingOf(m, shape) * _settleOf(shape)) + PhysicsConstants.step);
   }
 
   /// 내 편 돌이 맞거나 튕길 때 곱하는 미끄럼 보정: 청옥보다 덜 서는(감속이 작은) 재질은 그만큼 덜 내보내

@@ -4,6 +4,7 @@ import 'package:alkkagi_physics/alkkagi_physics.dart';
 import 'package:flutter/foundation.dart';
 
 import 'arena.dart';
+import 'flick.dart' show CriticalRule;
 import 'pets.dart';
 
 /// 판 모드.
@@ -268,7 +269,7 @@ class MatchConfig {
     this.knockoutQiChance = 0,
     this.knockoutQiMax = 0,
     this.aimAssist = 2,
-    this.critWidth = 0.15,
+    this.critWidth = CriticalRule.maxOffset,
     this.layout,
     this.shotLimit,
     this.weather = Weather.clear,
@@ -348,7 +349,8 @@ class MatchConfig {
   /// 묘수풀이: 칠 수 있는 수. 그 안에 상대 돌을 다 못 떨어뜨리면 실패.
   final int? shotLimit;
 
-  /// 회심 판정 가운데 폭(정각 0.2).
+  /// 회심 판정 가운데 폭(내 진행 값은 `Profile.critWidth` · 기본 [CriticalRule.maxOffset] — 예전 기본 0.15 는 10-20 에 좁힌
+  /// 폭보다 2.5배 넓어 목인항·묘수풀이·자유 대전 회심이 강호행보다 훨씬 잘 났다 · 2026-11-01 점검).
   final double critWidth;
 
   /// 내 돌 잔상 빛깔 이름(꾸미기). null 이면 기본.

@@ -57,6 +57,7 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
       myTrail: p.trailOrNull,
       powerScale: p.maxSpeed / baseMaxSpeed,
       spinScale: p.spinScale,
+      critWidth: p.critWidth,
     );
     GameScreen.lastStars = 0;
     final won = await Navigator.of(context).push<bool>(
