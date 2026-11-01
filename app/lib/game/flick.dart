@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:alkkagi_physics/alkkagi_physics.dart' as phys show launchFactor;
+
 import 'match.dart';
 
 /// 손가락 위치 한 점(화면 좌표, 초).
@@ -255,17 +257,9 @@ abstract final class CriticalRule {
 /// 둥근 청옥 돌의 무게(기준).
 const double referenceMass = 2.43;
 
-/// 손끝의 유효 무게 ÷ 기준 돌 무게. [가정] 손끝(끝마디)이 돌보다 무겁다고 본 값.
-const double fingerMassRatio = 3;
-
-/// 무게 [mass] 인 돌이 기준 돌보다 몇 배 빠르게 나가나.
-///
-/// 손끝(무게 m_f)이 돌(m)에 부딪히면 돌이 받는 빠르기는 m_f / (m_f + m) 에 비례한다
-/// (운동량 보존). 기준 돌에서 1 이 되게 나눈다: (m_f + m₀) / (m_f + m).
-double massFactor(double mass) {
-  const mf = fingerMassRatio * referenceMass;
-  return (mf + referenceMass) / (mf + mass);
-}
+/// 무게 [mass] 인 돌이 기준 돌보다 몇 배 빠르게 나가나 — 식은 물리 엔진 `launchFactor` 한 곳
+/// (엔진이 등급 보장에서 「같은 손끝」으로 견주려고 같은 식을 쓴다 · 2026-11-01).
+double massFactor(double mass) => phys.launchFactor(mass);
 
 /// 빠르기(화소/초) → 내공 0~1.
 double strikePower(

@@ -259,7 +259,8 @@ class _Hint extends StatelessWidget {
 
 String _materialHelp(StoneMaterial m) => switch (m) {
   StoneMaterial.cheongok => '표준 · 다루기 쉬움',
-  StoneMaterial.wood => '가볍고 빠름 · 미는 힘 약함',
+  // 2026-11-01 실측: 가벼워 손끝에 청옥보다 14% 더 나가고 미는 힘도 2단만큼 세다(예전 글 「미는 힘 약함」은 틀림).
+  StoneMaterial.wood => '가볍고 빠름 · 손끝에 잘 나감',
   StoneMaterial.hyeoncheol => '무거움 · 상대를 멀리 밀어냄',
   StoneMaterial.ice => '잘 미끄러짐 · 연쇄 충돌',
   StoneMaterial.obsidian => '조금 무거운 검은 유리',

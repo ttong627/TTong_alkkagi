@@ -162,3 +162,12 @@ enum StoneShape {
 /// 돌 무게(상대값 = 재질 밀도 × 모양 부피). 둥근 청옥 돌 = 2.43.
 double stoneMass(StoneMaterial material, StoneShape shape) =>
     material.density * shape.volume;
+
+/// 무게 [mass] 인 돌이 같은 손끝에 둥근 청옥 돌(2.43)보다 몇 배 빠르게 나가나.
+///
+/// 손끝(끝마디 유효 무게 = 기준 돌의 3배 [가정])이 돌(m)에 부딪히면 돌이 받는 빠르기는 m_f / (m_f + m) 에
+/// 비례한다(운동량 보존). 기준 돌에서 1 이 되게 나눈다: (m_f + m₀) / (m_f + m). 앱 손끝 읽기와 엔진이 같이 쓴다.
+double launchFactor(double mass) {
+  const reference = 2.43, finger = 3 * reference;
+  return (finger + reference) / (finger + mass);
+}

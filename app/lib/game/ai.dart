@@ -56,7 +56,14 @@ class _Request {
     this.blunder = 0,
     this.angleError,
     this.speedError,
+    this.floor,
+    this.guard = 1,
   });
+
+  /// 진짜 판의 지금 바닥 배수(6장 얼음·불꽃 바닥 · 야우가 들어간 값)와 영수 금강 수호 배수.
+  /// 예전엔 대전장 기본 바닥·수호 없음으로 계산해 6장·거북 판에서 AI 가 엇나갔다(2026-11-01 점검).
+  final double? floor;
+  final double guard;
 
   /// 주면 난이도 대신 이 오차(사람 손 흉내).
   final double? angleError;
@@ -197,6 +204,8 @@ _Request _requestFor(
     blunder: search == null ? match.config.aiBlunder : 0,
     angleError: angleError,
     speedError: speedError,
+    floor: match.table.floorFactor,
+    guard: match.table.heroGuard,
   );
 }
 
@@ -295,6 +304,8 @@ AiShot _plan(_Request r) {
                 rule: rule,
                 generals: r.generals,
                 jewel: r.jewel,
+                floor: r.floor,
+                guard: r.guard,
               );
               if (style == AiStyle.ram) {
                 // 통통: 가까운 돌부터.
@@ -396,6 +407,8 @@ double scoreShot(
   MatchRule rule = MatchRule.annihilate,
   Map<int, int> generals = const {},
   int? jewel,
+  double? floor,
+  double guard = 1,
 }) {
   final t = Table(
     floorFactor: arena.floorFactor,
@@ -403,6 +416,9 @@ double scoreShot(
     weather: weather,
     half: arena.half,
   );
+  // 진짜 판의 지금 바닥(이미 야우가 들어간 값이라 생성자로 넘기면 두 번 줄어든다 → 그대로 넣는다).
+  if (floor != null) t.floorFactor = floor;
+  t.heroGuard = guard;
   t.clock = clock;
   try {
     for (final f in features) {

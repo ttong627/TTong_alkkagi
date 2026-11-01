@@ -116,8 +116,9 @@ abstract final class Campaign {
     'r2': AiTune(errorScale: 6),
     'c5': AiTune(errorScale: 2),
     'r3': AiTune(errorScale: 10, bossQi: 1),
+    // 2026-11-01 바뀌는 바닥을 AI 가 제대로 읽어 74 → 59% → 오차 3 → 5(78%).
     'c6': AiTune(
-      errorScale: 3,
+      errorScale: 5,
       blunder: 0.3,
       bossQi: 0,
       bossMaterial: StoneMaterial.cheongok,
@@ -139,8 +140,9 @@ abstract final class Campaign {
   /// 2026-10-14 돌 등급·넓은 간격 뒤 다시 맞춤: 2장 5→52 · 숙적1 10→60 · 4장 0→50 · 숙적3 2→25 · 6장 0→27%.
   static const _normal = <String, AiTune>{
     'c1': AiTune(errorScale: 1.5),
+    // 2026-11-01 등급 보장(치기)으로 빌려준 현철이 세져 84 → 94% → 오차 5 → 4(81%).
     'c2': AiTune(
-      errorScale: 5,
+      errorScale: 4,
       myMaterial: StoneMaterial.hyeoncheol,
       note: ('통통', '현철엔 현철이지! 내 돌 한 벌 빌려줄 테니 공평하게 붙어 보세.'),
     ),
@@ -149,8 +151,11 @@ abstract final class Campaign {
     'c4': AiTune(errorScale: 6),
     'r2': AiTune(errorScale: 2.5),
     'r3': AiTune(errorScale: 9, bossQi: 1),
+    // 2026-11-01 AI 가 바뀌는 바닥(얼음·불꽃)을 제대로 읽게 되자 69 → 45% · 오차를 바꿔도 50% 언저리라
+    // 세기 ×0.75(60%).
     'c6': AiTune(
       errorScale: 2,
+      powerScale: 0.75,
       bossQi: 2,
       bossMaterial: StoneMaterial.cheongok,
       note: ('무림맹주', '흥, 현철까지 꺼낼 것도 없다. 청옥 돌로 상대해 주마!'),
