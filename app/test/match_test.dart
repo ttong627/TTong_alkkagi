@@ -16,6 +16,29 @@ void runToRest(Match m) {
 void main() {
   setUpAll(initializePhysics);
 
+  // 2026-11-01 점검: AI 가 6장 바뀌는 바닥 대신 대전장 기본 바닥으로 계산했다.
+  test('AI 수 계산은 진짜 판의 지금 바닥을 쓴다(미끄러운 바닥이면 같은 수가 판 밖으로)', () {
+    const stones = <StoneData>[
+      (x: 0, y: 0, team: 1, material: 0, shape: 1, out: false),
+    ];
+    double score(double? floor) => scoreShot(
+      stones,
+      0,
+      0,
+      20,
+      0,
+      1,
+      arena: Arena.turtleMarket,
+      floor: floor,
+    );
+    expect(score(null), greaterThan(0), reason: '보통 바닥: 판 안에 멈춤');
+    expect(
+      score(Arena.turtleMarket.floorFactor * 0.3),
+      lessThan(0),
+      reason: '미끄러운 바닥: 판 밖',
+    );
+  });
+
   test('처음 판: 편마다 8알, 판 안, 겹치지 않음', () {
     final m = Match(const MatchConfig(mode: MatchMode.twoPlayer));
     expect(m.alive(0), 8);

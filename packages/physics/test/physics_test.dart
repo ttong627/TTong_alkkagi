@@ -329,11 +329,15 @@ void main() {
       );
     });
 
-    test('내 돌로 친 상대 돌은 내 등급이 높을수록 더 밀린다(1단 ×1.2 → 13단 ×1.8)', () {
+    test('내 돌로 친 상대 돌은 내 등급이 높을수록 더 밀린다(1단 ×1.2 → 13단 ×1.8 이상)', () {
       final even = kick(c, c, favored: null).$1;
       expect(kick(c, c).$1, closeTo(even * 1.2, even * 0.05));
-      // 빙백한옥(6단)도 무게 1.0 — 1.2 + 0.05 × 5 = 1.45배.
-      expect(kick(StoneMaterial.ice, c).$1, closeTo(even * 1.45, even * 0.05));
+      // 빙백한옥(6단)도 무게 1.0 — 1.2 + 0.05 × 5 = 1.45배 이상(아래 단보다 덜 밀면 등급 보장이 더 채운다
+      // · 2026-11-01).
+      expect(
+        kick(StoneMaterial.ice, c).$1,
+        greaterThanOrEqualTo(even * 1.45 * 0.95),
+      );
       expect(StoneMaterial.taegeuk.strikeBoost, closeTo(1.8, 1e-9));
     });
 
@@ -418,6 +422,50 @@ void main() {
           }
         }
       }
+    });
+
+    test('같은 손끝으로 친 상대 돌: 모양마다 단이 높을수록 더 밀린다(13종 · 상대 청옥·현철)', () {
+      double struck(
+        StoneMaterial mine,
+        StoneShape shape,
+        StoneMaterial foeMat,
+      ) {
+        final t = Table(half: 400);
+        final me = t.addStone(0, 6, material: mine, shape: shape);
+        final foe = t.addStone(0, 0, team: 1, material: foeMat);
+        final start = foe.position.clone();
+        t.shoot(me, -math.pi / 2, 60 * launchFactor(stoneMass(mine, shape)), 0);
+        t.runTurn();
+        final d = (foe.position - start).length;
+        t.dispose();
+        return d;
+      }
+
+      final byGrade = [...StoneMaterial.values]
+        ..sort((a, b) => a.grade - b.grade);
+      for (final foeMat in [c, StoneMaterial.hyeoncheol]) {
+        for (final shape in StoneShape.values) {
+          var best = 0.0;
+          for (final m in byGrade) {
+            final d = struck(m, shape, foeMat);
+            expect(
+              d,
+              greaterThan(best * 0.98),
+              reason:
+                  '${shape.label} ${m.grade}단 ${m.label}이 친 ${foeMat.label}',
+            );
+            best = math.max(best, d);
+          }
+        }
+      }
+    });
+
+    test('내공 타격 배수는 세기 상한 뒤에 곱한다(수련을 다 올려도 내공 보너스가 남는다)', () {
+      final t = Table(half: 400);
+      final me = t.addStone(0, 0);
+      t.shoot(me, 0, 175, 0, inner: true);
+      expect(me.velocity.length, closeTo(175 * 1.3, 0.5));
+      t.dispose();
     });
 
     test('내 쏜 돌은 상대 쏜 돌보다 덜 튕긴다', () {
@@ -601,7 +649,7 @@ void main() {
   });
 
   group('1-11 내공 타격·무공·스킬 (설계서 §2.4·§2.6·§3.9)', () {
-    test('내공 타격: 처음 속도 ×1.3(상한 180), 첫 충돌로 맞은 돌이 더 밀린다', () {
+    test('내공 타격: 처음 속도 ×1.3(상한 180 은 곱하기 전), 첫 충돌로 맞은 돌이 더 밀린다', () {
       final t = Table();
       final s = t.addStone(-15, 0);
       t.shoot(s, 0, 100, 0, inner: true);
@@ -609,8 +657,8 @@ void main() {
       t.dispose();
       final t2 = Table();
       final s2 = t2.addStone(-15, 0);
-      t2.shoot(s2, 0, 160, 0, inner: true);
-      expect(s2.velocity.x, closeTo(180, 1e-6));
+      t2.shoot(s2, 0, 200, 0, inner: true);
+      expect(s2.velocity.x, closeTo(180 * 1.3, 1e-4));
       t2.dispose();
 
       (double, List<TechniqueFx>) push({required bool inner}) {

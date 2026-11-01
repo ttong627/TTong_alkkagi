@@ -8,7 +8,17 @@ import 'techniques.dart';
 import 'terrain.dart';
 
 /// 물리 엔진을 한 번 준비한다. 판([Table])을 만들기 전에 반드시 기다린다.
-Future<void> initializePhysics() => initializeForge2D();
+///
+/// 등급 보장(치기)에 쓰는 엔진 몫([Table.rawStrike])도 여기서 미리 잰다 — 판 도중(AI 계산과 동시에)
+/// 새 물리 세계를 만들지 않게(세계 칸 표는 프로세스에 하나 · 잠금 없음).
+Future<void> initializePhysics() async {
+  await initializeForge2D();
+  for (final m in StoneMaterial.values) {
+    for (final s in StoneShape.values) {
+      Table.rawStrike(m, s);
+    }
+  }
+}
 
 /// 판 위의 돌 하나.
 class Stone {
@@ -343,6 +353,7 @@ class Table {
     final stone = Stone._(stones.length, team, material, shape, body);
     body.userData = stone;
     stones.add(stone);
+    _warmStrike();
     return stone;
   }
 
@@ -467,10 +478,11 @@ class Table {
     _frostHits.clear();
     _held.clear();
     _impactScale = impactScale;
-    final s = (inner ? speed * innerSpeed : speed).clamp(
-      0.0,
-      PhysicsConstants.maxShotSpeed,
-    );
+    // 상한을 먼저 걸고 내공 배수는 그 뒤에 — 예전엔 곱한 뒤 180 에 잘려, 탄지 파워 수련을 다 올리거나
+    // 가벼운 돌이면 내공 타격 속도 보너스(×1.3 · 용아 ×1.35)가 거의 없어졌다(2026-11-01 점검).
+    final s =
+        speed.clamp(0.0, PhysicsConstants.maxShotSpeed) *
+        (inner ? innerSpeed : 1);
     final h = hit.clamp(-1.0, 1.0);
     stone._spin = h * stone.shape.spinEfficiency * spinScale;
     stone._spinUsed = false;
@@ -930,17 +942,99 @@ class Table {
           _gradeFloor(s, shooter.mass, enemy);
     }
     if (direct && shooter.team == hero && s.team <= 1) {
-      final even = weight < 1 ? 1 / weight : 1.0;
-      return math.min(
-        shooter.material.strikeBoost * even,
-        PhysicsConstants.maxStrikeBoost,
-      );
+      return _strikeOf(shooter.material, shooter.shape, s.mass) *
+          _strikeFloor(shooter, s);
     }
     // 내 수에 밀려난 상대 돌이 다른 상대 돌을 쳤다(멀티샷 · 2026-10-28 형 「멀티 샷 확률 좀 더」).
     if (shooter.team == hero && s.team == 1 - hero) {
       return PhysicsConstants.chainCarry;
     }
     return 1;
+  }
+
+  /// 재질·모양마다 엔진이 실제로 넘겨주는 몫: 상대 돌([tm]·[ts])을 정면으로 쳤을 때 「맞은 돌 빠르기 ÷ 쏜 빠르기」
+  /// (등급 밀림 없이). 무거울수록 엔진 안에서 반발이 덜 살아 식(2·무게 비)으로는 못 맞춘다(2026-11-01 실측:
+  /// 납작한 현철 실효 반발 약 0.4 · 만년기주 약 0.7) → 처음 한 번 재어 둔다(돌 둘 · 손끝 60cm/s × 무게 배수 · 몇 스텝).
+  /// 판에 돌을 놓을 때([addStone]) 그 판에 필요한 짝을 미리 잰다 — 판 도중에 새 세계를 만들지 않게.
+  static double rawStrike(
+    StoneMaterial m,
+    StoneShape shape, [
+    StoneMaterial tm = StoneMaterial.cheongok,
+    StoneShape ts = StoneShape.round,
+  ]) => _rawStrike.putIfAbsent((m, shape, tm, ts), () {
+    final t = Table(half: 400, favoredTeam: null);
+    try {
+      final me = t.addStone(0, 6, material: m, shape: shape);
+      final foe = t.addStone(0, 0, team: 1, material: tm, shape: ts);
+      // 같은 손끝(빠르기에 따라 반발이 달라 무게대로 느려진 빠르기로 잰다).
+      final v = 60 * launchFactor(me.mass);
+      t.shoot(me, -math.pi / 2, v, 0);
+      for (var i = 0; i < 240; i++) {
+        t.step();
+        if (t.impacts.isNotEmpty) {
+          // 둘이 하기 판의 등급 밀림([StoneMaterial.pushedBy])은 빼고 엔진 몫만.
+          return foe.velocity.length / v / tm.pushedBy(m);
+        }
+      }
+      return 0;
+    } finally {
+      t.dispose();
+    }
+  });
+  static final _rawStrike =
+      <(StoneMaterial, StoneShape, StoneMaterial, StoneShape), double>{};
+
+  /// 이 판에서 이미 잰 (내 돌 모양 · 상대 재질 · 상대 모양).
+  final _warmed = <(StoneShape, StoneMaterial, StoneShape)>{};
+
+  /// 내 편 돌과 상대 돌 짝마다 13종 엔진 몫을 미리 잰다(게임 판만).
+  void _warmStrike() {
+    final hero = favoredTeam;
+    if (!settle || hero == null) return;
+    for (final a in stones) {
+      if (a.team != hero) continue;
+      for (final b in stones) {
+        if (b.team > 1 || b.team == hero) continue;
+        if (!_warmed.add((a.shape, b.material, b.shape))) continue;
+        for (final m in StoneMaterial.values) {
+          rawStrike(m, a.shape, b.material, b.shape);
+        }
+      }
+    }
+  }
+
+  /// 내 쏜 돌이 직접 맞힌 상대 돌의 더 밀림: 등급([StoneMaterial.strikeBoost]) × 무게 보정(상대가 더 무거우면
+  /// 같은 무게를 친 만큼까지 채운다 · 상한 [PhysicsConstants.maxStrikeBoost]).
+  double _strikeOf(StoneMaterial m, StoneShape shape, double target) {
+    final mass = stoneMass(m, shape);
+    final weight = 2 * mass / (mass + target);
+    return math.min(
+      m.strikeBoost * (weight < 1 ? 1 / weight : 1.0),
+      PhysicsConstants.maxStrikeBoost,
+    );
+  }
+
+  /// 등급 보장(치기): 같은 손끝이면 높은 단 돌이 그보다 낮은 단의 어느 돌보다 상대를 더 민다(한 단에
+  /// [StoneMaterial.strikeBoost] 만큼).
+  ///
+  /// 2026-11-01 실측: 무거운 돌은 손끝에 덜 나가([launchFactor]) 3단 현철이 1단 청옥만큼, 9단 운철이 7단
+  /// 금강석보다 덜 밀었다(만물상 「단이 높을수록 내가 친 상대 돌은 더 밀리고」·현철 「상대를 멀리 밀어냄」과 반대).
+  /// 맞은 돌 빠르기 ∝ 손끝 배수 × 엔진이 실제로 넘겨주는 몫([rawStrike]) × 더 밀림.
+  double _strikeFloor(Stone shooter, Stone target) {
+    double hitOf(StoneMaterial m) =>
+        launchFactor(stoneMass(m, shooter.shape)) *
+        rawStrike(m, shooter.shape, target.material, target.shape) *
+        _strikeOf(m, shooter.shape, target.mass);
+
+    final g = shooter.material;
+    final own = hitOf(g);
+    var want = own;
+    for (final m in StoneMaterial.values) {
+      if (m.grade < g.grade) {
+        want = math.max(want, hitOf(m) * g.strikeBoost / m.strikeBoost);
+      }
+    }
+    return own > 0 ? want / own : 1;
   }
 
   /// 등급 보장: 맞은 내 편 돌은 그보다 낮은 단의 어느 돌보다도 덜 밀린다(한 단에 [StoneMaterial.hitKeep] 4%).
