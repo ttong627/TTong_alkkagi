@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:alkkagi_physics/alkkagi_physics.dart';
 
+import '../game/flick.dart' show CriticalRule;
 import '../game/pets.dart';
 import 'daily.dart';
 
@@ -490,6 +491,13 @@ class Profile {
       (hero == Fighter.gurumi ? 0.15 : 0) +
       // 목인항 끌어치기 수련(2026-10-14).
       (perks.contains('회전 숙련') ? 0.1 : 0);
+
+  /// 회심 가운데 폭: 정각 0.1 · 목인항 연속 정타 수련(집중 숙련) 0.09 · 그 밖 [CriticalRule.maxOffset].
+  /// 강호행만 이 값을 쓰고 목인항·묘수풀이·기연 시험은 옛 넓은 폭(0.15)으로 돌던 것(2026-11-01 점검).
+  double get critWidth => hero == Fighter.jeonggak
+      ? 0.1
+      : (perks.contains('집중 숙련') ? 0.09 : CriticalRule.maxOffset);
+
   double get steerSeconds =>
       1.5 +
       0.075 * level(Stat.control) +

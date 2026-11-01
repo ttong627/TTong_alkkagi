@@ -1,8 +1,11 @@
+import 'package:alkkagi/game/flick.dart';
 import 'package:alkkagi/game/match.dart';
+import 'package:alkkagi/progress/drills.dart';
 import 'package:alkkagi/progress/encounters.dart';
 import 'package:alkkagi/progress/profile.dart';
 import 'package:alkkagi/story/campaign.dart';
 import 'package:alkkagi/story/chapters.dart';
+import 'package:alkkagi/story/puzzles.dart';
 import 'package:alkkagi_physics/alkkagi_physics.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -320,5 +323,24 @@ void main() {
       expect(back.danCores, 1);
       expect(back.hero, Fighter.sinseung);
     });
+  });
+
+  // 2026-11-01 점검: 회심 폭이 강호행만 수련값(0.06·정각 0.1·집중 숙련 0.09)이고 다른 판은 옛 0.15 였다.
+  test('회심 폭: 판 기본은 좁힌 폭 · 정각·집중 숙련은 강호행·묘수풀이 모두 같은 값', () {
+    expect(
+      const MatchConfig(mode: MatchMode.practice).critWidth,
+      CriticalRule.maxOffset,
+    );
+    final p = Profile()..hero = Fighter.yeonbi;
+    expect(p.critWidth, CriticalRule.maxOffset);
+    p.perks.add(perkFocus);
+    expect(p.critWidth, 0.09);
+    p.hero = Fighter.jeonggak;
+    expect(p.critWidth, 0.1);
+    expect(Campaign.configFor(p, campaign.first).critWidth, 0.1);
+    final puzzle = puzzles.first.config(
+      MatchConfig(mode: MatchMode.practice, critWidth: p.critWidth),
+    );
+    expect(puzzle.critWidth, 0.1);
   });
 }

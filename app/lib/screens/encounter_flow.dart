@@ -127,6 +127,9 @@ Future<void> afterRound(BuildContext context, {double boost = 1}) async {
               myShape: p.shape,
               myTrail: p.trailOrNull,
               powerScale: p.maxSpeed / baseMaxSpeed,
+              // 묘수풀이 판과 같게 회전·회심 수련도(빠져 있던 것 · 2026-11-01 점검).
+              spinScale: p.spinScale,
+              critWidth: p.critWidth,
             ),
           ),
         ),
