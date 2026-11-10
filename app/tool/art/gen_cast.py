@@ -104,7 +104,8 @@ def main() -> int:
         br = "art/wuxia-cast"
         run = lambda *c: subprocess.run(c, cwd=REPO, check=True)  # noqa: E731
         cur = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=REPO,
-                             capture_output=True, text=True).stdout.strip()
+                             capture_output=True, text=True,
+                             encoding="utf-8", errors="replace").stdout.strip()
         if cur != br:
             run("git", "checkout", "-B", br)
         run("git", "add", "-f", str(OUT.relative_to(REPO)))
