@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import contextlib
 import os
 import subprocess
 import sys
@@ -28,10 +29,8 @@ REPO = HERE.parents[2]
 SKILL = Path.home() / ".claude" / "skills" / "그림도구" / "scripts"
 OUT = HERE / "gen"
 
-try:
+with contextlib.suppress(Exception):  # 콘솔 인코딩 설정 실패는 무시
     sys.stdout.reconfigure(encoding="utf-8")
-except Exception:
-    pass
 
 
 def load_tt():
