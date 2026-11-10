@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import sys
 import time
@@ -33,10 +34,8 @@ sys.path.insert(0, str(HERE))
 from gen_cast import load_tt  # noqa: E402
 from pick_cast import key_green  # noqa: E402
 
-try:
+with contextlib.suppress(Exception):  # 콘솔 인코딩 설정 실패는 무시
     sys.stdout.reconfigure(encoding="utf-8")
-except Exception:
-    pass
 
 # 앱에 넣는 크기(예전 그림과 같게).
 SIZE = {"bg": (1080, 1920), "floor": (1024, 1024), "icon": (320, 320), "obstacle": (256, 256), "fx": (384, 384)}
