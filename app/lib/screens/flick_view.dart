@@ -50,6 +50,9 @@ class FlickView extends StatefulWidget {
     required this.onCancel,
     this.demo = false,
     this.demoAngle = -math.pi / 2,
+    this.forceFlick = false,
+    this.initialMode = StrikeMode.plain,
+    this.banner,
   });
 
   /// 시범 손가락을 보여 줄까(입문·처음 몇 판). 손이 닿으면 사라진다.
@@ -57,6 +60,15 @@ class FlickView extends StatefulWidget {
 
   /// 시범 손가락이 튕기는 쪽(라디안, 화면 위 = −π/2). 판 위 방향과 같다.
   final double demoAngle;
+
+  /// 수련에서 손가락 튕기기 방식을 강제할지(켜져 있으면 설정을 건드리지 않고 튕기기로만 친다).
+  final bool forceFlick;
+
+  /// 처음 골라 둘 타격 방식(내공 타격 수련은 처음부터 `StrikeMode.inner`).
+  final StrikeMode initialMode;
+
+  /// 가까이 보기 안에도 띄울 한 줄 목표 안내(손대기를 가로막지 않음).
+  final String? banner;
 
   final Match match;
   final phys.Stone stone;
@@ -117,7 +129,7 @@ class _FlickViewState extends State<FlickView>
 
   /// 가득 당김 길이([FlickView.layout]).
   double? _reach;
-  bool get _pullMode => Settings.instance.pull;
+  bool get _pullMode => !widget.forceFlick && Settings.instance.pull;
   bool _down = false;
   double _power = 0;
   double? _aimAngle;
@@ -159,6 +171,9 @@ class _FlickViewState extends State<FlickView>
   @override
   void initState() {
     super.initState();
+    if (widget.match.canUse(widget.stone.team, widget.initialMode)) {
+      _mode = widget.initialMode;
+    }
     _ticker = createTicker(_tick)..start();
     _nativeSub = TouchFeed.instance.events.listen(_onNative);
     _hoverSub = TouchFeed.instance.hovers.listen(_onHover);
@@ -609,11 +624,11 @@ class _FlickViewState extends State<FlickView>
                     label: const Text('다른 돌 고르기'),
                   ),
                   const Spacer(),
-                  // 조작 방식 바로 바꾸기(설정과 같은 값).
+                  // 조작 방식 바로 바꾸기(설정과 같은 값 · 튕기기 수련 중엔 튕기기로 고정).
                   Flexible(
                     child: TextButton.icon(
                       key: const Key('flick-control'),
-                      onPressed: _launch == null && !_down
+                      onPressed: _launch == null && !_down && !widget.forceFlick
                           ? () {
                               Sound.play('ui_tap', 0.7);
                               setState(() {
@@ -628,7 +643,9 @@ class _FlickViewState extends State<FlickView>
                         size: 20,
                       ),
                       label: Text(
-                        _pullMode ? '당겨 쏘기' : '튕기기',
+                        widget.forceFlick
+                            ? '튕기기 수련'
+                            : (_pullMode ? '당겨 쏘기' : '튕기기'),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -719,6 +736,38 @@ class _FlickViewState extends State<FlickView>
                               ),
                             ),
                           ),
+                          if (widget.banner case final banner?)
+                            Positioned(
+                              left: 12,
+                              right: 12,
+                              top: miniH + 6,
+                              child: IgnorePointer(
+                                child: Center(
+                                  child: Container(
+                                    key: const Key('flick-banner'),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xB3000000),
+                                      borderRadius: BorderRadius.circular(999),
+                                      border: Border.all(
+                                        color: const Color(0x99E08A2E),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      banner,
+                                      style: t.bodySmall?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           Positioned(
                             left: 0,
                             right: 0,

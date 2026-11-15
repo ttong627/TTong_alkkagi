@@ -33,6 +33,8 @@ void main() {
       expect(angle, closeTo(-math.pi / 2, 1e-9));
       expect(power, 1);
       final shot = r.release()!;
+      expect(shot.pulled, isTrue);
+      expect(shot.flick, isFalse);
       expect(shot.speed, closeTo(baseMaxSpeed, 1e-9));
       expect(shot.hit, 0);
       expect(r.release(), isNull, reason: '한 번만');
@@ -175,6 +177,53 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
       expect(Settings.instance.pull, isFalse);
       expect(find.text('검지로 돌을 튕기세요'), findsOneWidget);
+      m.dispose();
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('forceFlick 수련에서는 당겨 쏘기 설정이 켜져 있어도 손가락 튕기기로 동작한다', (
+      tester,
+    ) async {
+      Settings.instance.pull = true;
+      await tester.binding.setSurfaceSize(const Size(400, 860));
+      final m = Match(
+        const MatchConfig(mode: MatchMode.practice, training: true),
+      );
+      final shots = <FlickShot>[];
+      final stone = m.table.stones.firstWhere((s) => s.team == 0);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FlickView(
+            match: m,
+            stone: stone,
+            forceFlick: true,
+            banner: '수련 6/10 · 검지 튕기기',
+            onShot: (s, _) => shots.add(s),
+            onCancel: () {},
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.text('튕기기 수련'), findsOneWidget);
+      expect(find.text('검지로 돌을 튕기세요'), findsOneWidget);
+      expect(find.byKey(const Key('flick-banner')), findsOneWidget);
+      final pad = tester.getRect(find.byKey(const Key('flick-pad')));
+      final (at, r, _) = FlickView.layout(pad.size);
+      final c = pad.topLeft + at;
+      final g = await tester.startGesture(c + Offset(0, r * 2.2));
+      for (var i = 1; i <= 6; i++) {
+        await g.moveTo(
+          Offset.lerp(c + Offset(0, r * 2.2), c - Offset(0, r * 0.5), i / 6)!,
+        );
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await g.up();
+      for (var i = 0; i < 35; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(shots, hasLength(1));
+      expect(shots.single.pulled, isFalse);
+      expect(Settings.instance.pull, isTrue, reason: '유저의 원래 설정은 유지');
       m.dispose();
       await tester.pumpWidget(const SizedBox());
     });

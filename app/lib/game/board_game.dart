@@ -315,11 +315,16 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
   }
 
   /// 어기어석: 느린 화면 동안 손가락을 끌어 놓은 쪽으로 돌을 꺾는다.
+  /// 평소 차례에 내 돌 위에서 바로 밀기 시작해도(탭이 드래그로 취소될 때) 가까이 보기를 연다.
   @override
   void onDragStart(DragStartEvent event) {
     super.onDragStart(event);
     if (fx.steerLeft > 0 && match.steersLeft > 0) {
       _steerTo = Offset(event.canvasPosition.x, event.canvasPosition.y);
+      return;
+    }
+    if (selected() == null) {
+      _selectNear(Offset(event.canvasPosition.x, event.canvasPosition.y));
     }
   }
 
@@ -328,6 +333,10 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
     super.onDragUpdate(event);
     if (_steerTo != null) {
       _steerTo = Offset(event.canvasEndPosition.x, event.canvasEndPosition.y);
+      return;
+    }
+    if (match.config.training && selected() == null) {
+      _selectNear(Offset(event.canvasEndPosition.x, event.canvasEndPosition.y));
     }
   }
 
@@ -348,9 +357,12 @@ class BoardGame extends FlameGame with TapCallbacks, DragCallbacks {
   @override
   void onTapUp(TapUpEvent event) {
     super.onTapUp(event);
+    _selectNear(Offset(event.canvasPosition.x, event.canvasPosition.y));
+  }
+
+  void _selectNear(Offset screen) {
     if (!canTouch() || match.isMoving || match.isOver) return;
-    final p = event.canvasPosition;
-    final w = worldOf(Offset(p.x, p.y));
+    final w = worldOf(screen);
     final wx = w.dx, wy = w.dy;
     phys.Stone? best;
     var bestD = phys.PhysicsConstants.stoneRadius * 2.4;

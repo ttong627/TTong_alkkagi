@@ -93,7 +93,7 @@ class _TrainingScreenState extends State<TrainingScreen>
       for (final s in m.table.stones)
         if (s.team == 1) s,
     ];
-    final touched = dummies.where((s) => m.touchedThisTurn.contains(s.id));
+    final touched = dummies.where((s) => m.bumpedThisTurn.contains(s.id));
     final hitAny = touched.isNotEmpty;
     if (hitAny) {
       final g = p.trainHit(today());
@@ -105,19 +105,20 @@ class _TrainingScreenState extends State<TrainingScreen>
       _last = '빗나감 — 더미를 맞혀야 1타';
     }
     // 단계 수련: 이 수가 세어지나.
-    final step = Drills.record(
-      p,
-      _drill,
-      DrillShot(
-        touched: touched.length,
-        out: dummies.where((s) => s.out).length,
-        critical: m.lastCritical,
-        hit: m.lastHit,
-        flick: m.lastFlick,
-        inner: m.lastMode != StrikeMode.plain,
-      ),
+    final shot = DrillShot(
+      touched: touched.length,
+      out: dummies.where((s) => s.out).length,
+      critical: m.lastCritical,
+      hit: m.lastHit,
+      flick: m.lastFlick,
+      inner: m.lastMode != StrikeMode.plain,
     );
-    if (step.counted) _last = '${_d.name} 성공! · $_last';
+    final step = Drills.record(p, _drill, shot);
+    if (step.counted) {
+      _last = '${_d.name} 성공! · $_last';
+    } else if (Drills.missHint(_d, shot) case final hint?) {
+      _last = '$hint · $_last';
+    }
     _save();
     // 30타가 「1판」 — 기연을 뽑는다(설계서 §5.3).
     if (hitAny && p.trainingHits % 30 == 0) {
@@ -319,8 +320,19 @@ class _TrainingScreenState extends State<TrainingScreen>
         spinScale: p.spinScale,
         critWidth: p.critWidth,
         trainingDummies: _d.dummies,
+        trainingEdge: _d.edge,
         myStartQi: _d.fullQi ? maxQi : 0,
       ),
+      forceFlick:
+          _d.check == DrillCheck.flick ||
+          _d.check == DrillCheck.draw ||
+          _d.check == DrillCheck.follow,
+      initialMode: _d.check == DrillCheck.inner
+          ? StrikeMode.inner
+          : StrikeMode.plain,
+      flickBanner: () =>
+          '수련 ${_drill + 1}/${drills.length} · ${_d.name} — ${_d.how}'
+          ' · ${_store.profile.drillIndex == _drill ? _store.profile.drillProgress : 0}/${_d.goal}',
       onTurnEnd: _onTurnEnd,
       onPause: _saveOnPause,
       info: _info,

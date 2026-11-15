@@ -1,3 +1,7 @@
+import 'dart:math' as math;
+
+import 'package:alkkagi/game/arena.dart';
+import 'package:alkkagi/game/flick.dart';
 import 'package:alkkagi/game/match.dart';
 import 'package:alkkagi/progress/drills.dart';
 import 'package:alkkagi/progress/profile.dart';
@@ -96,5 +100,77 @@ void main() {
     ];
     expect((d[1] - d[0]).length, closeTo(2.6, 1e-6));
     m.dispose();
+  });
+
+  test('검지 튕기기 안내·실패 도움말 및 손가락 스와이프(!pulled) 판정', () {
+    final flick = drills[5];
+    expect(flick.check, DrillCheck.flick);
+    expect(flick.how, isNot(contains('돌 앞에서 손끝을 떼어')));
+    const disc = StoneDisc(Offset(200, 400), 100);
+    final r = StrikeReader(disc)..down(const FlickSample(Offset(200, 650), 0));
+    FlickShot? swipeShot;
+    for (var i = 1; i <= 10 && swipeShot == null; i++) {
+      swipeShot = r.move(
+        FlickSample(Offset(200, 650 - 300 * i / 10), i * 0.02),
+      );
+    }
+    expect(swipeShot, isNotNull);
+    expect(swipeShot!.flick, isFalse, reason: '돌에 닿아 민 일반 스와이프');
+    expect(swipeShot.pulled, isFalse, reason: '당겨 쏘기가 아닌 손가락 타격');
+    expect(
+      Drills.counts(flick, DrillShot(touched: 1, flick: !swipeShot.pulled)),
+      isTrue,
+    );
+    expect(
+      Drills.missHint(flick, const DrillShot(touched: 1, flick: false)),
+      contains('손가락으로 돌을 밀어'),
+    );
+    expect(
+      Drills.missHint(drills[7], const DrillShot(touched: 1, inner: false)),
+      contains('내공'),
+    );
+  });
+
+  test('장외·박살 수련은 첫 수부터 더미가 판 끝에 놓이고, 일타쌍피는 연쇄 충돌도 센다', () {
+    final edgeMatch = Match(
+      const MatchConfig(
+        mode: MatchMode.practice,
+        training: true,
+        arena: Arena.murimIce,
+        trainingEdge: true,
+      ),
+    );
+    final dummy = edgeMatch.table.stones.firstWhere((s) => s.team == 1);
+    expect(
+      dummy.position.y,
+      closeTo(-(edgeMatch.table.half - 3.5), 1e-6),
+      reason: '첫 수부터 판 끝 가까이에 배치',
+    );
+    edgeMatch.dispose();
+
+    // 일타쌍피: 두 더미를 세로로 붙여 놓고 아래 더미만 정통으로 맞혀도 연쇄 충돌로 둘 다 인정.
+    final chain = Match(
+      const MatchConfig(
+        mode: MatchMode.practice,
+        training: true,
+        trainingDummies: 2,
+      ),
+    );
+    final d1 = chain.table.stones[1];
+    final d2 = chain.table.stones[2];
+    d1.body.setTransform(Vector2(0, 0), d1.body.rotation);
+    d2.body.setTransform(Vector2(0, -2.55), d2.body.rotation);
+    chain.shoot(chain.table.stones[0], -math.pi / 2, 95, 0);
+    var guard = 0;
+    while (chain.isMoving && guard++ < 2000) {
+      chain.step();
+    }
+    expect(chain.touchedThisTurn, equals({d1.id}), reason: '직접 닿은 돌은 앞 더미 하나');
+    expect(
+      chain.bumpedThisTurn,
+      containsAll([d1.id, d2.id]),
+      reason: '앞 더미가 뒤 더미를 친 연쇄 충돌까지 일타쌍피로 인정',
+    );
+    chain.dispose();
   });
 }

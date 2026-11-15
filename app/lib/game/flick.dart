@@ -119,6 +119,7 @@ enum FlickMiss {
 class FlickShot {
   const FlickShot({
     this.flick = false,
+    this.pulled = false,
     required this.angle,
     required this.speed,
     required this.hit,
@@ -156,6 +157,9 @@ class FlickShot {
 
   /// 튕기기: 손을 뗀 뒤 날아간 손끝이 돌을 맞혔다(화면에 안 닿은 채 맞음 → 위쪽).
   final bool flick;
+
+  /// 당겨 쏘기([PullReader])로 쏜 수인가(그 밖은 손가락으로 밀거나 튕긴 수).
+  final bool pulled;
 }
 
 /// 맞히기 → 방향·세기 환산 기준. 기본값은 가상 시험(tool/flick_sim.dart)으로 골랐다.
@@ -568,6 +572,7 @@ class PullReader {
     final critical = power >= sweetLo && power <= sweetHi;
     final dir = Offset(math.cos(angle), math.sin(angle));
     return FlickShot(
+      pulled: true,
       angle: angle,
       speed:
           powerToSpeed(power, disc.tune) *
