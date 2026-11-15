@@ -118,7 +118,7 @@ def make_loop(x: np.ndarray, si: int, sj: int) -> np.ndarray:
 
 def lufs(path: Path) -> tuple[float, float]:
     p = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(path), "-af", "ebur128=peak=true", "-f", "null", "-"],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, encoding="utf-8", errors="replace")
     s = p.stderr[p.stderr.rfind("Summary:"):]
     i = re.search(r"I:\s+(-?[\d.]+)", s)
     pk = re.search(r"Peak:\s+(-?[\d.]+)", s)

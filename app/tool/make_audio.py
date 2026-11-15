@@ -1241,7 +1241,6 @@ def bgm_kubiForest():
 
     def wind(n, r):
         # 바람: 정확히 곡 길이마다 되풀이되는 잡음 + 그 길이에 딱 맞는 느린 출렁임 → 이음매 없음
-        cyc = n / SR
         ys = []
         for ch in range(2):
             z = periodic_noise(n, r, lambda f: np.exp(-0.5 * (np.log2(np.maximum(f, 1) / 700) / 0.9) ** 2))
@@ -1660,7 +1659,6 @@ def sfx_tech_absorb(r):
 def sfx_ultimate(r):
     """필살기: 짧게 빨려 오르다 '콰광' — 땅울림·폭발 잡음·징 같은 쇠 울림."""
     n = nsamp(2.3)
-    t = tvec(n)
     k = nsamp(0.35)
     pre = sweep_noise(k, r, 300, (0.95, 3000), 3000, q=1.2, env=(tvec(k) / (k / SR)) ** 2)
     pre += 0.3 * np.sin(phase_of(200 * 2 ** (2 * tvec(k) / (k / SR)))) * (tvec(k) / (k / SR)) ** 2
@@ -1899,7 +1897,6 @@ def sfx_unlock(r):
 def sfx_error(r):
     """안 됨: 낮고 부드러운 '부부' 두 번."""
     n = nsamp(0.4)
-    t = tvec(n)
     y = np.zeros(n)
     for at in (0.0, 0.2):
         k = nsamp(0.14)
