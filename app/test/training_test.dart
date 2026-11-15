@@ -3,7 +3,9 @@ import 'dart:math' as math;
 import 'package:alkkagi/game/board_game.dart';
 import 'package:alkkagi/game/match.dart';
 import 'package:alkkagi/progress/profile.dart';
+import 'package:alkkagi/progress/settings.dart';
 import 'package:alkkagi/progress/store.dart';
+import 'package:alkkagi/screens/flick_view.dart';
 import 'package:alkkagi/screens/training_screen.dart';
 import 'package:alkkagi/ui/theme.dart';
 import 'package:alkkagi_physics/alkkagi_physics.dart';
@@ -109,5 +111,157 @@ void main() {
     m.step();
     expect(me.airborne, isTrue);
     m.dispose();
+  });
+
+  testWidgets('목인항 6/10 검지 튕기기: 평범하게 손가락으로 밀어 쳐서 5회 통과한다(당겨 쏘기 켜짐 포함)', (
+    t,
+  ) async {
+    t.view.physicalSize = const Size(412, 915);
+    t.view.devicePixelRatio = 1;
+    addTearDown(() {
+      Settings.instance.pull = false;
+      t.view.reset();
+    });
+    Settings.instance.pull = true;
+    ProfileStore.instance.profile = Profile()
+      ..tutorialDone = true
+      ..seenHints.add('training')
+      ..drillCleared = 5
+      ..drillIndex = 5
+      ..drillProgress = 0;
+
+    await t.pumpWidget(
+      MaterialApp(theme: buildTheme(), home: const TrainingScreen()),
+    );
+    for (var i = 0; i < 30; i++) {
+      await t.pump(const Duration(milliseconds: 50));
+    }
+    expect(find.text('내 돌을 눌러 겨누세요'), findsWidgets);
+    expect(find.textContaining('수련 6/10 · 검지 튕기기'), findsOneWidget);
+
+    BoardGame board() =>
+        (t
+                .widget<GameWidget>(
+                  find.byWidgetPredicate((w) => w is GameWidget),
+                )
+                .game!)
+            as BoardGame;
+
+    for (var hit = 1; hit <= 5; hit++) {
+      final game = board();
+      final match = game.match;
+      // 더미를 내 돌 바로 위 정면에 두어 손가락 스와이프가 확실히 명중하게 한다.
+      match.resetTraining(0, 0);
+      await t.pump(const Duration(milliseconds: 32));
+
+      final gwBox = t.getRect(find.byWidgetPredicate((w) => w is GameWidget));
+      final stoneAt =
+          gwBox.topLeft +
+          game.screenOf(
+            match.table.stones[0].position.x,
+            match.table.stones[0].position.y,
+          );
+      if (hit == 1) {
+        // 판 위 내 돌에서 바로 드래그해도 가까이 보기가 열리는지 검증.
+        final drag = await t.startGesture(stoneAt);
+        await drag.moveBy(const Offset(0, -30));
+        await drag.up();
+      } else {
+        await t.tapAt(stoneAt);
+      }
+      for (var i = 0; i < 25; i++) {
+        await t.pump(const Duration(milliseconds: 20));
+      }
+      expect(find.byType(FlickView), findsOneWidget);
+      expect(find.text('튕기기 수련'), findsOneWidget);
+
+      final pad = t.getRect(find.byKey(const Key('flick-pad')));
+      final (center, r, _) = FlickView.layout(pad.size);
+      final c = pad.topLeft + center;
+      // 돌 아래에서 돌 한가운데를 지나 위로 자연스럽게 밀어 튕긴다(손을 미리 떼지 않는 일반 스와이프).
+      final g = await t.startGesture(c + Offset(0, r * 2.0));
+      for (var step = 1; step <= 8; step++) {
+        await g.moveTo(
+          Offset.lerp(
+            c + Offset(0, r * 2.0),
+            c - Offset(0, r * 0.6),
+            step / 8,
+          )!,
+        );
+        await t.pump(const Duration(milliseconds: 16));
+      }
+      await g.up();
+      // 발사 연출(0.42초) + 물리 진행이 끝날 때까지 진행.
+      for (
+        var i = 0;
+        i < 300 &&
+            (find.byType(FlickView).evaluate().isNotEmpty || match.isMoving);
+        i++
+      ) {
+        await t.pump(const Duration(milliseconds: 16));
+      }
+      await t.pump(const Duration(milliseconds: 80));
+
+      final p = ProfileStore.instance.profile;
+      if (hit < 5) {
+        expect(p.drillProgress, hit, reason: '$hit번째 스와이프 적중 후 진행도');
+      } else {
+        expect(find.byKey(const Key('drill-cleared')), findsOneWidget);
+        expect(p.drillCleared, 6);
+      }
+    }
+
+    await t.tap(find.text('다음 수련'));
+    for (var i = 0; i < 20; i++) {
+      await t.pump(const Duration(milliseconds: 30));
+    }
+    await t.pumpWidget(const SizedBox());
+    for (var i = 0; i < 40; i++) {
+      await t.pump(const Duration(milliseconds: 50));
+    }
+  });
+
+  testWidgets('목인항 8/10 내공 타격: 가까이 보기를 열면 내공 타격이 미리 선택되어 있다', (t) async {
+    t.view.physicalSize = const Size(412, 915);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    ProfileStore.instance.profile = Profile()
+      ..tutorialDone = true
+      ..seenHints.add('training')
+      ..drillCleared = 7
+      ..drillIndex = 7
+      ..drillProgress = 0;
+
+    await t.pumpWidget(
+      MaterialApp(theme: buildTheme(), home: const TrainingScreen()),
+    );
+    for (var i = 0; i < 30; i++) {
+      await t.pump(const Duration(milliseconds: 50));
+    }
+    final game =
+        (t
+                .widget<GameWidget>(
+                  find.byWidgetPredicate((w) => w is GameWidget),
+                )
+                .game!)
+            as BoardGame;
+    final gwBox = t.getRect(find.byWidgetPredicate((w) => w is GameWidget));
+    final stoneAt =
+        gwBox.topLeft +
+        game.screenOf(
+          game.match.table.stones[0].position.x,
+          game.match.table.stones[0].position.y,
+        );
+    await t.tapAt(stoneAt);
+    for (var i = 0; i < 25; i++) {
+      await t.pump(const Duration(milliseconds: 20));
+    }
+    final chip = t.widget<ChoiceChip>(find.byKey(const Key('mode-inner')));
+    expect(chip.selected, isTrue);
+
+    await t.pumpWidget(const SizedBox());
+    for (var i = 0; i < 40; i++) {
+      await t.pump(const Duration(milliseconds: 50));
+    }
   });
 }

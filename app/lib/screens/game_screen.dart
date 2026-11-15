@@ -43,7 +43,19 @@ class GameScreen extends StatefulWidget {
     this.stageId,
     this.coachLines = const [],
     this.timeLimit,
+    this.forceFlick = false,
+    this.initialMode = StrikeMode.plain,
+    this.flickBanner,
   });
+
+  /// 가까이 보기에서 손가락 튕기기 방식을 강제할지(목인항 튕기기·타점 수련).
+  final bool forceFlick;
+
+  /// 가까이 보기를 열 때 처음 골라 둘 타격 방식(목인항 내공 타격 수련).
+  final StrikeMode initialMode;
+
+  /// 가까이 보기 위에 띄울 한 줄 목표 안내.
+  final String Function()? flickBanner;
 
   /// 시간 제한(초 · 묘수풀이 트릭샷). 겨누는 동안만 줄고, 다 되면 실패. 별은 남은 시간으로.
   final int? timeLimit;
@@ -501,7 +513,7 @@ class _GameScreenState extends State<GameScreen> {
               shot.power >= CriticalRule.minPower &&
               shot.power <= CriticalRule.maxPower),
       curl: shot.curl,
-      flick: shot.flick,
+      flick: !shot.pulled,
     );
     // 회심 부적은 한 번 친 수에 쓰인다(내공 타격이면 회심이 없으니 그대로 남긴다).
     if (_match.lastMode == StrikeMode.plain) _critCharm = false;
@@ -684,7 +696,7 @@ class _GameScreenState extends State<GameScreen> {
     if (_match.isMoving) return '';
     switch (widget.config.mode) {
       case MatchMode.practice:
-        return '내 돌을 누르세요';
+        return widget.config.training ? '내 돌을 눌러 겨누세요' : '내 돌을 누르세요';
       case MatchMode.vsAi:
         return _match.turn == 0
             ? '내 차례 · 돌을 누르세요'
@@ -931,8 +943,14 @@ class _GameScreenState extends State<GameScreen> {
                         stone: _selected!,
                         onShot: _shoot,
                         onCancel: () => setState(() => _selected = null),
-                        demo: widget.coach || !_store.profile.tutorialDone,
+                        demo:
+                            widget.coach ||
+                            !_store.profile.tutorialDone ||
+                            (widget.forceFlick && _match.config.training),
                         demoAngle: _demoAngle,
+                        forceFlick: widget.forceFlick,
+                        initialMode: widget.initialMode,
+                        banner: widget.flickBanner?.call(),
                       ),
               ),
             ),

@@ -279,6 +279,7 @@ class MatchConfig {
     this.qiClash = false,
     this.opponentStones = stonesPerTeam,
     this.trainingDummies = 1,
+    this.trainingEdge = false,
     this.demonWorld = false,
     this.art = RebirthArt.none,
     this.rule = MatchRule.annihilate,
@@ -330,6 +331,9 @@ class MatchConfig {
 
   /// 목인항 더미 수(일타쌍피 수련은 둘 · 2026-10-14).
   final int trainingDummies;
+
+  /// 목인항 첫 수부터 더미를 판 끝 가까이에 놓을지(장외·박살 수련).
+  final bool trainingEdge;
 
   /// 천기(날씨, 설계서 §9.3).
   final Weather weather;
@@ -496,8 +500,15 @@ class Match extends ChangeNotifier {
         material: config.myMaterial,
         shape: config.myShape,
       );
-      for (var k = 0; k < config.trainingDummies.clamp(1, 3); k++) {
-        table.addStone(k * 2.6, 0, team: 1, shape: StoneShape.sphere);
+      final count = config.trainingDummies.clamp(1, 3);
+      final dy = config.trainingEdge ? -(table.half - 3.5) : 0.0;
+      for (var k = 0; k < count; k++) {
+        table.addStone(
+          (k - (count - 1) / 2) * 2.6,
+          dy,
+          team: 1,
+          shape: StoneShape.sphere,
+        );
       }
       return;
     }
@@ -687,6 +698,7 @@ class Match extends ChangeNotifier {
   }) {
     if (!canShoot(s)) return;
     touchedThisTurn.clear();
+    bumpedThisTurn.clear();
     lastHit = hit;
     lastFlick = flick;
     final team = s.team;
@@ -780,6 +792,9 @@ class Match extends ChangeNotifier {
   /// 이번 수에 쏜 돌과 부딪힌 돌(목인항·연출용).
   final touchedThisTurn = <int>{};
 
+  /// 이번 수에 쏜 돌 또는 맞은 돌과 연쇄로 부딪힌 모든 돌(일타쌍피 수련 판정용).
+  final bumpedThisTurn = <int>{};
+
   /// 지난 수의 타격점(−1 아래 ~ +1 위)과 검지 튕기기였는지(목인항 수련 · 2026-10-14).
   double lastHit = 0;
   bool lastFlick = false;
@@ -839,6 +854,22 @@ class Match extends ChangeNotifier {
     for (final i in table.impacts) {
       if (i.a == shooterId) touchedThisTurn.add(i.b);
       if (i.b == shooterId) touchedThisTurn.add(i.a);
+    }
+    if (shooterId != null && table.impacts.isNotEmpty) {
+      var added = true;
+      while (added) {
+        added = false;
+        for (final i in table.impacts) {
+          final aHit = i.a == shooterId || bumpedThisTurn.contains(i.a);
+          final bHit = i.b == shooterId || bumpedThisTurn.contains(i.b);
+          if (aHit && i.b != shooterId && bumpedThisTurn.add(i.b)) {
+            added = true;
+          }
+          if (bHit && i.a != shooterId && bumpedThisTurn.add(i.a)) {
+            added = true;
+          }
+        }
+      }
     }
     if (st == TurnStatus.moving) return false;
     table.endTurn();

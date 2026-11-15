@@ -20,7 +20,7 @@ enum DrillCheck {
   /// 더미를 판 밖으로.
   knockOut,
 
-  /// 손끝을 돌 앞에서 떼어 튕겨 맞힘(검지 튕기기).
+  /// 손가락으로 돌을 밀어 튕겨 맞힘(당겨 쏘기 제외 · 검지 튕기기).
   flick,
 
   /// 한 수에 더미 둘을 맞힘(일타쌍피).
@@ -89,7 +89,7 @@ const drills = [
   ),
   Drill('밀어치기', '돌 위쪽을 쳐서 맞혀라 — 맞힌 뒤 내 돌이 따라간다', DrillCheck.follow, 5),
   Drill('장외', '판 끝의 더미를 판 밖으로 날려라', DrillCheck.knockOut, 3, edge: true),
-  Drill('검지 튕기기', '돌 앞에서 손끝을 떼어 튕겨 맞혀라', DrillCheck.flick, 5),
+  Drill('검지 튕기기', '손가락으로 돌을 밀어 튕겨 더미를 맞혀라', DrillCheck.flick, 5),
   Drill('일타쌍피', '한 수에 더미 둘을 함께 맞혀라', DrillCheck.double, 3, dummies: 2),
   Drill(
     '내공 타격',
@@ -150,6 +150,23 @@ abstract final class Drills {
     DrillCheck.inner => s.touched > 0 && s.inner,
     DrillCheck.shatter => s.out > 0 && s.critical,
   };
+
+  /// 더미를 맞혔는데도 [d] 수련 조건에 못 미쳤을 때 알려 줄 한 줄(맞혔으면 왜 안 세어졌는지).
+  static String? missHint(Drill d, DrillShot s) {
+    if (s.touched <= 0 || counts(d, s)) return null;
+    return switch (d.check) {
+      DrillCheck.hit || DrillCheck.streak => null,
+      DrillCheck.critical => '한가운데를 알맞은 세기(60~80%)로 맞혀 회심을 내세요',
+      DrillCheck.draw => '손끝을 넓게 눕혀 돌 아래쪽을 쳐 보세요',
+      DrillCheck.follow => '손끝을 세워 돌 위쪽을 스치듯 쳐 보세요',
+      DrillCheck.knockOut => '더 세게 쳐서 더미를 판 밖으로 날리세요',
+      DrillCheck.flick => '당겨 쏘기 대신 손가락으로 돌을 밀어 튕기세요',
+      DrillCheck.double => '한 수에 두 더미가 함께 맞도록 사이를 노리세요',
+      DrillCheck.inner => '위쪽 「내공·검기」 칸을 켜고 치세요',
+      DrillCheck.shatter =>
+        s.out <= 0 ? '더미를 판 밖으로 날려야 합니다' : '회심(한가운데 · 60~80% 세기)으로 날려야 박살납니다',
+    };
+  }
 
   /// 고를 수 있는 단계(깬 단계 + 다음 한 단계).
   static int open(Profile p) => (p.drillCleared + 1).clamp(1, drills.length);
